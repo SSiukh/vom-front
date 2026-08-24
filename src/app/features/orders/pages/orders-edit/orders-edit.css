@@ -1,0 +1,33 @@
+.order-edit-layout {
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  gap: 16px;
+  align-items: start;
+  margin-top: 14px;
+}
+
+.order-edit-main {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.order-edit-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.total-card__amount {
+  font-family: var(--font-heading);
+  font-size: 26px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.order-edit-nav {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: auto;
+}

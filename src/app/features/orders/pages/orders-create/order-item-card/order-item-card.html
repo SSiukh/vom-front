@@ -1,0 +1,103 @@
+<div class="item-card" [formGroup]="form()">
+  <div class="item-card__header">
+    <span class="item-card__label">Товар {{ index() + 1 }}</span>
+    @if (canRemove()) {
+      <button type="button" class="icon-action icon-action--danger" (click)="remove()" aria-label="Прибрати товар">
+        <svg lucideTrash2 [size]="15" [strokeWidth]="1.5"></svg>
+      </button>
+    }
+  </div>
+
+  <div class="item-card__body">
+    <div class="item-card__photo">
+      @if (!isCustomType() && selectedProduct()?.photoUrl) {
+        <img [src]="selectedProduct()?.photoUrl" [alt]="selectedProduct()?.name ?? ''" />
+      } @else {
+        <span class="item-card__photo-placeholder">без фото</span>
+      }
+    </div>
+
+    <div class="item-card__fields">
+      <div class="field">
+        <label class="field-label" [for]="'productTypeId-' + index()">Тип товару</label>
+        <select [id]="'productTypeId-' + index()" class="text-input" formControlName="productTypeId">
+          <option value="" disabled>Оберіть тип</option>
+          @for (type of productTypes(); track type.id) {
+            <option [value]="type.id">{{ type.label }}</option>
+          }
+        </select>
+      </div>
+
+      @if (isCustomType()) {
+        <div class="field">
+          <label class="field-label" [for]="'name-' + index()">Назва</label>
+          <input [id]="'name-' + index()" type="text" class="text-input" formControlName="name" />
+        </div>
+        <div class="field">
+          <label class="field-label" [for]="'price-' + index()">Ціна</label>
+          <input
+            [id]="'price-' + index()"
+            type="number"
+            min="0"
+            step="0.01"
+            class="text-input"
+            formControlName="price"
+          />
+        </div>
+      } @else {
+        <div class="field">
+          <span class="field-label">Товар</span>
+          <app-searchable-select
+            [options]="productOptions()"
+            [selectedLabel]="selectedProduct()?.name ?? null"
+            [loading]="productsLoading()"
+            placeholder="Пошук товару…"
+            emptyMessage="Товарів не знайдено"
+            (searchTermChange)="onSearchTermChange($event)"
+            (valueChange)="onProductSelected($event)"
+          />
+        </div>
+      }
+
+      <div class="field">
+        <label class="field-label" [for]="'quantity-' + index()">К-сть</label>
+        <input
+          [id]="'quantity-' + index()"
+          type="number"
+          min="1"
+          step="1"
+          class="text-input"
+          formControlName="quantity"
+        />
+      </div>
+
+      <div class="field">
+        <span class="field-label">Вартість</span>
+        <div class="item-card__subtotal">{{ subtotal() }} ₴</div>
+      </div>
+    </div>
+  </div>
+
+  @if (!isCustomType() && selectedProduct()?.promoPrice !== null && selectedProduct() !== null) {
+    <label class="checkbox-label">
+      <input
+        type="checkbox"
+        class="checkbox-input"
+        [checked]="form().controls.isPromo.value"
+        (change)="onPromoToggle($event)"
+      />
+      Продати за акційною ціною ({{ selectedProduct()?.promoPrice }} ₴)
+    </label>
+  }
+
+  <div class="item-card__hint">
+    <svg lucideInfo [size]="13" [strokeWidth]="1.5"></svg>
+    @if (isCustomType()) {
+      Кастомна наклейка не списується зі складу
+    } @else if (selectedProduct(); as product) {
+      Списання зі складу: −{{ form().controls.quantity.value }} шт (залишок {{ product.stockQuantity }})
+    } @else {
+      Оберіть товар, щоб побачити залишок на складі
+    }
+  </div>
+</div>

@@ -11,3 +11,8 @@ export interface SenderVerificationResult {
   fullName: string;
   phone: string;
 }
+
+export interface SenderAddress {
+  npAddressRef: string;
+  description: string;
+}

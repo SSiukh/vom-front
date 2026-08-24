@@ -4,10 +4,10 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { LucideChevronLeft, LucideCloudUpload, LucideSave } from '@lucide/angular';
+import { catchError, of, switchMap } from 'rxjs';
 import { DictionariesService } from '../../../../core/dictionaries/dictionaries.service';
 import { ProductsApiService } from '../../../../core/api/products-api.service';
 import { FEATURE_ROUTES } from '../../../../core/routes.constants';
-import type { Product } from '../../models/product.model';
 
 @Component({
   selector: 'app-products-form',
@@ -23,8 +23,8 @@ export class ProductsForm {
   private readonly destroyRef = inject(DestroyRef);
   protected readonly dictionaries = inject(DictionariesService);
 
-  protected readonly productId = this.route.snapshot.paramMap.get('id');
-  protected readonly isEditMode = computed(() => this.productId !== null);
+  private readonly productIdSignal = signal<string | null>(null);
+  protected readonly isEditMode = computed(() => this.productIdSignal() !== null);
 
   protected readonly form = this.fb.nonNullable.group({
     typeId: ['', Validators.required],
@@ -46,9 +46,41 @@ export class ProductsForm {
   private objectUrl: string | null = null;
 
   constructor() {
-    if (this.productId) {
-      this.loadExisting(this.productId);
-    }
+    this.route.paramMap
+      .pipe(
+        switchMap((params) => {
+          const id = params.get('id');
+          this.productIdSignal.set(id);
+          if (!id) {
+            this.resetForCreate();
+            return of(null);
+          }
+          this.loading.set(true);
+          this.errorMessage.set(null);
+          return this.productsApi.get(id).pipe(
+            catchError(() => {
+              this.loading.set(false);
+              this.errorMessage.set('Не вдалося завантажити дані товару');
+              return of(null);
+            }),
+          );
+        }),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe((product) => {
+        if (product) {
+          this.loading.set(false);
+          this.form.patchValue({
+            typeId: product.typeId,
+            name: product.name,
+            price: product.price,
+            promoPrice: product.promoPrice,
+            stockQuantity: product.stockQuantity,
+          });
+          this.photoPreviewUrl.set(product.photoUrl);
+        }
+      });
+
     this.destroyRef.onDestroy(() => {
       if (this.objectUrl) {
         URL.revokeObjectURL(this.objectUrl);
@@ -111,7 +143,7 @@ export class ProductsForm {
       formData.append('photo', file);
     }
 
-    const productId = this.productId;
+    const productId = this.productIdSignal();
     const request$ = productId ? this.productsApi.update(productId, formData) : this.productsApi.create(formData);
 
     request$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
@@ -136,28 +168,18 @@ export class ProductsForm {
     this.photoPreviewUrl.set(url);
   }
 
-  private loadExisting(id: string): void {
-    this.loading.set(true);
-    this.productsApi
-      .get(id)
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: (product: Product) => {
-          this.loading.set(false);
-          this.form.patchValue({
-            typeId: product.typeId,
-            name: product.name,
-            price: product.price,
-            promoPrice: product.promoPrice,
-            stockQuantity: product.stockQuantity,
-          });
-          this.photoPreviewUrl.set(product.photoUrl);
-        },
-        error: () => {
-          this.loading.set(false);
-          this.errorMessage.set('Не вдалося завантажити дані товару');
-        },
-      });
+  private resetForCreate(): void {
+    this.form.reset({ typeId: '', name: '', price: 0, promoPrice: null, stockQuantity: 0 });
+    this.selectedFile.set(null);
+    if (this.objectUrl) {
+      URL.revokeObjectURL(this.objectUrl);
+      this.objectUrl = null;
+    }
+    this.photoPreviewUrl.set(null);
+    this.errorMessage.set(null);
+    this.saving.set(false);
+    this.loading.set(false);
+    this.isDragOver.set(false);
   }
 
   private resolveErrorMessage(error: unknown): string {

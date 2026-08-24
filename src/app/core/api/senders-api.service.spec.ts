@@ -73,4 +73,11 @@ describe('SendersApiService', () => {
     expect(req.request.method).toBe('DELETE');
     req.flush(null);
   });
+
+  it('gets /senders/:id/addresses', () => {
+    service.getAddresses('1').subscribe();
+    const req = httpMock.expectOne(`${baseUrl}/1/addresses`);
+    expect(req.request.method).toBe('GET');
+    req.flush([{ npAddressRef: 'ref-1', description: 'м. Київ, вул. Хрещатик, 1' }]);
+  });
 });

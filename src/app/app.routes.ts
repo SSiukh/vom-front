@@ -16,12 +16,28 @@ export const routes: Routes = [
     canActivate: [authGuard, twoFaConfiguredGuard],
     children: [
       {
+        path: FEATURE_ROUTES.orders.slice(1),
+        loadChildren: () => import('./features/orders/orders.routes').then((m) => m.ORDERS_ROUTES),
+      },
+      {
         path: FEATURE_ROUTES.senders.slice(1),
         loadChildren: () => import('./features/senders/senders.routes').then((m) => m.SENDERS_ROUTES),
       },
       {
         path: FEATURE_ROUTES.products.slice(1),
         loadChildren: () => import('./features/products/products.routes').then((m) => m.PRODUCTS_ROUTES),
+      },
+      {
+        path: FEATURE_ROUTES.expenses.slice(1),
+        loadChildren: () => import('./features/expenses/expenses.routes').then((m) => m.EXPENSES_ROUTES),
+      },
+      {
+        path: FEATURE_ROUTES.crm.slice(1),
+        loadChildren: () => import('./features/crm/crm.routes').then((m) => m.CRM_ROUTES),
+      },
+      {
+        path: FEATURE_ROUTES.dashboard.slice(1),
+        loadChildren: () => import('./features/dashboard/dashboard.routes').then((m) => m.DASHBOARD_ROUTES),
       },
     ],
   },

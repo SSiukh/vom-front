@@ -1,0 +1,171 @@
+<button type="button" class="breadcrumb" (click)="goBack()">
+  <svg lucideChevronLeft [size]="14" [strokeWidth]="1.5"></svg>
+  Замовлення
+</button>
+
+@if (error()) {
+  <div class="error-text">{{ error() }}</div>
+}
+
+@if (loading()) {
+  <div class="loading-text">Завантаження…</div>
+} @else if (order(); as order) {
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">
+        {{ order.npWaybillNumber ?? 'Замовлення №' + order.id }}
+        @if (statusLabel(); as label) {
+          <span class="status-badge order-status-badge" [class]="statusBadgeClass()">{{ label }}</span>
+        }
+      </h1>
+      <div class="page-subtitle">Створено {{ order.createdAt | date: 'dd.MM.yyyy, HH:mm' }}</div>
+    </div>
+    <div class="detail-actions">
+      <button type="button" class="btn-ghost" (click)="goToEdit()">
+        <svg lucidePencil [size]="14" [strokeWidth]="1.5"></svg>
+        Редагувати
+      </button>
+      <button type="button" class="btn-outline-danger" (click)="requestDelete()">
+        <svg lucideTrash2 [size]="14" [strokeWidth]="1.5"></svg>
+        Видалити
+      </button>
+    </div>
+  </div>
+
+  <div class="order-detail-layout">
+    <div class="order-detail-main">
+      <div class="info-panel">
+        <span class="field-label">Відправлення</span>
+        <div class="info-panel__grid">
+          <div class="detail-row">
+            <span class="detail-row-label">Тип відправки</span>
+            <span class="detail-row-value">{{ shipmentTypeLabel() }}</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-row-label">Тип оплати</span>
+            <span class="detail-row-value">{{ paymentTypeLabel() }}</span>
+          </div>
+          @if (order.partialAmount !== null) {
+            <div class="detail-row">
+              <span class="detail-row-label">Часткова вартість</span>
+              <span class="detail-row-value">{{ order.partialAmount }} ₴</span>
+            </div>
+          }
+          <div class="detail-row">
+            <span class="detail-row-label">Загальна вартість</span>
+            <span class="detail-row-value">{{ order.totalAmount }} ₴</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="info-panel">
+        <span class="field-label">Товари</span>
+        <div class="data-table-wrapper">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th class="col-photo"></th>
+                <th>Тип</th>
+                <th>Назва</th>
+                <th class="col-num">Ціна</th>
+                <th class="col-num">К-сть</th>
+                <th class="col-num">Вартість</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (item of order.items; track $index) {
+                <tr>
+                  <td>
+                    @if (item.photoUrlSnapshot) {
+                      <img class="photo-thumb" [src]="item.photoUrlSnapshot" [alt]="item.nameSnapshot" />
+                    }
+                  </td>
+                  <td>{{ productTypeLabel(item.productTypeId) }}</td>
+                  <td>
+                    {{ item.nameSnapshot }}
+                    @if (item.isPromo) {
+                      <span class="status-badge status-badge--success">Акція</span>
+                    }
+                  </td>
+                  <td class="col-num">{{ item.price }} ₴</td>
+                  <td class="col-num">{{ item.quantity }}</td>
+                  <td class="col-num">{{ item.subtotal }} ₴</td>
+                </tr>
+              }
+            </tbody>
+            <tfoot>
+              <tr>
+                <td colspan="5">Разом</td>
+                <td class="col-num">{{ order.totalAmount }} ₴</td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="order-detail-sidebar">
+      <div class="info-panel">
+        <span class="field-label">Відправник</span>
+        @if (senderInfo(); as sender) {
+          <div class="detail-row">
+            <span class="detail-row-label">ПІБ</span>
+            <span class="detail-row-value">{{ sender.fullName }}</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-row-label">Телефон</span>
+            <span class="detail-row-value">{{ sender.phone }}</span>
+          </div>
+        }
+        <div class="detail-row">
+          <span class="detail-row-label">Адреса відправки</span>
+          <span class="detail-row-value">{{ senderAddressLabel() ?? order.senderAddressRef }}</span>
+        </div>
+      </div>
+
+      <div class="info-panel">
+        <span class="field-label">Отримувач</span>
+        <div class="detail-row">
+          <span class="detail-row-label">ПІБ</span>
+          <span class="detail-row-value">
+            {{ order.recipient.lastName }} {{ order.recipient.firstName }} {{ order.recipient.middleName ?? '' }}
+          </span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-row-label">Телефон</span>
+          <span class="detail-row-value">{{ order.recipient.phone }}</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-row-label">Доставка</span>
+          <span class="detail-row-value">{{ deliveryTypeLabel() }}</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-row-label">Населений пункт</span>
+          <span class="detail-row-value">{{ order.deliveryDetails.cityRef }}</span>
+        </div>
+        @if (order.deliveryDetails.warehouseRef) {
+          <div class="detail-row">
+            <span class="detail-row-label">Відділення</span>
+            <span class="detail-row-value">{{ order.deliveryDetails.warehouseRef }}</span>
+          </div>
+        }
+        @if (order.deliveryDetails.postomatRef) {
+          <div class="detail-row">
+            <span class="detail-row-label">Поштомат</span>
+            <span class="detail-row-value">{{ order.deliveryDetails.postomatRef }}</span>
+          </div>
+        }
+      </div>
+    </div>
+  </div>
+}
+
+<app-confirm-dialog
+  [open]="confirmingDelete()"
+  title="Видалити замовлення?"
+  [message]="deleteConfirmMessage()"
+  confirmLabel="Видалити"
+  [confirmDisabled]="deleting()"
+  (confirmed)="confirmDelete()"
+  (cancelled)="cancelDelete()"
+/>

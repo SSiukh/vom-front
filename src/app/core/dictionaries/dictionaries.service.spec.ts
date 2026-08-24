@@ -23,9 +23,6 @@ describe('DictionariesService', () => {
     const service = TestBed.inject(DictionariesService);
 
     httpMock
-      .expectOne(`${baseUrl}/order-types`)
-      .flush([{ id: '1', code: 'standard', label: 'Стандартне' }]);
-    httpMock
       .expectOne(`${baseUrl}/shipment-types`)
       .flush([{ id: '1', code: 'np', label: 'Нова Пошта', isDefault: true }]);
     httpMock
@@ -44,7 +41,6 @@ describe('DictionariesService', () => {
       .expectOne(`${baseUrl}/shipment-statuses`)
       .flush([{ id: '1', code: 'created', label: 'Створено' }]);
 
-    expect(service.orderTypes()).toEqual([{ id: '1', code: 'standard', label: 'Стандартне' }]);
     expect(service.shipmentTypes()).toEqual([
       { id: '1', code: 'np', label: 'Нова Пошта', isDefault: true },
     ]);
@@ -63,23 +59,21 @@ describe('DictionariesService', () => {
     const service = TestBed.inject(DictionariesService);
 
     httpMock
-      .expectOne(`${baseUrl}/order-types`)
+      .expectOne(`${baseUrl}/shipment-types`)
       .flush('server error', { status: 500, statusText: 'Server Error' });
-    httpMock.expectOne(`${baseUrl}/shipment-types`).flush([]);
     httpMock.expectOne(`${baseUrl}/product-types`).flush([]);
     httpMock.expectOne(`${baseUrl}/payment-types`).flush([]);
     httpMock.expectOne(`${baseUrl}/expense-types`).flush([]);
     httpMock.expectOne(`${baseUrl}/delivery-types`).flush([]);
     httpMock.expectOne(`${baseUrl}/shipment-statuses`).flush([]);
 
-    expect(service.orderTypes()).toEqual([]);
+    expect(service.shipmentTypes()).toEqual([]);
     expect(service.hasError()).toBe(true);
   });
 
   it('does not set hasError when every dictionary loads successfully', () => {
     const service = TestBed.inject(DictionariesService);
 
-    httpMock.expectOne(`${baseUrl}/order-types`).flush([]);
     httpMock.expectOne(`${baseUrl}/shipment-types`).flush([]);
     httpMock.expectOne(`${baseUrl}/product-types`).flush([]);
     httpMock.expectOne(`${baseUrl}/payment-types`).flush([]);
@@ -94,9 +88,8 @@ describe('DictionariesService', () => {
     const service = TestBed.inject(DictionariesService);
 
     httpMock
-      .expectOne(`${baseUrl}/order-types`)
+      .expectOne(`${baseUrl}/shipment-types`)
       .flush('server error', { status: 500, statusText: 'Server Error' });
-    httpMock.expectOne(`${baseUrl}/shipment-types`).flush([]);
     httpMock.expectOne(`${baseUrl}/product-types`).flush([]);
     httpMock.expectOne(`${baseUrl}/payment-types`).flush([]);
     httpMock.expectOne(`${baseUrl}/expense-types`).flush([]);
@@ -107,9 +100,8 @@ describe('DictionariesService', () => {
     service.reload();
 
     httpMock
-      .expectOne(`${baseUrl}/order-types`)
-      .flush([{ id: '1', code: 'standard', label: 'Стандартне' }]);
-    httpMock.expectOne(`${baseUrl}/shipment-types`).flush([]);
+      .expectOne(`${baseUrl}/shipment-types`)
+      .flush([{ id: '1', code: 'np', label: 'Нова Пошта', isDefault: true }]);
     httpMock.expectOne(`${baseUrl}/product-types`).flush([]);
     httpMock.expectOne(`${baseUrl}/payment-types`).flush([]);
     httpMock.expectOne(`${baseUrl}/expense-types`).flush([]);
@@ -117,6 +109,8 @@ describe('DictionariesService', () => {
     httpMock.expectOne(`${baseUrl}/shipment-statuses`).flush([]);
 
     expect(service.hasError()).toBe(false);
-    expect(service.orderTypes()).toEqual([{ id: '1', code: 'standard', label: 'Стандартне' }]);
+    expect(service.shipmentTypes()).toEqual([
+      { id: '1', code: 'np', label: 'Нова Пошта', isDefault: true },
+    ]);
   });
 });

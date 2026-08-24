@@ -1,0 +1,121 @@
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Дашборд</h1>
+    <div class="page-subtitle">Аналітика по замовленнях, витратах та товарах</div>
+  </div>
+</div>
+
+<div class="filters-row">
+  <div class="date-field">
+    <label for="date-from">Від</label>
+    <div class="date-field__input">
+      <input id="date-from" type="date" [value]="dateFrom() ?? ''" (change)="onDateFromChange($event)" />
+    </div>
+  </div>
+  <div class="date-field">
+    <label for="date-to">До</label>
+    <div class="date-field__input">
+      <input id="date-to" type="date" [value]="dateTo() ?? ''" (change)="onDateToChange($event)" />
+    </div>
+  </div>
+</div>
+
+@if (error()) {
+  <div class="error-text">{{ error() }}</div>
+}
+
+@if (loading() && !summary()) {
+  <div class="loading-text">Завантаження…</div>
+} @else if (summary(); as summary) {
+  <div class="metric-grid">
+    <div class="info-panel metric-card">
+      <span class="field-label">Загальний дохід</span>
+      <div class="metric-value">{{ summary.totalRevenue }} ₴</div>
+    </div>
+    <div class="info-panel metric-card">
+      <span class="field-label">Загальні витрати</span>
+      <div class="metric-value">{{ summary.totalExpenses }} ₴</div>
+    </div>
+    <div class="info-panel metric-card">
+      <span class="field-label">Прибуток</span>
+      <div class="metric-value" [class.metric-value--negative]="summary.profit < 0">{{ summary.profit }} ₴</div>
+      @if (profitMargin(); as margin) {
+        <span class="metric-card__hint">маржа {{ margin }}%</span>
+      }
+    </div>
+    <div class="info-panel metric-card">
+      <span class="field-label">Кількість замовлень</span>
+      <div class="metric-value">{{ summary.orderCount }}</div>
+      @if (averageOrderValue(); as avg) {
+        <span class="metric-card__hint">середній чек {{ avg }} ₴</span>
+      }
+    </div>
+  </div>
+
+  <div class="info-panel revenue-panel">
+    <span class="field-label">Дохід по днях</span>
+    @if (summary.revenueByDay.length === 0) {
+      <div class="empty-state__text">Немає даних за обраний період</div>
+    } @else {
+      <div class="chart-container chart-container--line">
+        <canvas baseChart type="line" [data]="revenueChartData()" [options]="revenueChartOptions"></canvas>
+      </div>
+    }
+  </div>
+
+  <div class="chart-grid">
+    <div class="info-panel">
+      <span class="field-label">Витрати по категоріях</span>
+      @if (summary.expensesByCategory.length === 0) {
+        <div class="empty-state__text">Немає витрат за обраний період</div>
+      } @else {
+        <div class="donut-row">
+          <div class="chart-container chart-container--donut">
+            <canvas baseChart type="doughnut" [data]="expensesChartData()" [options]="doughnutOptions"></canvas>
+            <div class="donut-center">
+              <span class="donut-center__value">{{ summary.totalExpenses }}</span>
+              <span class="donut-center__label">₴ всього</span>
+            </div>
+          </div>
+          <ul class="chart-legend">
+            @for (item of expenseLegend(); track item.label) {
+              <li class="chart-legend__item">
+                <span class="chart-legend__swatch" [style.background]="item.color"></span>
+                <span class="chart-legend__label">{{ item.label }}</span>
+                <span class="chart-legend__value">{{ item.value }} ₴</span>
+                <span class="chart-legend__percentage">{{ item.percentage }}%</span>
+              </li>
+            }
+          </ul>
+        </div>
+      }
+    </div>
+
+    <div class="info-panel">
+      <span class="field-label">Статуси відправлень</span>
+      @if (summary.shipmentStatusBreakdown.length === 0) {
+        <div class="empty-state__text">Немає замовлень за обраний період</div>
+      } @else {
+        <div class="donut-row">
+          <div class="chart-container chart-container--donut">
+            <canvas baseChart type="doughnut" [data]="shipmentStatusChartData()" [options]="doughnutOptions"></canvas>
+            <div class="donut-center">
+              <span class="donut-center__value">{{ summary.orderCount }}</span>
+              <span class="donut-center__label">замовлень</span>
+            </div>
+          </div>
+          <ul class="chart-legend">
+            @for (item of shipmentStatusLegend(); track item.label) {
+              <li class="chart-legend__item">
+                <span class="chart-legend__swatch" [style.background]="item.color"></span>
+                <span class="chart-legend__label">{{ item.label }}</span>
+                <span class="chart-legend__value">{{ item.value }}</span>
+                <span class="chart-legend__percentage">{{ item.percentage }}%</span>
+              </li>
+            }
+          </ul>
+        </div>
+      }
+    </div>
+  </div>
+}

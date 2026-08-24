@@ -2,7 +2,11 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import type { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
-import type { Sender, SenderVerificationResult } from '../../features/senders/models/sender.model';
+import type {
+  Sender,
+  SenderAddress,
+  SenderVerificationResult,
+} from '../../features/senders/models/sender.model';
 import type { PaginatedResponse } from '../../shared/models/paginated-response.model';
 
 @Injectable({ providedIn: 'root' })
@@ -33,5 +37,9 @@ export class SendersApiService {
 
   delete(id: string): Observable<void> {
     return this.http.delete<void>(`${this.baseUrl}/${id}`);
+  }
+
+  getAddresses(id: string): Observable<SenderAddress[]> {
+    return this.http.get<SenderAddress[]>(`${this.baseUrl}/${id}/addresses`);
   }
 }

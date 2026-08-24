@@ -1,0 +1,276 @@
+<button type="button" class="breadcrumb" (click)="goBack()">
+  <svg lucideChevronLeft [size]="14" [strokeWidth]="1.5"></svg>
+  Замовлення
+</button>
+
+<div class="page-header">
+  <h1 class="page-title">Нове замовлення</h1>
+</div>
+
+@if (errorMessage()) {
+  <div class="error-text">{{ errorMessage() }}</div>
+}
+
+<div class="wizard-steps">
+  <div class="wizard-step" [class.wizard-step--active]="step() === 1" [class.wizard-step--done]="step() === 2">
+    <span class="wizard-step__badge">
+      @if (step() === 2) {
+        <svg lucideCheck [size]="13" [strokeWidth]="2"></svg>
+      } @else {
+        1
+      }
+    </span>
+    <span class="wizard-step__text">
+      <span class="wizard-step__title">Відправлення</span>
+      <span class="wizard-step__subtitle">
+        @if (step() === 2) {
+          {{ items.length }} позицій · {{ orderTotal() }} ₴
+        } @else {
+          товари та оплата
+        }
+      </span>
+    </span>
+  </div>
+  <div class="wizard-connector" [class.wizard-connector--done]="step() === 2"></div>
+  <div class="wizard-step" [class.wizard-step--active]="step() === 2">
+    <span class="wizard-step__badge">2</span>
+    <span class="wizard-step__text">
+      <span class="wizard-step__title">Адреса</span>
+      <span class="wizard-step__subtitle">відправник та отримувач</span>
+    </span>
+  </div>
+</div>
+
+<form [formGroup]="form" (ngSubmit)="step() === 1 ? goToStep2() : submit()">
+  @if (step() === 1) {
+    <div class="wizard-layout">
+      <div class="wizard-main">
+        <div class="field">
+          <label class="field-label" for="shipmentTypeId">Тип відправки</label>
+          <select id="shipmentTypeId" class="text-input" formControlName="shipmentTypeId">
+            <option value="" disabled>Оберіть тип</option>
+            @for (type of dictionaries.shipmentTypes(); track type.id) {
+              <option [value]="type.id">{{ type.label }}</option>
+            }
+          </select>
+        </div>
+
+        @for (itemForm of items.controls; track itemForm; let i = $index) {
+          <app-order-item-card
+            [form]="itemForm"
+            [productTypes]="dictionaries.productTypes()"
+            [index]="i"
+            [canRemove]="items.length > 1"
+            (removed)="removeItem(i)"
+            (productChange)="onItemProductChange(i, $event)"
+          />
+        }
+
+        <button type="button" class="btn-ghost" (click)="addItem()">
+          <svg lucidePlus [size]="14" [strokeWidth]="1.5"></svg>
+          Додати товар
+        </button>
+      </div>
+
+      <div class="wizard-sidebar">
+        <div class="total-card">
+          <span class="field-label">Вартість замовлення</span>
+          <div class="total-card__amount">{{ orderTotal() }} ₴</div>
+          <div class="total-card__meta">{{ items.length }} позицій · {{ orderQuantity() }} шт</div>
+        </div>
+
+        <div class="field">
+          <label class="field-label" for="paymentTypeId">Тип оплати</label>
+          <select id="paymentTypeId" class="text-input" formControlName="paymentTypeId">
+            <option value="" disabled>Оберіть тип оплати</option>
+            @for (type of dictionaries.paymentTypes(); track type.id) {
+              <option [value]="type.id">{{ type.label }}</option>
+            }
+          </select>
+        </div>
+
+        @if (paymentTypeCode() === 'partial') {
+          <div class="field">
+            <label class="field-label" for="partialAmount">Часткова вартість</label>
+            <input
+              id="partialAmount"
+              type="number"
+              min="0"
+              step="0.01"
+              class="text-input"
+              formControlName="partialAmount"
+            />
+            <span class="field-hint">Буде вказано як післяплата в ЕН</span>
+          </div>
+        }
+
+        <div class="wizard-nav">
+          <button type="button" class="btn-ghost" (click)="goBack()">Назад</button>
+          <button type="submit" class="btn-primary" [disabled]="!isStep1Valid()">
+            Далі
+            <svg lucideChevronRight [size]="14" [strokeWidth]="1.5"></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  } @else {
+    <div class="wizard-layout">
+      <div class="wizard-main">
+        <div class="sender-card">
+          <div class="sender-card__header">
+            <span class="field-label">Відправник</span>
+            @if (activeSender()) {
+              <span class="status-badge status-badge--success">Активний</span>
+            }
+          </div>
+
+          @if (sendersLoading()) {
+            <div class="loading-text">Завантаження…</div>
+          } @else if (activeSender(); as sender) {
+            <div class="sender-card__row">
+              <span>ПІБ</span>
+              <span>{{ sender.fullName }}</span>
+            </div>
+            <div class="sender-card__row">
+              <span>Телефон</span>
+              <span>{{ sender.phone }}</span>
+            </div>
+
+            <div class="sender-card__divider"></div>
+
+            <div class="field">
+              <label class="field-label" for="senderAddressRef">Адреса відправки</label>
+              <select id="senderAddressRef" class="text-input" formControlName="senderAddressRef">
+                <option value="" disabled>Оберіть адресу</option>
+                @for (address of senderAddresses(); track address.npAddressRef) {
+                  <option [value]="address.npAddressRef">{{ address.description }}</option>
+                }
+              </select>
+              @if (!senderAddressesLoading() && senderAddresses().length === 0) {
+                <span class="field-hint">У відправника немає збережених адрес відправки</span>
+              }
+            </div>
+          } @else {
+            <div class="empty-state empty-state--inline">
+              <span class="empty-state__icon">
+                <svg lucideBuilding [size]="18" [strokeWidth]="1.5"></svg>
+              </span>
+              <div class="empty-state__text">
+                Немає активного відправника. Активуйте відправника, щоб створити замовлення.
+              </div>
+            </div>
+          }
+        </div>
+
+        <div class="field-group" formGroupName="recipient">
+          <span class="field-label">Отримувач</span>
+          <div class="form-grid-2">
+            <div class="field">
+              <label class="field-label" for="phone">Телефон</label>
+              <input id="phone" type="tel" class="text-input" formControlName="phone" />
+            </div>
+            <div class="field">
+              <label class="field-label" for="lastName">Прізвище</label>
+              <input id="lastName" type="text" class="text-input" formControlName="lastName" />
+            </div>
+            <div class="field">
+              <label class="field-label" for="firstName">Ім'я</label>
+              <input id="firstName" type="text" class="text-input" formControlName="firstName" />
+            </div>
+            <div class="field">
+              <label class="field-label" for="middleName">По батькові</label>
+              <input id="middleName" type="text" class="text-input" formControlName="middleName" />
+              <span class="field-hint">Не обов'язково</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="field">
+          <span class="field-label">Куди доставити</span>
+          <div class="delivery-method">
+            <button
+              type="button"
+              class="delivery-method__option"
+              [class.delivery-method__option--active]="deliveryMethodCode() === 'warehouse'"
+              (click)="selectDeliveryMethod('warehouse')"
+            >
+              <span class="delivery-method__dot"></span>
+              Відділення
+            </button>
+            <button
+              type="button"
+              class="delivery-method__option"
+              [class.delivery-method__option--active]="deliveryMethodCode() === 'postomat'"
+              (click)="selectDeliveryMethod('postomat')"
+            >
+              <span class="delivery-method__dot"></span>
+              Поштомат
+            </button>
+          </div>
+        </div>
+
+        <div class="field">
+          <span class="field-label">Населений пункт</span>
+          <app-searchable-select
+            [options]="cityOptions()"
+            [selectedLabel]="selectedCityLabel()"
+            [loading]="citiesLoading()"
+            placeholder="Пошук населеного пункту…"
+            emptyMessage="Почніть вводити назву"
+            (searchTermChange)="onCitySearchTermChange($event)"
+            (valueChange)="onCitySelected($event)"
+          />
+        </div>
+
+        @if (cityLookupError()) {
+          <div class="error-text">{{ cityLookupError() }}</div>
+        }
+
+        @if (deliveryMethodCode() === 'warehouse') {
+          <div class="field field--warehouse">
+            <span class="field-label">Відділення</span>
+            <app-searchable-select
+              [options]="warehouseOptions()"
+              [selectedLabel]="selectedWarehouseLabel()"
+              [loading]="warehousesLoading()"
+              [disabled]="!cityChosen()"
+              placeholder="Пошук відділення…"
+              (searchTermChange)="onWarehouseSearchTermChange($event)"
+              (valueChange)="onWarehouseSelected($event)"
+            />
+            @if (warehouseLookupError()) {
+              <div class="error-text">{{ warehouseLookupError() }}</div>
+            }
+          </div>
+        } @else if (deliveryMethodCode() === 'postomat') {
+          <div class="field field--postomat">
+            <span class="field-label">Поштомат</span>
+            <app-searchable-select
+              [options]="postomatOptions()"
+              [selectedLabel]="selectedPostomatLabel()"
+              [loading]="postomatsLoading()"
+              [disabled]="!cityChosen()"
+              placeholder="Пошук поштомату…"
+              (searchTermChange)="onPostomatSearchTermChange($event)"
+              (valueChange)="onPostomatSelected($event)"
+            />
+            @if (postomatLookupError()) {
+              <div class="error-text">{{ postomatLookupError() }}</div>
+            }
+          </div>
+        }
+      </div>
+    </div>
+
+    <div class="wizard-footer">
+      <span class="wizard-footer__summary">{{ codAmountLabel() }}</span>
+      <div class="wizard-nav">
+        <button type="button" class="btn-ghost" (click)="goToStep1()">
+          <svg lucideChevronLeft [size]="14" [strokeWidth]="1.5"></svg>
+          Назад
+        </button>
+        <button type="submit" class="btn-primary" [disabled]="!isStep2Valid() || saving()">Створити</button>
+      </div>
+    </div>
+  }
+</form>

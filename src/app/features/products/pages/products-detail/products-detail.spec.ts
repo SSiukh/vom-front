@@ -2,6 +2,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap, provideRouter, Router } from '@angular/router';
+import { Subject, of } from 'rxjs';
 import { DictionariesService } from '../../../../core/dictionaries/dictionaries.service';
 import { environment } from '../../../../../environments/environment';
 import { ProductsDetail } from './products-detail';
@@ -38,7 +39,7 @@ describe('ProductsDetail', () => {
         provideHttpClientTesting(),
         provideRouter([]),
         { provide: DictionariesService, useValue: dictionariesStub },
-        { provide: ActivatedRoute, useValue: { snapshot: { paramMap: convertToParamMap({ id: '9' }) } } },
+        { provide: ActivatedRoute, useValue: { paramMap: of(convertToParamMap({ id: '9' })) } },
       ],
     });
     httpMock = TestBed.inject(HttpTestingController);
@@ -136,5 +137,61 @@ describe('ProductsDetail', () => {
 
     expect(el.querySelector('.dialog-overlay')).toBeNull();
     httpMock.expectNone(`${baseUrl}/9`);
+  });
+
+  it('reloads a fresh product when the route param changes without the component being recreated', () => {
+    const paramMap = new Subject<ReturnType<typeof convertToParamMap>>();
+    TestBed.configureTestingModule({
+      imports: [ProductsDetail],
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        provideRouter([]),
+        { provide: DictionariesService, useValue: dictionariesStub },
+        { provide: ActivatedRoute, useValue: { paramMap } },
+      ],
+    });
+    httpMock = TestBed.inject(HttpTestingController);
+    fixture = TestBed.createComponent(ProductsDetail);
+    fixture.detectChanges();
+    el = fixture.nativeElement as HTMLElement;
+
+    paramMap.next(convertToParamMap({ id: '9' }));
+    httpMock.expectOne(`${baseUrl}/9`).flush(product({ id: '9', name: 'Кіт-космонавт' }));
+    fixture.detectChanges();
+    expect(el.querySelector('.page-title')?.textContent?.trim()).toBe('Кіт-космонавт');
+
+    paramMap.next(convertToParamMap({ id: '10' }));
+    httpMock.expectOne(`${baseUrl}/10`).flush(product({ id: '10', name: 'Ракета' }));
+    fixture.detectChanges();
+    expect(el.querySelector('.page-title')?.textContent?.trim()).toBe('Ракета');
+  });
+
+  it('cancels the in-flight request for a stale id when navigation moves on before it resolves', () => {
+    const paramMap = new Subject<ReturnType<typeof convertToParamMap>>();
+    TestBed.configureTestingModule({
+      imports: [ProductsDetail],
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        provideRouter([]),
+        { provide: DictionariesService, useValue: dictionariesStub },
+        { provide: ActivatedRoute, useValue: { paramMap } },
+      ],
+    });
+    httpMock = TestBed.inject(HttpTestingController);
+    fixture = TestBed.createComponent(ProductsDetail);
+    fixture.detectChanges();
+    el = fixture.nativeElement as HTMLElement;
+
+    paramMap.next(convertToParamMap({ id: '9' }));
+    const staleReq = httpMock.expectOne(`${baseUrl}/9`);
+
+    paramMap.next(convertToParamMap({ id: '10' }));
+    httpMock.expectOne(`${baseUrl}/10`).flush(product({ id: '10', name: 'Ракета' }));
+    fixture.detectChanges();
+
+    expect(staleReq.cancelled).toBe(true);
+    expect(el.querySelector('.page-title')?.textContent?.trim()).toBe('Ракета');
   });
 });

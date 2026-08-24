@@ -1,0 +1,120 @@
+<div class="page-header">
+  <div>
+    <h1 class="page-title">CRM</h1>
+    <div class="page-subtitle">Зведення по замовленнях</div>
+  </div>
+</div>
+
+<div class="filters-row">
+  <div class="date-field">
+    <label for="date-from">Від</label>
+    <div class="date-field__input">
+      <input id="date-from" type="date" [value]="dateFrom() ?? ''" (change)="onDateFromChange($event)" />
+    </div>
+  </div>
+  <div class="date-field">
+    <label for="date-to">До</label>
+    <div class="date-field__input">
+      <input id="date-to" type="date" [value]="dateTo() ?? ''" (change)="onDateToChange($event)" />
+    </div>
+  </div>
+  <div class="date-field">
+    <label for="productTypeId">Тип товару</label>
+    <select id="productTypeId" class="text-input filter-select" (change)="onProductTypeChange($event)">
+      <option value="">Усі типи</option>
+      @for (type of dictionaries.productTypes(); track type.id) {
+        <option [value]="type.id">{{ type.label }}</option>
+      }
+    </select>
+  </div>
+  <div class="date-field">
+    <label for="shipmentStatusId">Статус відправлення</label>
+    <select id="shipmentStatusId" class="text-input filter-select" (change)="onShipmentStatusChange($event)">
+      <option value="">Усі статуси</option>
+      @for (status of dictionaries.shipmentStatuses(); track status.id) {
+        <option [value]="status.id">{{ status.label }}</option>
+      }
+    </select>
+  </div>
+  <div class="date-field">
+    <span class="date-field__label">Сортування</span>
+    <div class="segmented-control">
+      <button
+        type="button"
+        class="segmented-control__item"
+        [class.segmented-control__item--active]="sortOrder() === 'desc'"
+        (click)="setSortOrder('desc')"
+      >
+        Нові
+      </button>
+      <button
+        type="button"
+        class="segmented-control__item"
+        [class.segmented-control__item--active]="sortOrder() === 'asc'"
+        (click)="setSortOrder('asc')"
+      >
+        Старі
+      </button>
+    </div>
+  </div>
+</div>
+
+@if (error()) {
+  <div class="error-text">{{ error() }}</div>
+}
+
+@if (loading() && rows().length === 0) {
+  <div class="loading-text">Завантаження…</div>
+} @else if (rows().length === 0) {
+  <div class="empty-state">
+    <span class="empty-state__icon">
+      <svg lucideListChecks [size]="22" [strokeWidth]="1.5"></svg>
+    </span>
+    <div class="empty-state__title">Нічого не знайдено</div>
+    <div class="empty-state__text">За обраними фільтрами немає жодного замовлення.</div>
+  </div>
+} @else {
+  <div class="data-table-wrapper">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Дата створення</th>
+          <th>№ накладної</th>
+          <th>Тип оплати</th>
+          <th>ПІБ отримувача</th>
+          <th>Телефон отримувача</th>
+          <th>Тип товару</th>
+          <th class="col-num">Вартість</th>
+          <th>Статус відправлення</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (row of rows(); track row.id) {
+          <tr>
+            <td>{{ row.createdAt | date: 'dd.MM.yyyy' }}</td>
+            <td class="waybill-number">{{ row.npWaybillNumber ?? '—' }}</td>
+            <td>{{ paymentTypeLabel(row) }}</td>
+            <td>{{ row.recipientFullName }}</td>
+            <td>{{ row.recipientPhone }}</td>
+            <td class="items-summary">{{ productTypesLabel(row) }}</td>
+            <td class="col-num">{{ row.totalAmount }} ₴</td>
+            <td>
+              @if (shipmentStatusLabel(row); as label) {
+                <span class="status-badge" [class]="shipmentStatusClass(row)">{{ label }}</span>
+              } @else {
+                <span class="dash">—</span>
+              }
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+
+  <div class="crm-totals">
+    <span>Усього за фільтром · {{ total() }} замовлень</span>
+    <span class="crm-totals__amount">{{ totalAmountSum() }} ₴</span>
+  </div>
+
+  <app-pagination [page]="page()" [pageSize]="pageSize" [total]="total()" (pageChange)="onPageChange($event)" />
+}

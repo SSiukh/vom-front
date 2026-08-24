@@ -60,7 +60,7 @@ src/
 ├── expenses/        simple expense ledger
 ├── crm/             read-only aggregated Orders view (own module, not bolted onto orders/)
 ├── dashboard/       read-only analytics (revenue/expenses/shipment-status breakdowns)
-├── dictionaries/    read-only довідники (7 lookup collections)
+├── dictionaries/    read-only довідники (6 lookup collections)
 ├── nova-poshta/     Nova Poshta API client + address-lookup endpoints
 ├── cloudinary/      upload service (used by products/)
 ├── prisma/          PrismaService (@Global())
@@ -185,7 +185,7 @@ document, with Nova Poshta waybill creation/update/deletion kept in sync.
 | Method & path | Throttle | Body/Query | Response |
 |---|---|---|---|
 | `POST /orders` | 20/min | `CreateOrderDto` | `OrderResponseDto` |
-| `GET /orders` | default | `?page&pageSize&orderTypeId&dateFrom&dateTo` | `ListOrdersResponseDto` |
+| `GET /orders` | default | `?page&pageSize&dateFrom&dateTo` | `ListOrdersResponseDto` |
 | `GET /orders/:id` | default | — | `OrderResponseDto` |
 | `PATCH /orders/:id` | 20/min | `UpdateOrderDto` (all fields optional) | `OrderResponseDto` |
 | `PATCH /orders/:id/sync-status` | 20/min | — | `OrderResponseDto` (manual Nova Poshta status pull, no polling) |
@@ -193,7 +193,7 @@ document, with Nova Poshta waybill creation/update/deletion kept in sync.
 
 ```ts
 CreateOrderDto {
-  orderTypeId: string; shipmentTypeId: string; paymentTypeId: string;
+  shipmentTypeId: string; paymentTypeId: string;
   partialAmount?: number;           // required only if paymentType.code === 'partial'
   items: OrderItemDto[];            // ArrayMinSize(1)
   senderId: string; senderAddressRef: string;
@@ -210,7 +210,7 @@ OrderItemDto {
   isPromo?: boolean;     // sell at the catalog product's promoPrice, only if it has one
 }
 UpdateOrderDto {
-  orderTypeId?; shipmentTypeId?; paymentTypeId?; partialAmount?;
+  shipmentTypeId?; paymentTypeId?; partialAmount?;
   items?: OrderItemDto[];   // full replacement of the line-item list, not a patch
 }
 ```
@@ -235,15 +235,15 @@ limitation, not a temporary gap; only `warehouse`/`postomat` recipient
 delivery is supported. The corresponding `deliveryDetails` field
 (`warehouseRef` or `postomatRef`) is required depending on which one.
 
-**Editing after a waybill exists:** only order type, shipment type,
-payment type/`partialAmount`, and items are editable via `PATCH` — the
+**Editing after a waybill exists:** only shipment type, payment type/
+`partialAmount`, and items are editable via `PATCH` — the
 recipient, delivery type/details, sender, and sender address are
 **permanently non-editable** once set (Nova Poshta's own API has no path to
 change them after the waybill's one-shot creation). Sending them in
 `UpdateOrderDto` is a 400 (not a declared field).
 
 **Errors specific to this module:**
-- `400` — unknown order/shipment/payment/delivery type id; missing
+- `400` — unknown shipment/payment/delivery type id; missing
   warehouse/postomat ref for the chosen delivery type; sender/sender-address
   not found or deactivated; `partialAmount` missing (when required) or
   exceeding `totalAmount`; not enough stock (including under a detected
@@ -322,7 +322,6 @@ standard guard. These rarely change — fetch once per session and cache.
 
 | Path | Response item shape |
 |---|---|
-| `GET /dictionaries/order-types` | `{id, code, label}` |
 | `GET /dictionaries/shipment-types` | `{id, code, label, isDefault}` |
 | `GET /dictionaries/product-types` | `{id, code, label, isCustom}` |
 | `GET /dictionaries/payment-types` | `{id, code, label}` — codes: `full`, `cod`, `partial` |

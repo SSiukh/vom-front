@@ -2,6 +2,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap, provideRouter, Router } from '@angular/router';
+import { Subject, of } from 'rxjs';
 import { DictionariesService } from '../../../../core/dictionaries/dictionaries.service';
 import { environment } from '../../../../../environments/environment';
 import { ProductsForm } from './products-form';
@@ -43,7 +44,7 @@ describe('ProductsForm', () => {
         { provide: DictionariesService, useValue: dictionariesStub },
         {
           provide: ActivatedRoute,
-          useValue: { snapshot: { paramMap: convertToParamMap(productId ? { id: productId } : {}) } },
+          useValue: { paramMap: of(convertToParamMap(productId ? { id: productId } : {})) },
         },
       ],
     });
@@ -249,5 +250,90 @@ describe('ProductsForm', () => {
 
       expect(el.querySelector('.error-text')?.textContent?.trim()).toBe('Не вдалося завантажити дані товару');
     });
+  });
+
+  it('reloads fresh data for a different product when the route param changes without recreating the component', () => {
+    const paramMap = new Subject<ReturnType<typeof convertToParamMap>>();
+    TestBed.configureTestingModule({
+      imports: [ProductsForm],
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        provideRouter([]),
+        { provide: DictionariesService, useValue: dictionariesStub },
+        { provide: ActivatedRoute, useValue: { paramMap } },
+      ],
+    });
+    httpMock = TestBed.inject(HttpTestingController);
+    fixture = TestBed.createComponent(ProductsForm);
+    fixture.detectChanges();
+    el = fixture.nativeElement as HTMLElement;
+
+    paramMap.next(convertToParamMap({ id: '9' }));
+    httpMock.expectOne(`${baseUrl}/9`).flush(responseProduct({ id: '9', name: 'Кіт-космонавт' }));
+    fixture.detectChanges();
+    expect((el.querySelector('#name') as HTMLInputElement).value).toBe('Кіт-космонавт');
+
+    paramMap.next(convertToParamMap({ id: '10' }));
+    httpMock.expectOne(`${baseUrl}/10`).flush(responseProduct({ id: '10', name: 'Ракета' }));
+    fixture.detectChanges();
+    expect((el.querySelector('#name') as HTMLInputElement).value).toBe('Ракета');
+  });
+
+  it('cancels the in-flight request for a stale id when navigation moves on before it resolves', () => {
+    const paramMap = new Subject<ReturnType<typeof convertToParamMap>>();
+    TestBed.configureTestingModule({
+      imports: [ProductsForm],
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        provideRouter([]),
+        { provide: DictionariesService, useValue: dictionariesStub },
+        { provide: ActivatedRoute, useValue: { paramMap } },
+      ],
+    });
+    httpMock = TestBed.inject(HttpTestingController);
+    fixture = TestBed.createComponent(ProductsForm);
+    fixture.detectChanges();
+    el = fixture.nativeElement as HTMLElement;
+
+    paramMap.next(convertToParamMap({ id: '9' }));
+    const staleReq = httpMock.expectOne(`${baseUrl}/9`);
+
+    paramMap.next(convertToParamMap({ id: '10' }));
+    httpMock.expectOne(`${baseUrl}/10`).flush(responseProduct({ id: '10', name: 'Ракета' }));
+    fixture.detectChanges();
+
+    expect(staleReq.cancelled).toBe(true);
+    expect((el.querySelector('#name') as HTMLInputElement).value).toBe('Ракета');
+  });
+
+  it('resets to a blank create form when navigating from edit back to create without recreating the component', () => {
+    const paramMap = new Subject<ReturnType<typeof convertToParamMap>>();
+    TestBed.configureTestingModule({
+      imports: [ProductsForm],
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        provideRouter([]),
+        { provide: DictionariesService, useValue: dictionariesStub },
+        { provide: ActivatedRoute, useValue: { paramMap } },
+      ],
+    });
+    httpMock = TestBed.inject(HttpTestingController);
+    fixture = TestBed.createComponent(ProductsForm);
+    fixture.detectChanges();
+    el = fixture.nativeElement as HTMLElement;
+
+    paramMap.next(convertToParamMap({ id: '9' }));
+    httpMock.expectOne(`${baseUrl}/9`).flush(responseProduct({ id: '9', name: 'Кіт-космонавт' }));
+    fixture.detectChanges();
+
+    paramMap.next(convertToParamMap({}));
+    fixture.detectChanges();
+
+    expect(el.querySelector('.page-title')?.textContent?.trim()).toBe('Новий товар');
+    expect((el.querySelector('#name') as HTMLInputElement).value).toBe('');
+    expect(el.querySelector('.dropzone__preview')).toBeNull();
   });
 });

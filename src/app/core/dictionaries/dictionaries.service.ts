@@ -12,7 +12,6 @@ import type {
 export class DictionariesService {
   private readonly api = inject(DictionariesApiService);
 
-  private readonly orderTypesSignal = signal<DictionaryItem[]>([]);
   private readonly shipmentTypesSignal = signal<ShipmentType[]>([]);
   private readonly productTypesSignal = signal<ProductType[]>([]);
   private readonly paymentTypesSignal = signal<DictionaryItem[]>([]);
@@ -21,7 +20,6 @@ export class DictionariesService {
   private readonly shipmentStatusesSignal = signal<DictionaryItem[]>([]);
   private readonly hasErrorSignal = signal(false);
 
-  readonly orderTypes = this.orderTypesSignal.asReadonly();
   readonly shipmentTypes = this.shipmentTypesSignal.asReadonly();
   readonly productTypes = this.productTypesSignal.asReadonly();
   readonly paymentTypes = this.paymentTypesSignal.asReadonly();
@@ -40,7 +38,6 @@ export class DictionariesService {
   }
 
   private loadAll(): void {
-    this.load(this.api.getOrderTypes(), this.orderTypesSignal);
     this.load(this.api.getShipmentTypes(), this.shipmentTypesSignal);
     this.load(this.api.getProductTypes(), this.productTypesSignal);
     this.load(this.api.getPaymentTypes(), this.paymentTypesSignal);

@@ -2,6 +2,7 @@ import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
 import { LucideChevronLeft, LucidePencil, LucideTrash2 } from '@lucide/angular';
+import { catchError, of, switchMap } from 'rxjs';
 import { DictionariesService } from '../../../../core/dictionaries/dictionaries.service';
 import { ProductsApiService } from '../../../../core/api/products-api.service';
 import { FEATURE_ROUTES } from '../../../../core/routes.constants';
@@ -21,7 +22,7 @@ export class ProductsDetail {
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
 
-  private readonly productId = this.route.snapshot.paramMap.get('id')!;
+  private productId = '';
 
   protected readonly product = signal<Product | null>(null);
   protected readonly loading = signal(true);
@@ -38,7 +39,28 @@ export class ProductsDetail {
   });
 
   constructor() {
-    this.load();
+    this.route.paramMap
+      .pipe(
+        switchMap((params) => {
+          this.productId = params.get('id') ?? '';
+          this.loading.set(true);
+          this.error.set(null);
+          return this.productsApi.get(this.productId).pipe(
+            catchError(() => {
+              this.loading.set(false);
+              this.error.set('Не вдалося завантажити дані товару');
+              return of(null);
+            }),
+          );
+        }),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe((product) => {
+        if (product) {
+          this.loading.set(false);
+          this.product.set(product);
+        }
+      });
   }
 
   goBack(): void {
@@ -75,23 +97,6 @@ export class ProductsDetail {
           this.deleting.set(false);
           this.confirmingDelete.set(false);
           this.error.set('Не вдалося видалити товар');
-        },
-      });
-  }
-
-  private load(): void {
-    this.loading.set(true);
-    this.productsApi
-      .get(this.productId)
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: (product) => {
-          this.loading.set(false);
-          this.product.set(product);
-        },
-        error: () => {
-          this.loading.set(false);
-          this.error.set('Не вдалося завантажити дані товару');
         },
       });
   }

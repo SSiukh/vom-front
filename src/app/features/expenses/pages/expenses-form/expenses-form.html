@@ -1,0 +1,44 @@
+<button type="button" class="breadcrumb" (click)="goBack()">
+  <svg lucideChevronLeft [size]="14" [strokeWidth]="1.5"></svg>
+  Витрати
+</button>
+
+<div class="page-header">
+  <h1 class="page-title">{{ isEditMode() ? 'Редагувати витрату' : 'Нова витрата' }}</h1>
+  <button type="button" class="btn-primary" [disabled]="!canSubmit()" (click)="submit()">
+    <svg lucideSave [size]="14" [strokeWidth]="1.5"></svg>
+    Зберегти
+  </button>
+</div>
+
+@if (errorMessage()) {
+  <div class="error-text">{{ errorMessage() }}</div>
+}
+
+@if (loading()) {
+  <div class="loading-text">Завантаження…</div>
+} @else {
+  <form [formGroup]="form" (ngSubmit)="submit()" class="form-panel">
+    <div class="field">
+      <label class="field-label" for="typeId">Тип витрати</label>
+      <select id="typeId" class="text-input" formControlName="typeId">
+        <option value="" disabled>Оберіть тип</option>
+        @for (type of dictionaries.expenseTypes(); track type.id) {
+          <option [value]="type.id">{{ type.label }}</option>
+        }
+      </select>
+    </div>
+
+    @if (requiresName()) {
+      <div class="field">
+        <label class="field-label" for="name">Назва витрати</label>
+        <input id="name" type="text" class="text-input" formControlName="name" />
+      </div>
+    }
+
+    <div class="field">
+      <label class="field-label" for="amount">Вартість</label>
+      <input id="amount" type="number" min="0" step="0.01" class="text-input" formControlName="amount" />
+    </div>
+  </form>
+}

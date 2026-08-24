@@ -14,10 +14,6 @@ export class DictionariesApiService {
   private readonly http = inject(HttpClient);
   private readonly baseUrl = `${environment.apiUrl}/dictionaries`;
 
-  getOrderTypes(): Observable<DictionaryItem[]> {
-    return this.http.get<DictionaryItem[]>(`${this.baseUrl}/order-types`);
-  }
-
   getShipmentTypes(): Observable<ShipmentType[]> {
     return this.http.get<ShipmentType[]>(`${this.baseUrl}/shipment-types`);
   }

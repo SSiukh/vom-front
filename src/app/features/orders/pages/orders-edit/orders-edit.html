@@ -1,0 +1,122 @@
+<button type="button" class="breadcrumb" (click)="goBack()">
+  <svg lucideChevronLeft [size]="14" [strokeWidth]="1.5"></svg>
+  Замовлення
+</button>
+
+@if (error()) {
+  <div class="error-text">{{ error() }}</div>
+}
+
+@if (loading()) {
+  <div class="loading-text">Завантаження…</div>
+} @else if (order(); as order) {
+  <div class="page-header">
+    <h1 class="page-title">Редагування замовлення</h1>
+  </div>
+
+  <div class="warning-banner">
+    <svg lucideTriangleAlert [size]="14" [strokeWidth]="1.5"></svg>
+    <span>
+      Відправника, адресу відправки, отримувача та адресу доставки редагувати неможливо — API не підтримує зміну цих
+      полів після створення замовлення. Доступні для редагування: тип відправки, тип оплати, часткова вартість та
+      товари.
+      @if (order.npWaybillNumber) {
+        Оскільки замовлення вже має ЕН, зміна типу відправки чи товарів також оновить дані ЕН у Новій Пошті.
+      }
+    </span>
+  </div>
+
+  <form [formGroup]="form" (ngSubmit)="save()">
+    <div class="order-edit-layout">
+      <div class="order-edit-main">
+        <div class="field">
+          <label class="field-label" for="shipmentTypeId">Тип відправки</label>
+          <select id="shipmentTypeId" class="text-input" formControlName="shipmentTypeId">
+            @for (type of dictionaries.shipmentTypes(); track type.id) {
+              <option [value]="type.id">{{ type.label }}</option>
+            }
+          </select>
+        </div>
+
+        @for (itemForm of items.controls; track itemForm; let i = $index) {
+          <app-order-item-card
+            [form]="itemForm"
+            [productTypes]="dictionaries.productTypes()"
+            [index]="i"
+            [canRemove]="items.length > 1"
+            [initialProduct]="itemProducts()[i] ?? null"
+            (removed)="removeItem(i)"
+            (productChange)="onItemProductChange(i, $event)"
+          />
+        }
+
+        <button type="button" class="btn-ghost" (click)="addItem()">Додати товар</button>
+      </div>
+
+      <div class="order-edit-sidebar">
+        <div class="info-panel">
+          <span class="field-label">Вартість замовлення</span>
+          <div class="total-card__amount">{{ orderTotal() }} ₴</div>
+
+          <div class="field">
+            <label class="field-label" for="paymentTypeId">Тип оплати</label>
+            <select id="paymentTypeId" class="text-input" formControlName="paymentTypeId">
+              @for (type of dictionaries.paymentTypes(); track type.id) {
+                <option [value]="type.id">{{ type.label }}</option>
+              }
+            </select>
+          </div>
+
+          @if (paymentTypeCode() === 'partial') {
+            <div class="field">
+              <label class="field-label" for="partialAmount">Часткова вартість</label>
+              <input
+                id="partialAmount"
+                type="number"
+                min="0"
+                step="0.01"
+                class="text-input"
+                formControlName="partialAmount"
+              />
+            </div>
+          }
+        </div>
+
+        <div class="info-panel">
+          <span class="field-label">Відправник</span>
+          <div class="locked-field">
+            <span>{{ senderInfo()?.fullName ?? '—' }}</span>
+            <svg lucideLock [size]="13" [strokeWidth]="1.5"></svg>
+          </div>
+          <div class="locked-field">
+            <span>{{ senderAddressLabel() ?? order.senderAddressRef }}</span>
+            <svg lucideLock [size]="13" [strokeWidth]="1.5"></svg>
+          </div>
+        </div>
+
+        <div class="info-panel">
+          <span class="field-label">Отримувач та доставка</span>
+          <div class="locked-field">
+            <span>
+              {{ order.recipient.lastName }} {{ order.recipient.firstName }} {{ order.recipient.middleName ?? '' }}
+            </span>
+            <svg lucideLock [size]="13" [strokeWidth]="1.5"></svg>
+          </div>
+          <div class="locked-field">
+            <span>{{ order.recipient.phone }}</span>
+            <svg lucideLock [size]="13" [strokeWidth]="1.5"></svg>
+          </div>
+          <div class="locked-field">
+            <span>{{ order.deliveryDetails.warehouseRef ?? order.deliveryDetails.postomatRef ?? order.deliveryDetails.cityRef }}</span>
+            <svg lucideLock [size]="13" [strokeWidth]="1.5"></svg>
+          </div>
+        </div>
+
+        <div class="order-edit-nav">
+          <button type="button" class="btn-ghost" (click)="goBack()">Скасувати</button>
+          <button type="submit" class="btn-primary" [disabled]="!isFormValid() || saving()">Зберегти</button>
+        </div>
+      </div>
+    </div>
+  </form>
+}

@@ -1,0 +1,77 @@
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Витрати</h1>
+  </div>
+  <button type="button" class="btn-primary" (click)="goToCreate()">
+    <svg lucidePlus [size]="14" [strokeWidth]="1.5"></svg>
+    Внести витрату
+  </button>
+</div>
+
+@if (error()) {
+  <div class="error-text">{{ error() }}</div>
+}
+
+@if (loading() && expenses().length === 0) {
+  <div class="loading-text">Завантаження…</div>
+} @else if (expenses().length === 0) {
+  <div class="empty-state">
+    <div class="empty-state__title">Витрат поки немає</div>
+    <div class="empty-state__text">Внесіть першу витрату, щоб бачити її в цьому списку.</div>
+    <button type="button" class="btn-primary" (click)="goToCreate()">
+      <svg lucidePlus [size]="14" [strokeWidth]="1.5"></svg>
+      Внести витрату
+    </button>
+  </div>
+} @else {
+  <div class="data-table-wrapper">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Тип витрати</th>
+          <th>Назва</th>
+          <th class="col-num">Вартість</th>
+          <th>Дата</th>
+          <th class="col-actions">Дії</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (expense of expenses(); track expense.id) {
+          <tr>
+            <td>{{ typeLabel(expense) }}</td>
+            <td>{{ expense.name ?? '—' }}</td>
+            <td class="col-num">{{ expense.amount }} ₴</td>
+            <td>{{ expense.createdAt | date: 'dd.MM.yyyy' }}</td>
+            <td class="col-actions">
+              <span class="row-actions">
+                <button type="button" class="icon-action" (click)="goToEdit(expense)" aria-label="Редагувати витрату">
+                  <svg lucidePencil [size]="15" [strokeWidth]="1.5"></svg>
+                </button>
+                <button
+                  type="button"
+                  class="icon-action icon-action--danger"
+                  (click)="requestDelete(expense)"
+                  aria-label="Видалити витрату"
+                >
+                  <svg lucideTrash2 [size]="15" [strokeWidth]="1.5"></svg>
+                </button>
+              </span>
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+
+  <app-pagination [page]="page()" [pageSize]="pageSize" [total]="total()" (pageChange)="onPageChange($event)" />
+}
+
+<app-confirm-dialog
+  [open]="pendingDeleteId() !== null"
+  title="Видалити витрату?"
+  [message]="deleteConfirmMessage()"
+  confirmLabel="Видалити"
+  [confirmDisabled]="deleting()"
+  (confirmed)="confirmDelete()"
+  (cancelled)="cancelDelete()"
+/>

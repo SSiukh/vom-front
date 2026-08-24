@@ -1,0 +1,43 @@
+<div class="searchable-select" [class.is-open]="isOpen()">
+  <input
+    type="text"
+    class="text-input"
+    role="combobox"
+    aria-autocomplete="list"
+    [attr.aria-expanded]="isOpen()"
+    [attr.aria-controls]="isOpen() ? listboxId : null"
+    [attr.aria-activedescendant]="isOpen() && highlightedIndex() >= 0 ? optionId(highlightedIndex()) : null"
+    [value]="displayValue()"
+    [placeholder]="placeholder()"
+    [disabled]="disabled()"
+    (focus)="open()"
+    (input)="onInput($event)"
+    (blur)="onBlur()"
+    (keydown)="onKeydown($event)"
+  />
+  <svg lucideSearch [size]="14" [strokeWidth]="1.5" class="searchable-select__icon"></svg>
+
+  @if (isOpen()) {
+    <div class="searchable-select__panel" [id]="listboxId" role="listbox">
+      @if (loading()) {
+        <div class="searchable-select__status">Завантаження…</div>
+      } @else if (options().length === 0) {
+        <div class="searchable-select__status">{{ emptyMessage() }}</div>
+      } @else {
+        @for (option of options(); track option.value; let i = $index) {
+          <button
+            type="button"
+            role="option"
+            [id]="optionId(i)"
+            [attr.aria-selected]="i === highlightedIndex()"
+            class="searchable-select__option"
+            [class.searchable-select__option--highlighted]="i === highlightedIndex()"
+            (mousedown)="select(option)"
+          >
+            {{ option.label }}
+          </button>
+        }
+      }
+    </div>
+  }
+</div>

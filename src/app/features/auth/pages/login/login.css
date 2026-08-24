@@ -77,4 +77,7 @@
 .login-submit {
   margin-top: 4px;
   padding: 11px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }

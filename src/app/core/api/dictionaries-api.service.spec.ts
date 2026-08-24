@@ -21,13 +21,6 @@ describe('DictionariesApiService', () => {
     httpMock.verify();
   });
 
-  it('gets /dictionaries/order-types', () => {
-    service.getOrderTypes().subscribe();
-    const req = httpMock.expectOne(`${baseUrl}/order-types`);
-    expect(req.request.method).toBe('GET');
-    req.flush([{ id: '1', code: 'standard', label: 'Стандартне' }]);
-  });
-
   it('gets /dictionaries/shipment-types', () => {
     service.getShipmentTypes().subscribe();
     const req = httpMock.expectOne(`${baseUrl}/shipment-types`);

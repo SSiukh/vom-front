@@ -1,0 +1,25 @@
+.order-detail-layout {
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  gap: 16px;
+  align-items: start;
+  margin-top: 14px;
+}
+
+.order-detail-main,
+.order-detail-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.info-panel__grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px 16px;
+}
+
+.order-status-badge {
+  margin-left: 10px;
+  vertical-align: middle;
+}
