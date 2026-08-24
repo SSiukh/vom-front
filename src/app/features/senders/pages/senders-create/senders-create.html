@@ -1,0 +1,60 @@
+<button type="button" class="breadcrumb" (click)="goBack()">
+  <svg lucideChevronLeft [size]="14" [strokeWidth]="1.5"></svg>
+  Відправники
+</button>
+<h1 class="page-title">Внести відправника</h1>
+
+<form [formGroup]="form" (ngSubmit)="verify()" class="form-panel">
+  <div class="field">
+    <label class="field-label" for="apiKey">API ключ</label>
+    <input
+      id="apiKey"
+      type="text"
+      class="text-input text-input--mono"
+      formControlName="apiKey"
+      autocomplete="off"
+    />
+  </div>
+
+  @if (!verifiedContact()) {
+    <button type="submit" class="btn-ghost-accent" [disabled]="form.invalid || verifying()">
+      <svg lucideSearchCheck [size]="14" [strokeWidth]="1.5"></svg>
+      Перевірити
+    </button>
+  }
+
+  @if (errorMessage()) {
+    <div class="error-text">{{ errorMessage() }}</div>
+  }
+
+  @if (verifiedContact(); as contact) {
+    <div class="success-banner">
+      <svg lucideCircleCheck [size]="14" [strokeWidth]="1.5"></svg>
+      Контрагента та контактну особу знайдено
+    </div>
+
+    <div class="form-grid-2">
+      <div class="field">
+        <span class="field-label">ПІБ</span>
+        <div class="locked-field">
+          <span>{{ contact.fullName }}</span>
+          <svg lucideLock [size]="13" [strokeWidth]="1.5"></svg>
+        </div>
+      </div>
+      <div class="field">
+        <span class="field-label">Номер телефону</span>
+        <div class="locked-field">
+          <span>{{ contact.phone }}</span>
+          <svg lucideLock [size]="13" [strokeWidth]="1.5"></svg>
+        </div>
+      </div>
+    </div>
+  }
+
+  <div class="form-footer">
+    <span class="footer-hint">Кнопка активна лише після успішної перевірки</span>
+    <button type="button" class="btn-primary" [disabled]="!verifiedContact() || saving()" (click)="save()">
+      Зберегти
+    </button>
+  </div>
+</form>

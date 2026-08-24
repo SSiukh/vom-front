@@ -1,0 +1,83 @@
+<button type="button" class="breadcrumb" (click)="goBack()">
+  <svg lucideChevronLeft [size]="14" [strokeWidth]="1.5"></svg>
+  Товари
+</button>
+
+<div class="page-header">
+  <h1 class="page-title">{{ isEditMode() ? 'Редагувати товар' : 'Новий товар' }}</h1>
+  <button type="button" class="btn-primary" [disabled]="!canSubmit()" (click)="submit()">
+    <svg lucideSave [size]="14" [strokeWidth]="1.5"></svg>
+    Зберегти
+  </button>
+</div>
+
+@if (errorMessage()) {
+  <div class="error-text">{{ errorMessage() }}</div>
+}
+
+<form [formGroup]="form" (ngSubmit)="submit()" class="form-panel">
+  <div class="form-grid-2">
+    <div class="field">
+      <label class="field-label" for="typeId">Тип товару</label>
+      <select id="typeId" class="text-input" formControlName="typeId">
+        <option value="" disabled>Оберіть тип</option>
+        @for (type of filterableTypes(); track type.id) {
+          <option [value]="type.id">{{ type.label }}</option>
+        }
+      </select>
+    </div>
+    <div class="field">
+      <label class="field-label" for="name">Назва товару</label>
+      <input id="name" type="text" class="text-input" formControlName="name" />
+    </div>
+  </div>
+
+  <div class="field">
+    <span class="field-label">Фото товару</span>
+    <button
+      type="button"
+      class="dropzone"
+      [class.is-dragover]="isDragOver()"
+      (click)="fileInput.click()"
+      (dragover)="onDragOver($event)"
+      (dragleave)="onDragLeave()"
+      (drop)="onDrop($event)"
+    >
+      @if (photoPreviewUrl(); as preview) {
+        <div class="dropzone__preview">
+          <img [src]="preview" alt="Попередній перегляд фото товару" />
+          <span class="dropzone__filename">{{ selectedFile()?.name ?? 'Поточне фото' }}</span>
+        </div>
+      } @else {
+        <svg lucideCloudUpload [size]="22" [strokeWidth]="1.5"></svg>
+        <span class="dropzone__hint">
+          Перетягніть зображення або <span class="dropzone__hint-accent">оберіть файл</span>
+        </span>
+        <span class="dropzone__meta">PNG, JPG · до 5 МБ</span>
+      }
+    </button>
+    <input
+      #fileInput
+      type="file"
+      accept="image/jpeg,image/png,image/webp"
+      class="visually-hidden"
+      (change)="onFileSelected($event)"
+    />
+  </div>
+
+  <div class="form-grid-3">
+    <div class="field">
+      <label class="field-label" for="price">Ціна</label>
+      <input id="price" type="number" min="0" step="0.01" class="text-input" formControlName="price" />
+    </div>
+    <div class="field">
+      <label class="field-label" for="promoPrice">Акційна ціна</label>
+      <input id="promoPrice" type="number" min="0" step="0.01" class="text-input" formControlName="promoPrice" />
+      <span class="field-hint">Не обов'язково</span>
+    </div>
+    <div class="field">
+      <label class="field-label" for="stockQuantity">Кількість на складі</label>
+      <input id="stockQuantity" type="number" min="0" class="text-input" formControlName="stockQuantity" />
+    </div>
+  </div>
+</form>

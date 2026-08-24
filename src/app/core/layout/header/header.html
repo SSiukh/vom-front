@@ -1,0 +1,13 @@
+<header class="header" [class.with-wordmark]="layoutState.sidebarCollapsed()">
+  @if (layoutState.sidebarCollapsed()) {
+    <span class="wordmark">VOM</span>
+  }
+  @if (authService.isAuthenticated()) {
+    <div class="account">
+      <span class="login">{{ authService.login() }}</span>
+      <button type="button" class="logout" (click)="authService.logout()" aria-label="Вийти">
+        <svg lucideLogOut [size]="16" [strokeWidth]="1.5"></svg>
+      </button>
+    </div>
+  }
+</header>

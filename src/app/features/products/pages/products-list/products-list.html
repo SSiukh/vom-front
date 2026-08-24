@@ -1,0 +1,116 @@
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Товари</h1>
+  </div>
+  <button type="button" class="btn-primary" (click)="goToCreate()">
+    <svg lucidePlus [size]="14" [strokeWidth]="1.5"></svg>
+    Додати товар
+  </button>
+</div>
+
+<div class="filters-row">
+  <div class="segmented-control">
+    <button
+      type="button"
+      class="segmented-control__item"
+      [class.segmented-control__item--active]="selectedTypeId() === null"
+      (click)="selectType(null)"
+    >
+      Усі
+    </button>
+    @for (type of filterableTypes(); track type.id) {
+      <button
+        type="button"
+        class="segmented-control__item"
+        [class.segmented-control__item--active]="selectedTypeId() === type.id"
+        (click)="selectType(type.id)"
+      >
+        {{ type.label }}
+      </button>
+    }
+  </div>
+</div>
+
+@if (error()) {
+  <div class="error-text">{{ error() }}</div>
+}
+
+@if (loading() && products().length === 0) {
+  <div class="loading-text">Завантаження…</div>
+} @else if (products().length === 0) {
+  <div class="empty-state">
+    <div class="empty-state__title">Товарів поки немає</div>
+    <div class="empty-state__text">Додайте перший товар до каталогу.</div>
+    <button type="button" class="btn-primary" (click)="goToCreate()">
+      <svg lucidePlus [size]="14" [strokeWidth]="1.5"></svg>
+      Додати товар
+    </button>
+  </div>
+} @else {
+  <div class="data-table-wrapper">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th class="col-photo"></th>
+          <th>Тип товару</th>
+          <th>Назва</th>
+          <th class="col-num">Ціна</th>
+          <th class="col-num">Акційна ціна</th>
+          <th class="col-num">На складі</th>
+          <th class="col-actions">Дії</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (product of products(); track product.id) {
+          <tr>
+            <td>
+              <img class="photo-thumb" [src]="product.photoUrl" [alt]="product.name" />
+            </td>
+            <td>{{ typeLabelById().get(product.typeId) }}</td>
+            <td>
+              <button type="button" class="link-button" (click)="goToDetail(product)">
+                {{ product.name }}
+              </button>
+            </td>
+            <td class="col-num">{{ product.price }} ₴</td>
+            <td class="col-num">
+              @if (product.promoPrice !== null) {
+                <span class="promo-price">{{ product.promoPrice }} ₴</span>
+              } @else {
+                <span class="dash">—</span>
+              }
+            </td>
+            <td class="col-num" [class]="stockClass(product)">{{ product.stockQuantity }}</td>
+            <td class="col-actions">
+              <span class="row-actions">
+                <button type="button" class="icon-action" (click)="goToEdit(product)" aria-label="Редагувати товар">
+                  <svg lucidePencil [size]="15" [strokeWidth]="1.5"></svg>
+                </button>
+                <button
+                  type="button"
+                  class="icon-action icon-action--danger"
+                  (click)="requestDelete(product)"
+                  aria-label="Видалити товар"
+                >
+                  <svg lucideTrash2 [size]="15" [strokeWidth]="1.5"></svg>
+                </button>
+              </span>
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+
+  <app-pagination [page]="page()" [pageSize]="pageSize" [total]="total()" (pageChange)="onPageChange($event)" />
+}
+
+<app-confirm-dialog
+  [open]="pendingDeleteId() !== null"
+  title="Видалити товар?"
+  [message]="'Товар ' + (pendingDeleteProduct()?.name ?? '') + ' буде видалено. Цю дію неможливо скасувати.'"
+  confirmLabel="Видалити"
+  [confirmDisabled]="deleting()"
+  (confirmed)="confirmDelete()"
+  (cancelled)="cancelDelete()"
+/>

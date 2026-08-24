@@ -1,0 +1,31 @@
+<nav class="sidebar" [class.collapsed]="layoutState.sidebarCollapsed()">
+  <div class="top">
+    @if (!layoutState.sidebarCollapsed()) {
+      <span class="wordmark">VOM</span>
+    }
+    <button
+      type="button"
+      class="toggle"
+      (click)="layoutState.toggleSidebar()"
+      aria-label="Згорнути або розгорнути меню"
+    >
+      @if (layoutState.sidebarCollapsed()) {
+        <svg lucidePanelLeftOpen [size]="18" [strokeWidth]="1.5"></svg>
+      } @else {
+        <svg lucidePanelLeftClose [size]="18" [strokeWidth]="1.5"></svg>
+      }
+    </button>
+  </div>
+  <ul class="nav-list">
+    @for (item of navItems; track item.path) {
+      <li>
+        <a [routerLink]="item.path" routerLinkActive="active" class="nav-link">
+          <svg [lucideIcon]="item.icon" [size]="18" [strokeWidth]="1.5"></svg>
+          @if (!layoutState.sidebarCollapsed()) {
+            <span>{{ item.label }}</span>
+          }
+        </a>
+      </li>
+    }
+  </ul>
+</nav>

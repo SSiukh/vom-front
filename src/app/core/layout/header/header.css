@@ -1,0 +1,48 @@
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  height: var(--header-height);
+  padding: 0 16px;
+  background: var(--color-bg-panel);
+  border-bottom: 1px solid var(--color-border-outer);
+}
+
+.header.with-wordmark {
+  justify-content: space-between;
+}
+
+.wordmark {
+  font-family: var(--font-heading);
+  font-weight: 600;
+  font-size: 18px;
+  letter-spacing: 0.22em;
+  color: var(--color-text-primary);
+}
+
+.account {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.login {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+}
+
+.logout {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  padding: 4px;
+  border-radius: var(--radius-sm);
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.logout:hover {
+  color: var(--color-accent);
+}

@@ -1,0 +1,55 @@
+<div class="login-page">
+  <div class="login-content">
+    <div class="login-card blueprint-card">
+      <i class="corner corner--tl"></i>
+      <i class="corner corner--tr"></i>
+      <i class="corner corner--bl"></i>
+      <i class="corner corner--br"></i>
+
+      <div class="wordmark">VOM</div>
+      <div class="subtitle">Systems</div>
+      <div class="divider"></div>
+
+      <form [formGroup]="form" (ngSubmit)="submit()" class="login-form">
+        <div class="field">
+          <label class="field-label" for="login">Логін</label>
+          <input id="login" type="text" class="text-input" formControlName="login" autocomplete="username" />
+        </div>
+
+        <div class="field">
+          <label class="field-label" for="password">Пароль</label>
+          <div class="password-field">
+            <input
+              id="password"
+              [type]="showPassword() ? 'text' : 'password'"
+              class="text-input"
+              formControlName="password"
+              autocomplete="current-password"
+            />
+            <button
+              type="button"
+              class="password-toggle"
+              (click)="togglePasswordVisibility()"
+              [attr.aria-label]="showPassword() ? 'Приховати пароль' : 'Показати пароль'"
+            >
+              @if (showPassword()) {
+                <svg lucideEyeOff [size]="16" [strokeWidth]="1.5"></svg>
+              } @else {
+                <svg lucideEye [size]="16" [strokeWidth]="1.5"></svg>
+              }
+            </button>
+          </div>
+        </div>
+
+        @if (errorMessage()) {
+          <div class="error-text">{{ errorMessage() }}</div>
+        }
+
+        <button type="submit" class="btn-primary login-submit" [disabled]="form.invalid || submitting()">
+          Увійти
+        </button>
+      </form>
+    </div>
+  </div>
+  <app-footer />
+</div>

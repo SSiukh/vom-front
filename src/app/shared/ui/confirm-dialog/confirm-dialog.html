@@ -1,0 +1,27 @@
+@if (open()) {
+  <div class="dialog-overlay">
+    <div class="dialog-card blueprint-card blueprint-card--danger">
+      <i class="corner corner--tl"></i>
+      <i class="corner corner--tr"></i>
+      <i class="corner corner--bl"></i>
+      <i class="corner corner--br"></i>
+
+      <div class="dialog-title">
+        <svg lucideTriangleAlert [size]="18" [strokeWidth]="1.5"></svg>
+        <span>{{ title() }}</span>
+      </div>
+      <p class="dialog-message">{{ message() }}</p>
+      <div class="dialog-actions">
+        <button type="button" class="btn-ghost" (click)="cancelled.emit()">{{ cancelLabel() }}</button>
+        <button
+          type="button"
+          class="btn-destructive"
+          [disabled]="confirmDisabled()"
+          (click)="confirmed.emit()"
+        >
+          {{ confirmLabel() }}
+        </button>
+      </div>
+    </div>
+  </div>
+}

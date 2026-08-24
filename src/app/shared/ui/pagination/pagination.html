@@ -1,0 +1,40 @@
+@if (totalPages() > 1) {
+  <div class="pagination">
+    <span>{{ rangeStart() }}-{{ rangeEnd() }} з {{ total() }}</span>
+    <div class="pagination-pages">
+      <button
+        type="button"
+        class="pagination-box"
+        [disabled]="page() === 1"
+        (click)="previous()"
+        aria-label="Попередня сторінка"
+      >
+        <svg lucideChevronLeft [size]="14" [strokeWidth]="1.5"></svg>
+      </button>
+      @for (item of pageItems(); track $index) {
+        @if (item === 'ellipsis') {
+          <span class="pagination-ellipsis">…</span>
+        } @else {
+          <button
+            type="button"
+            class="pagination-box"
+            [class.is-active]="item === page()"
+            [disabled]="item === page()"
+            (click)="goToPage(item)"
+          >
+            {{ item }}
+          </button>
+        }
+      }
+      <button
+        type="button"
+        class="pagination-box"
+        [disabled]="page() === totalPages()"
+        (click)="next()"
+        aria-label="Наступна сторінка"
+      >
+        <svg lucideChevronRight [size]="14" [strokeWidth]="1.5"></svg>
+      </button>
+    </div>
+  </div>
+}

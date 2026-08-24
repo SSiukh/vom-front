@@ -1,0 +1,112 @@
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Відправники</h1>
+    <div class="page-subtitle">Відправки створюються від активного відправника</div>
+  </div>
+  <button type="button" class="btn-primary" (click)="goToCreate()">
+    <svg lucidePlus [size]="14" [strokeWidth]="1.5"></svg>
+    Внести відправника
+  </button>
+</div>
+
+@if (error()) {
+  <div class="error-text">{{ error() }}</div>
+}
+
+@if (loading() && senders().length === 0) {
+  <div class="loading-text">Завантаження…</div>
+} @else if (senders().length === 0) {
+  <div class="empty-state">
+    <span class="empty-state__icon">
+      <svg lucideUsers [size]="22" [strokeWidth]="1.5"></svg>
+    </span>
+    <div class="empty-state__title">Відправників поки немає</div>
+    <div class="empty-state__text">
+      Додайте першого відправника, щоб мати змогу створювати відправлення.
+    </div>
+    <button type="button" class="btn-primary" (click)="goToCreate()">
+      <svg lucidePlus [size]="14" [strokeWidth]="1.5"></svg>
+      Внести відправника
+    </button>
+  </div>
+} @else {
+  <div class="data-table-wrapper">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th class="col-radio"></th>
+          <th>ПІБ</th>
+          <th>Номер телефону</th>
+          <th>Статус</th>
+          <th class="col-actions">Дії</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (sender of senders(); track sender.id) {
+          <tr [class.is-active]="sender.isActive">
+            <td>
+              <button
+                type="button"
+                class="radio-dot"
+                [class.radio-dot--active]="sender.isActive"
+                [disabled]="activatingId() !== null"
+                (click)="activate(sender)"
+                [attr.aria-label]="sender.isActive ? 'Активний відправник' : 'Зробити активним'"
+              >
+                @if (sender.isActive) {
+                  <span class="radio-dot__dot"></span>
+                }
+              </button>
+            </td>
+            <td>{{ sender.fullName }}</td>
+            <td>{{ sender.phone }}</td>
+            <td>
+              <span
+                class="status-badge"
+                [class.status-badge--success]="sender.isActive"
+                [class.status-badge--muted]="!sender.isActive"
+              >
+                {{ sender.isActive ? 'Активний' : 'Неактивний' }}
+              </span>
+            </td>
+            <td class="col-actions">
+              <span class="row-actions">
+                <button
+                  type="button"
+                  class="btn-ghost"
+                  [disabled]="refreshingId() === sender.id"
+                  (click)="refresh(sender)"
+                >
+                  <svg lucideRefreshCw [size]="13" [strokeWidth]="1.5"></svg>
+                  Оновити дані
+                </button>
+                <button
+                  type="button"
+                  class="icon-action icon-action--danger"
+                  (click)="requestDelete(sender)"
+                  aria-label="Видалити відправника"
+                >
+                  <svg lucideTrash2 [size]="15" [strokeWidth]="1.5"></svg>
+                </button>
+              </span>
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+
+  <app-pagination [page]="page()" [pageSize]="pageSize" [total]="total()" (pageChange)="onPageChange($event)" />
+}
+
+<app-confirm-dialog
+  [open]="pendingDeleteId() !== null"
+  title="Видалити відправника?"
+  [message]="
+    'Відправника ' + (pendingDeleteSender()?.fullName ?? '') + ' буде видалено. Цю дію неможливо скасувати.'
+  "
+  confirmLabel="Видалити"
+  [confirmDisabled]="deleting()"
+  (confirmed)="confirmDelete()"
+  (cancelled)="cancelDelete()"
+/>
