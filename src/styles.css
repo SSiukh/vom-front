@@ -56,6 +56,40 @@ body {
   color: var(--color-text-secondary);
   font-family: var(--font-body);
   font-size: 14px;
+  color-scheme: dark;
+}
+
+button:focus {
+  outline: none;
+}
+
+button:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 1px;
+}
+
+.field-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.shell {
+  display: flex;
+  min-height: 100vh;
+}
+
+.shell .main {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+
+.shell .content {
+  flex: 1;
+  overflow: auto;
+  padding: 20px;
 }
 
 .blueprint-card {
@@ -390,6 +424,15 @@ fieldset.field legend {
 
 .data-table tbody tr.is-active {
   background: rgba(89, 128, 166, 0.07);
+}
+
+.data-table tbody tr.is-clickable {
+  cursor: pointer;
+}
+
+.data-table tbody tr.is-clickable:focus-visible {
+  outline: 1px solid var(--color-accent);
+  outline-offset: -1px;
 }
 
 .row-actions {

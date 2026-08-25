@@ -132,24 +132,45 @@ One "sender" = one Nova Poshta account/API key this business ships from.
 **Only one sender can be `isActive` at a time** — `activate()` atomically
 deactivates every other row first.
 
+**The sender always drops packages off at a відділення (warehouse) —
+never a street-address door pickup.** This is a real, confirmed business
+rule (not a technical default): Nova Poshta's `Counterparty.
+getCounterpartyAddresses` API returns the counterparty's registered
+*street* address, which is a different thing from the warehouse the
+business actually uses to ship from, and there is no NP API that exposes
+"the one warehouse pinned in the NP web cabinet's 'Мої адреси' section" —
+that's an NP-web-cabinet-only concept, not retrievable via their JSON API
+(confirmed by testing against a real account: `getCounterpartyAddresses`
+returned a street address, and `Counterparty.getCounterparties` doesn't
+return a usable city for a `PrivatePerson` counterparty either). So the
+pickup warehouse is **entered manually** by the admin (city search +
+warehouse select — the same `GET /nova-poshta/warehouses` mechanism the
+Orders wizard already uses for the recipient side), not auto-fetched.
+
 | Method & path | Throttle | Body/Query | Response |
 |---|---|---|---|
 | `GET /senders` | default | `?page&pageSize` | `ListSendersResponseDto` |
 | `POST /senders/verify` | 5/min | `VerifySenderDto {apiKey}` | `SenderVerificationResultDto {fullName, phone}` |
-| `POST /senders` | 5/min | `CreateSenderDto {apiKey}` (extends `VerifySenderDto`) | `SenderResponseDto` |
+| `POST /senders` | 5/min | `CreateSenderDto {apiKey, cityRef, warehouseRef}` | `SenderResponseDto` |
 | `PATCH /senders/:id/activate` | default | — | `SenderResponseDto` |
 | `PATCH /senders/:id/refresh` | 5/min | — | `SenderResponseDto` |
+| `PATCH /senders/:id/warehouse` | 5/min | `SetSenderWarehouseDto {cityRef, warehouseRef}` | `SenderResponseDto` |
 | `DELETE /senders/:id` | default | — | `204` (soft delete — sets `isDeactivated`) |
-| `GET /senders/:id/addresses` | default | — | `SenderAddressResponseDto[] {npAddressRef, description}` |
+| `GET /senders/:id/addresses` | default | — | `SenderAddressResponseDto[] {npAddressRef, description}` (currently always 0 or 1 entries — the one configured pickup warehouse) |
 
 `fullName`/`phone`/Nova-Poshta refs are **always** resolved server-side from
 the real Nova Poshta account via the `apiKey` — never accept them as client
-input (`CreateSenderDto` only has `apiKey`). `verify` is a pure dry-run
-(doesn't persist anything) so the frontend can show "this is who you're
-about to add" before committing to `POST /senders`. `refresh` re-pulls
-name/phone/addresses from Nova Poshta for an existing sender (e.g. if their
-NP profile changed). `SenderResponseDto`: `{id, fullName, phone, isActive,
-createdAt, updatedAt}`.
+input. `cityRef`/`warehouseRef` on create (and on `PATCH .../warehouse`)
+are validated server-side against a live `GET /nova-poshta/warehouses`
+call for that city — `warehouseRef: 'unknown-warehouse-ref' → 400
+"Unknown warehouse for the given city"` if it doesn't resolve; the stored
+`description` always comes from that live lookup too, never from client
+input. `verify` is a pure dry-run (doesn't persist anything) so the
+frontend can show "this is who you're about to add" before committing to
+`POST /senders`. `refresh` only re-pulls identity (name/phone/NP refs) —
+it does **not** touch the configured pickup warehouse; use
+`PATCH /senders/:id/warehouse` to change that. `SenderResponseDto`:
+`{id, fullName, phone, isActive, createdAt, updatedAt}`.
 
 ## 5. Products (`/products`)
 
@@ -196,7 +217,7 @@ CreateOrderDto {
   shipmentTypeId: string; paymentTypeId: string;
   partialAmount?: number;           // required only if paymentType.code === 'partial'
   items: OrderItemDto[];            // ArrayMinSize(1)
-  senderId: string; senderAddressRef: string;
+  senderId: string; senderAddressRef: string;  // one of GET /senders/:id/addresses — the sender's configured pickup warehouse
   recipient: RecipientDto;          // {phone (UA format), lastName, firstName, middleName?}
   deliveryTypeId: string;
   deliveryDetails: DeliveryDetailsDto;  // {cityRef, warehouseRef?, streetRef?, house?, apartment?, postomatRef?}

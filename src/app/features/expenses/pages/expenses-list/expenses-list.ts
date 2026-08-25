@@ -63,6 +63,21 @@ export class ExpensesList {
     this.router.navigateByUrl(`${FEATURE_ROUTES.expenses}/${expense.id}/edit`);
   }
 
+  onRowClick(event: Event, expense: Expense): void {
+    if ((event.target as HTMLElement).closest('.col-actions')) {
+      return;
+    }
+    this.goToEdit(expense);
+  }
+
+  onRowSpaceKey(event: Event, expense: Expense): void {
+    if ((event.target as HTMLElement).closest('.col-actions')) {
+      return;
+    }
+    event.preventDefault();
+    this.goToEdit(expense);
+  }
+
   typeLabel(expense: Expense): string {
     return this.typeLabelById().get(expense.typeId) ?? '';
   }

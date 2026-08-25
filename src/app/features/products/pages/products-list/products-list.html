@@ -62,16 +62,20 @@
       </thead>
       <tbody>
         @for (product of products(); track product.id) {
-          <tr>
+          <tr
+            class="is-clickable"
+            role="button"
+            tabindex="0"
+            [attr.aria-label]="'Деталі товару ' + product.name"
+            (click)="onRowClick($event, product)"
+            (keydown.enter)="onRowClick($event, product)"
+            (keydown.space)="onRowSpaceKey($event, product)"
+          >
             <td>
               <img class="photo-thumb" [src]="product.photoUrl" [alt]="product.name" />
             </td>
             <td>{{ typeLabelById().get(product.typeId) }}</td>
-            <td>
-              <button type="button" class="link-button" (click)="goToDetail(product)">
-                {{ product.name }}
-              </button>
-            </td>
+            <td>{{ product.name }}</td>
             <td class="col-num">{{ product.price }} ₴</td>
             <td class="col-num">
               @if (product.promoPrice !== null) {

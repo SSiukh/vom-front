@@ -37,7 +37,15 @@
       </thead>
       <tbody>
         @for (expense of expenses(); track expense.id) {
-          <tr>
+          <tr
+            class="is-clickable"
+            role="button"
+            tabindex="0"
+            [attr.aria-label]="'Редагувати витрату ' + (expense.name ?? typeLabel(expense))"
+            (click)="onRowClick($event, expense)"
+            (keydown.enter)="onRowClick($event, expense)"
+            (keydown.space)="onRowSpaceKey($event, expense)"
+          >
             <td>{{ typeLabel(expense) }}</td>
             <td>{{ expense.name ?? '—' }}</td>
             <td class="col-num">{{ expense.amount }} ₴</td>

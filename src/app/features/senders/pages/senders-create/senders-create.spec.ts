@@ -11,6 +11,7 @@ describe('SendersCreate', () => {
   let httpMock: HttpTestingController;
   let router: Router;
   const baseUrl = `${environment.apiUrl}/senders`;
+  const novaPoshtaUrl = `${environment.apiUrl}/nova-poshta`;
 
   const create = () => {
     TestBed.configureTestingModule({
@@ -29,6 +30,21 @@ describe('SendersCreate', () => {
     const input = el.querySelector('#apiKey') as HTMLInputElement;
     input.value = value;
     input.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+  };
+
+  const verify = () => {
+    setApiKey('key-123');
+    (el.querySelector('.btn-ghost-accent') as HTMLButtonElement).click();
+    httpMock.expectOne(`${baseUrl}/verify`).flush({ fullName: 'Іван Іванов', phone: '+380501234567' });
+    fixture.detectChanges();
+  };
+
+  const selectAddress = () => {
+    const component = fixture.debugElement.componentInstance as SendersCreate;
+    component.onCitySelected({ value: 'city-1', label: 'Київ' });
+    httpMock.expectOne(`${novaPoshtaUrl}/warehouses?cityRef=city-1`).flush([{ ref: 'wh-1', description: 'Відділення 1' }]);
+    component.onWarehouseSelected({ value: 'wh-1', label: 'Відділення 1' });
     fixture.detectChanges();
   };
 
@@ -53,11 +69,7 @@ describe('SendersCreate', () => {
 
   it('shows the success banner and locked contact fields after a successful verify, and disables the input', () => {
     create();
-    setApiKey('key-123');
-
-    (el.querySelector('.btn-ghost-accent') as HTMLButtonElement).click();
-    httpMock.expectOne(`${baseUrl}/verify`).flush({ fullName: 'Іван Іванов', phone: '+380501234567' });
-    fixture.detectChanges();
+    verify();
 
     expect(el.querySelector('.success-banner')).not.toBeNull();
     const lockedValues = Array.from(el.querySelectorAll('.locked-field span')).map((s) => s.textContent?.trim());
@@ -91,29 +103,46 @@ describe('SendersCreate', () => {
     expect(el.querySelector('.error-text')?.textContent?.trim()).toBe('Забагато спроб — спробуйте пізніше');
   });
 
-  it('keeps "Зберегти" disabled until verification succeeds', () => {
+  it('keeps "Зберегти" disabled after verification until a city and warehouse are chosen', () => {
     create();
     const saveButton = el.querySelector('.btn-primary') as HTMLButtonElement;
     expect(saveButton.disabled).toBe(true);
 
-    setApiKey('key-123');
-    (el.querySelector('.btn-ghost-accent') as HTMLButtonElement).click();
-    httpMock.expectOne(`${baseUrl}/verify`).flush({ fullName: 'Іван Іванов', phone: '+380501234567' });
-    fixture.detectChanges();
+    verify();
+    expect(saveButton.disabled).toBe(true);
 
+    const component = fixture.debugElement.componentInstance as SendersCreate;
+    component.onCitySelected({ value: 'city-1', label: 'Київ' });
+    httpMock.expectOne(`${novaPoshtaUrl}/warehouses?cityRef=city-1`).flush([{ ref: 'wh-1', description: 'Відділення 1' }]);
+    fixture.detectChanges();
+    expect(saveButton.disabled).toBe(true);
+
+    component.onWarehouseSelected({ value: 'wh-1', label: 'Відділення 1' });
+    fixture.detectChanges();
     expect(saveButton.disabled).toBe(false);
   });
 
-  it('saves the sender and navigates to the list on success', () => {
+  it('fetches warehouses after a city is selected', () => {
     create();
-    setApiKey('key-123');
-    (el.querySelector('.btn-ghost-accent') as HTMLButtonElement).click();
-    httpMock.expectOne(`${baseUrl}/verify`).flush({ fullName: 'Іван Іванов', phone: '+380501234567' });
+    verify();
+
+    const component = fixture.debugElement.componentInstance as SendersCreate;
+    component.onCitySelected({ value: 'city-1', label: 'Київ' });
+    const req = httpMock.expectOne(`${novaPoshtaUrl}/warehouses?cityRef=city-1`);
+    req.flush([{ ref: 'wh-1', description: 'Відділення 1' }]);
     fixture.detectChanges();
+
+    expect(component['warehouseOptions']()).toEqual([{ value: 'wh-1', label: 'Відділення 1' }]);
+  });
+
+  it('saves the sender with the chosen address and navigates to the list on success', () => {
+    create();
+    verify();
+    selectAddress();
 
     (el.querySelector('.btn-primary') as HTMLButtonElement).click();
     const req = httpMock.expectOne(baseUrl);
-    expect(req.request.body).toEqual({ apiKey: 'key-123' });
+    expect(req.request.body).toEqual({ apiKey: 'key-123', cityRef: 'city-1', warehouseRef: 'wh-1' });
     req.flush({
       id: '1',
       fullName: 'Іван Іванов',
@@ -128,10 +157,8 @@ describe('SendersCreate', () => {
 
   it('shows an error message when saving fails', () => {
     create();
-    setApiKey('key-123');
-    (el.querySelector('.btn-ghost-accent') as HTMLButtonElement).click();
-    httpMock.expectOne(`${baseUrl}/verify`).flush({ fullName: 'Іван Іванов', phone: '+380501234567' });
-    fixture.detectChanges();
+    verify();
+    selectAddress();
 
     (el.querySelector('.btn-primary') as HTMLButtonElement).click();
     httpMock.expectOne(baseUrl).flush('err', { status: 500, statusText: 'Server Error' });
@@ -143,15 +170,27 @@ describe('SendersCreate', () => {
 
   it('shows a rate-limit message when save is throttled (429)', () => {
     create();
-    setApiKey('key-123');
-    (el.querySelector('.btn-ghost-accent') as HTMLButtonElement).click();
-    httpMock.expectOne(`${baseUrl}/verify`).flush({ fullName: 'Іван Іванов', phone: '+380501234567' });
-    fixture.detectChanges();
+    verify();
+    selectAddress();
 
     (el.querySelector('.btn-primary') as HTMLButtonElement).click();
     httpMock.expectOne(baseUrl).flush('err', { status: 429, statusText: 'Too Many Requests' });
     fixture.detectChanges();
 
     expect(el.querySelector('.error-text')?.textContent?.trim()).toBe('Забагато спроб — спробуйте пізніше');
+  });
+
+  it('surfaces the backend message when the chosen warehouse fails server-side re-validation (400)', () => {
+    create();
+    verify();
+    selectAddress();
+
+    (el.querySelector('.btn-primary') as HTMLButtonElement).click();
+    httpMock
+      .expectOne(baseUrl)
+      .flush({ message: 'Unknown warehouse for the given city' }, { status: 400, statusText: 'Bad Request' });
+    fixture.detectChanges();
+
+    expect(el.querySelector('.error-text')?.textContent?.trim()).toBe('Unknown warehouse for the given city');
   });
 });

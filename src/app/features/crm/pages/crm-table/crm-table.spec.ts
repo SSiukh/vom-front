@@ -1,7 +1,7 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
+import { provideRouter, Router } from '@angular/router';
 import { environment } from '../../../../../environments/environment';
 import { DictionariesService } from '../../../../core/dictionaries/dictionaries.service';
 import { CrmTable } from './crm-table';
@@ -10,6 +10,7 @@ describe('CrmTable', () => {
   let fixture: ComponentFixture<CrmTable>;
   let el: HTMLElement;
   let httpMock: HttpTestingController;
+  let router: Router;
   const baseUrl = `${environment.apiUrl}/crm/table`;
 
   const dictionariesStub = {
@@ -50,6 +51,8 @@ describe('CrmTable', () => {
       ],
     });
     httpMock = TestBed.inject(HttpTestingController);
+    router = TestBed.inject(Router);
+    vi.spyOn(router, 'navigateByUrl').mockResolvedValue(true);
     fixture = TestBed.createComponent(CrmTable);
     fixture.detectChanges();
     el = fixture.nativeElement as HTMLElement;
@@ -177,6 +180,15 @@ describe('CrmTable', () => {
       `${baseUrl}?page=2&pageSize=10&sortOrder=desc`,
     );
     expect(el.querySelectorAll('tbody tr').length).toBe(10);
+  });
+
+  it('navigates to the order detail page when a row is clicked', () => {
+    create();
+    flushList([row()], 1, 300);
+
+    (el.querySelector('tbody tr') as HTMLElement).click();
+
+    expect(router.navigateByUrl).toHaveBeenCalledWith('/orders/1');
   });
 
   it('shows an error message when the request fails', () => {

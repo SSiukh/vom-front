@@ -1,0 +1,59 @@
+@if (open()) {
+  <div class="dialog-overlay">
+    <div class="warehouse-dialog-card blueprint-card">
+      <i class="corner corner--tl"></i>
+      <i class="corner corner--tr"></i>
+      <i class="corner corner--bl"></i>
+      <i class="corner corner--br"></i>
+
+      <div class="warehouse-dialog-title">Змінити відділення відправки</div>
+      @if (senderName()) {
+        <p class="dialog-message">{{ senderName() }}</p>
+      }
+
+      <div class="form-grid-2">
+        <div class="field">
+          <span class="field-label">Населений пункт</span>
+          <app-searchable-select
+            [options]="cityOptions()"
+            [selectedLabel]="selectedCityLabel()"
+            [loading]="citiesLoading()"
+            placeholder="Пошук населеного пункту…"
+            emptyMessage="Почніть вводити назву"
+            (searchTermChange)="onCitySearchTermChange($event)"
+            (valueChange)="onCitySelected($event)"
+          />
+          @if (cityLookupError()) {
+            <div class="error-text">{{ cityLookupError() }}</div>
+          }
+        </div>
+        <div class="field">
+          <span class="field-label">Відділення</span>
+          <app-searchable-select
+            [options]="warehouseOptions()"
+            [selectedLabel]="selectedWarehouseLabel()"
+            [loading]="warehousesLoading()"
+            [disabled]="!cityChosen()"
+            placeholder="Пошук відділення…"
+            (searchTermChange)="onWarehouseSearchTermChange($event)"
+            (valueChange)="onWarehouseSelected($event)"
+          />
+          @if (warehouseLookupError()) {
+            <div class="error-text">{{ warehouseLookupError() }}</div>
+          }
+        </div>
+      </div>
+
+      @if (errorMessage()) {
+        <div class="error-text">{{ errorMessage() }}</div>
+      }
+
+      <div class="dialog-actions">
+        <button type="button" class="btn-ghost" (click)="cancel()">Скасувати</button>
+        <button type="button" class="btn-primary" [disabled]="!canSave() || saving()" (click)="save()">
+          Зберегти
+        </button>
+      </div>
+    </div>
+  </div>
+}

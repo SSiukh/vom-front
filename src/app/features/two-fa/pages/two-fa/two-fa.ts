@@ -11,16 +11,18 @@ import {
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Router } from '@angular/router';
-import { LucideCopy, LucideLogOut } from '@lucide/angular';
+import { LucideCopy } from '@lucide/angular';
 import { AUTH_ROUTES } from '../../../../core/auth/auth-routes.constants';
 import { AuthService } from '../../../../core/auth/auth.service';
 import { Footer } from '../../../../core/layout/footer/footer';
+import { Header } from '../../../../core/layout/header/header';
+import { Sidebar } from '../../../../core/layout/sidebar/sidebar';
 
 type TwoFaMode = 'setup' | 'verify';
 
 @Component({
   selector: 'app-two-fa',
-  imports: [LucideCopy, LucideLogOut, Footer],
+  imports: [LucideCopy, Footer, Header, Sidebar],
   templateUrl: './two-fa.html',
   styleUrl: './two-fa.css',
 })

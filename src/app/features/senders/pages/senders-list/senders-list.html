@@ -82,11 +82,19 @@
                 </button>
                 <button
                   type="button"
-                  class="icon-action icon-action--danger"
-                  (click)="requestDelete(sender)"
-                  aria-label="Видалити відправника"
+                  class="icon-action"
+                  (click)="requestSetWarehouse(sender)"
+                  aria-label="Змінити відділення відправки"
                 >
-                  <svg lucideTrash2 [size]="15" [strokeWidth]="1.5"></svg>
+                  <svg lucideMapPin [size]="15" [strokeWidth]="1.5"></svg>
+                </button>
+                <button
+                  type="button"
+                  class="icon-action icon-action--danger"
+                  (click)="requestDeactivate(sender)"
+                  aria-label="Деактивувати відправника"
+                >
+                  <svg lucideUserX [size]="15" [strokeWidth]="1.5"></svg>
                 </button>
               </span>
             </td>
@@ -100,13 +108,25 @@
 }
 
 <app-confirm-dialog
-  [open]="pendingDeleteId() !== null"
-  title="Видалити відправника?"
+  [open]="pendingDeactivateId() !== null"
+  title="Деактивувати відправника?"
   [message]="
-    'Відправника ' + (pendingDeleteSender()?.fullName ?? '') + ' буде видалено. Цю дію неможливо скасувати.'
+    'Відправника ' +
+    (pendingDeactivateSender()?.fullName ?? '') +
+    ' буде деактивовано і прибрано зі списку. Скасувати деактивацію з інтерфейсу неможливо, ' +
+    'але дані відправника зберігаються в системі.'
   "
-  confirmLabel="Видалити"
-  [confirmDisabled]="deleting()"
-  (confirmed)="confirmDelete()"
-  (cancelled)="cancelDelete()"
+  confirmLabel="Деактивувати"
+  [confirmDisabled]="deactivating()"
+  (confirmed)="confirmDeactivate()"
+  (cancelled)="cancelDeactivate()"
+/>
+
+<app-set-warehouse-dialog
+  [open]="pendingWarehouseId() !== null"
+  [senderName]="pendingWarehouseSender()?.fullName ?? null"
+  [saving]="settingWarehouse()"
+  [errorMessage]="warehouseErrorMessage()"
+  (saved)="confirmSetWarehouse($event)"
+  (cancelled)="cancelSetWarehouse()"
 />

@@ -145,12 +145,6 @@
   background: var(--color-border-inner);
 }
 
-.field-group {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
 .delivery-method {
   display: flex;
   gap: 8px;

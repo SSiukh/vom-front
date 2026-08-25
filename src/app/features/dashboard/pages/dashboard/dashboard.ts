@@ -4,6 +4,7 @@ import type { ChartConfiguration } from 'chart.js';
 import { BaseChartDirective } from 'ng2-charts';
 import { DashboardApiService } from '../../../../core/api/dashboard-api.service';
 import { DictionariesService } from '../../../../core/dictionaries/dictionaries.service';
+import { DateFieldTriggerDirective } from '../../../../shared/directives/date-field-trigger.directive';
 import type { DashboardSummary, ShipmentStatusBreakdown } from '../../models/dashboard-summary.model';
 
 const EXPENSE_CATEGORY_COLORS = ['#5980a6', '#7ba0c4', '#3f6486', '#8d959c'];
@@ -20,7 +21,7 @@ const CHART_TICK_COLOR = '#5e666d';
 
 @Component({
   selector: 'app-dashboard',
-  imports: [BaseChartDirective],
+  imports: [BaseChartDirective, DateFieldTriggerDirective],
   templateUrl: './dashboard.html',
   styleUrl: './dashboard.css',
 })

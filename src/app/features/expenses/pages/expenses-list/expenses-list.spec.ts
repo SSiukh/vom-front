@@ -108,6 +108,24 @@ describe('ExpensesList', () => {
     expect(router.navigateByUrl).toHaveBeenCalledWith('/expenses/1/edit');
   });
 
+  it('navigates to the edit page when clicking anywhere on the row', () => {
+    create();
+    flushList([expense()], 1);
+
+    (el.querySelector('tbody tr') as HTMLElement).click();
+
+    expect(router.navigateByUrl).toHaveBeenCalledWith('/expenses/1/edit');
+  });
+
+  it('does not navigate when clicking the delete icon inside the Дії column', () => {
+    create();
+    flushList([expense()], 1);
+
+    (el.querySelector('.icon-action--danger') as HTMLButtonElement).click();
+
+    expect(router.navigateByUrl).not.toHaveBeenCalled();
+  });
+
   it('shows the type label in the delete confirmation when the expense has no name', () => {
     create();
     flushList([expense()], 1);

@@ -1,5 +1,5 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, DestroyRef, effect, inject, signal } from '@angular/core';
+import { Component, DestroyRef, computed, effect, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormArray, FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
@@ -8,6 +8,7 @@ import {
   LucideCheck,
   LucideChevronLeft,
   LucideChevronRight,
+  LucideLock,
   LucidePlus,
 } from '@lucide/angular';
 import { NovaPoshtaApiService } from '../../../../core/api/nova-poshta-api.service';
@@ -37,6 +38,7 @@ type DeliveryMethod = 'warehouse' | 'postomat';
     LucidePlus,
     LucideCheck,
     LucideBuilding,
+    LucideLock,
   ],
   templateUrl: './orders-create.html',
   styleUrl: './orders-create.css',
@@ -60,6 +62,7 @@ export class OrdersCreate {
   protected readonly activeSender = signal<Sender | null>(null);
   protected readonly senderAddresses = signal<SenderAddress[]>([]);
   protected readonly senderAddressesLoading = signal(false);
+  protected readonly senderAddress = computed<SenderAddress | null>(() => this.senderAddresses()[0] ?? null);
 
   protected readonly citiesLoading = signal(false);
   protected readonly cityOptions = signal<SelectOption[]>([]);
@@ -386,6 +389,7 @@ export class OrdersCreate {
         next: (addresses) => {
           this.senderAddressesLoading.set(false);
           this.senderAddresses.set(addresses);
+          this.form.controls.senderAddressRef.setValue(addresses[0]?.npAddressRef ?? '');
         },
         error: () => {
           this.senderAddressesLoading.set(false);

@@ -1,9 +1,12 @@
 import { DatePipe } from '@angular/common';
 import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { Router } from '@angular/router';
 import { LucideListChecks } from '@lucide/angular';
 import { CrmApiService } from '../../../../core/api/crm-api.service';
 import { DictionariesService } from '../../../../core/dictionaries/dictionaries.service';
+import { FEATURE_ROUTES } from '../../../../core/routes.constants';
+import { DateFieldTriggerDirective } from '../../../../shared/directives/date-field-trigger.directive';
 import { Pagination } from '../../../../shared/ui/pagination/pagination';
 import { shipmentStatusBadgeClass } from '../../../../shared/utils/shipment-status-badge.util';
 import type { CrmRow } from '../../models/crm-row.model';
@@ -14,13 +17,14 @@ type SortOrder = 'asc' | 'desc';
 
 @Component({
   selector: 'app-crm-table',
-  imports: [DatePipe, Pagination, LucideListChecks],
+  imports: [DatePipe, Pagination, DateFieldTriggerDirective, LucideListChecks],
   templateUrl: './crm-table.html',
   styleUrl: './crm-table.css',
 })
 export class CrmTable {
   private readonly crmApi = inject(CrmApiService);
   protected readonly dictionaries = inject(DictionariesService);
+  private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
 
   protected readonly rows = signal<CrmRow[]>([]);
@@ -105,6 +109,15 @@ export class CrmTable {
   onPageChange(page: number): void {
     this.page.set(page);
     this.load();
+  }
+
+  goToOrderDetail(row: CrmRow): void {
+    this.router.navigateByUrl(`${FEATURE_ROUTES.orders}/${row.id}`);
+  }
+
+  onRowSpaceKey(event: Event, row: CrmRow): void {
+    event.preventDefault();
+    this.goToOrderDetail(row);
   }
 
   paymentTypeLabel(row: CrmRow): string {

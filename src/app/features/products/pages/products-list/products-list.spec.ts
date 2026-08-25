@@ -130,13 +130,22 @@ describe('ProductsList', () => {
     expect(stockCells[2].classList.contains('stock-low')).toBe(false);
   });
 
-  it('navigates to the detail page when a product name is clicked', () => {
+  it('navigates to the detail page when clicking anywhere on the row', () => {
     create();
     flushList([product()], 1);
 
-    (el.querySelector('.link-button') as HTMLButtonElement).click();
+    (el.querySelector('tbody tr') as HTMLElement).click();
 
     expect(router.navigateByUrl).toHaveBeenCalledWith('/products/1');
+  });
+
+  it('does not navigate to the detail page when clicking inside the Дії column', () => {
+    create();
+    flushList([product()], 1);
+
+    (el.querySelector('.icon-action') as HTMLButtonElement).click();
+
+    expect(router.navigateByUrl).not.toHaveBeenCalledWith('/products/1');
   });
 
   it('navigates to the edit page when the edit icon is clicked', () => {

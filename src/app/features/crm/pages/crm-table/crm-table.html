@@ -8,13 +8,13 @@
 <div class="filters-row">
   <div class="date-field">
     <label for="date-from">Від</label>
-    <div class="date-field__input">
+    <div class="date-field__input" appDateFieldTrigger>
       <input id="date-from" type="date" [value]="dateFrom() ?? ''" (change)="onDateFromChange($event)" />
     </div>
   </div>
   <div class="date-field">
     <label for="date-to">До</label>
-    <div class="date-field__input">
+    <div class="date-field__input" appDateFieldTrigger>
       <input id="date-to" type="date" [value]="dateTo() ?? ''" (change)="onDateToChange($event)" />
     </div>
   </div>
@@ -90,7 +90,15 @@
       </thead>
       <tbody>
         @for (row of rows(); track row.id) {
-          <tr>
+          <tr
+            class="is-clickable"
+            role="button"
+            tabindex="0"
+            [attr.aria-label]="'Деталі замовлення ' + (row.npWaybillNumber ?? row.id)"
+            (click)="goToOrderDetail(row)"
+            (keydown.enter)="goToOrderDetail(row)"
+            (keydown.space)="onRowSpaceKey($event, row)"
+          >
             <td>{{ row.createdAt | date: 'dd.MM.yyyy' }}</td>
             <td class="waybill-number">{{ row.npWaybillNumber ?? '—' }}</td>
             <td>{{ paymentTypeLabel(row) }}</td>

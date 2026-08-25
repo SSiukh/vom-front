@@ -1,8 +1,0 @@
-.data-table tbody tr.is-clickable {
-  cursor: pointer;
-}
-
-.data-table tbody tr.is-clickable:focus-visible {
-  outline: 1px solid var(--color-accent);
-  outline-offset: -1px;
-}

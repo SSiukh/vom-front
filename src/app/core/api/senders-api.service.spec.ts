@@ -36,11 +36,11 @@ describe('SendersApiService', () => {
     req.flush({ fullName: 'Іван Іванов', phone: '+380501234567' });
   });
 
-  it('posts apiKey to /senders', () => {
-    service.create('key-1').subscribe();
+  it('posts apiKey/cityRef/warehouseRef to /senders', () => {
+    service.create({ apiKey: 'key-1', cityRef: 'city-1', warehouseRef: 'wh-1' }).subscribe();
     const req = httpMock.expectOne(baseUrl);
     expect(req.request.method).toBe('POST');
-    expect(req.request.body).toEqual({ apiKey: 'key-1' });
+    expect(req.request.body).toEqual({ apiKey: 'key-1', cityRef: 'city-1', warehouseRef: 'wh-1' });
     req.flush({
       id: '1',
       fullName: 'Іван Іванов',
@@ -67,8 +67,8 @@ describe('SendersApiService', () => {
     req.flush({ id: '1', fullName: 'a', phone: 'b', isActive: false, createdAt: '', updatedAt: '' });
   });
 
-  it('deletes /senders/:id', () => {
-    service.delete('1').subscribe();
+  it('deactivates /senders/:id (DELETE verb, soft-deactivates server-side)', () => {
+    service.deactivate('1').subscribe();
     const req = httpMock.expectOne(`${baseUrl}/1`);
     expect(req.request.method).toBe('DELETE');
     req.flush(null);
@@ -79,5 +79,13 @@ describe('SendersApiService', () => {
     const req = httpMock.expectOne(`${baseUrl}/1/addresses`);
     expect(req.request.method).toBe('GET');
     req.flush([{ npAddressRef: 'ref-1', description: 'м. Київ, вул. Хрещатик, 1' }]);
+  });
+
+  it('patches /senders/:id/warehouse with cityRef/warehouseRef', () => {
+    service.setWarehouse('1', { cityRef: 'city-1', warehouseRef: 'wh-1' }).subscribe();
+    const req = httpMock.expectOne(`${baseUrl}/1/warehouse`);
+    expect(req.request.method).toBe('PATCH');
+    expect(req.request.body).toEqual({ cityRef: 'city-1', warehouseRef: 'wh-1' });
+    req.flush({ id: '1', fullName: 'a', phone: 'b', isActive: true, createdAt: '', updatedAt: '' });
   });
 });

@@ -3,9 +3,11 @@ import { Injectable, inject } from '@angular/core';
 import type { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import type {
+  CreateSenderPayload,
   Sender,
   SenderAddress,
   SenderVerificationResult,
+  SetSenderWarehousePayload,
 } from '../../features/senders/models/sender.model';
 import type { PaginatedResponse } from '../../shared/models/paginated-response.model';
 
@@ -23,8 +25,8 @@ export class SendersApiService {
     return this.http.post<SenderVerificationResult>(`${this.baseUrl}/verify`, { apiKey });
   }
 
-  create(apiKey: string): Observable<Sender> {
-    return this.http.post<Sender>(this.baseUrl, { apiKey });
+  create(payload: CreateSenderPayload): Observable<Sender> {
+    return this.http.post<Sender>(this.baseUrl, payload);
   }
 
   activate(id: string): Observable<Sender> {
@@ -35,11 +37,15 @@ export class SendersApiService {
     return this.http.patch<Sender>(`${this.baseUrl}/${id}/refresh`, {});
   }
 
-  delete(id: string): Observable<void> {
+  deactivate(id: string): Observable<void> {
     return this.http.delete<void>(`${this.baseUrl}/${id}`);
   }
 
   getAddresses(id: string): Observable<SenderAddress[]> {
     return this.http.get<SenderAddress[]>(`${this.baseUrl}/${id}/addresses`);
+  }
+
+  setWarehouse(id: string, payload: SetSenderWarehousePayload): Observable<Sender> {
+    return this.http.patch<Sender>(`${this.baseUrl}/${id}/warehouse`, payload);
   }
 }

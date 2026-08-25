@@ -2,18 +2,28 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Router } from '@angular/router';
-import { LucidePlus, LucideRefreshCw, LucideTrash2, LucideUsers } from '@lucide/angular';
+import { LucideMapPin, LucidePlus, LucideRefreshCw, LucideUserX, LucideUsers } from '@lucide/angular';
 import { SendersApiService } from '../../../../core/api/senders-api.service';
 import { FEATURE_ROUTES } from '../../../../core/routes.constants';
 import { ConfirmDialog } from '../../../../shared/ui/confirm-dialog/confirm-dialog';
 import { Pagination } from '../../../../shared/ui/pagination/pagination';
-import type { Sender } from '../../models/sender.model';
+import type { Sender, SetSenderWarehousePayload } from '../../models/sender.model';
+import { SetWarehouseDialog } from './set-warehouse-dialog/set-warehouse-dialog';
 
 const PAGE_SIZE = 10;
 
 @Component({
   selector: 'app-senders-list',
-  imports: [Pagination, ConfirmDialog, LucidePlus, LucideRefreshCw, LucideTrash2, LucideUsers],
+  imports: [
+    Pagination,
+    ConfirmDialog,
+    SetWarehouseDialog,
+    LucideMapPin,
+    LucidePlus,
+    LucideRefreshCw,
+    LucideUserX,
+    LucideUsers,
+  ],
   templateUrl: './senders-list.html',
   styleUrl: './senders-list.css',
 })
@@ -30,11 +40,19 @@ export class SendersList {
   protected readonly error = signal<string | null>(null);
   protected readonly refreshingId = signal<string | null>(null);
   protected readonly activatingId = signal<string | null>(null);
-  protected readonly pendingDeleteId = signal<string | null>(null);
-  protected readonly deleting = signal(false);
+  protected readonly pendingDeactivateId = signal<string | null>(null);
+  protected readonly deactivating = signal(false);
+  protected readonly pendingWarehouseId = signal<string | null>(null);
+  protected readonly settingWarehouse = signal(false);
+  protected readonly warehouseErrorMessage = signal<string | null>(null);
 
-  protected readonly pendingDeleteSender = computed(() => {
-    const id = this.pendingDeleteId();
+  protected readonly pendingDeactivateSender = computed(() => {
+    const id = this.pendingDeactivateId();
+    return id ? (this.senders().find((sender) => sender.id === id) ?? null) : null;
+  });
+
+  protected readonly pendingWarehouseSender = computed(() => {
+    const id = this.pendingWarehouseId();
     return id ? (this.senders().find((sender) => sender.id === id) ?? null) : null;
   });
 
@@ -93,33 +111,67 @@ export class SendersList {
       });
   }
 
-  requestDelete(sender: Sender): void {
-    this.pendingDeleteId.set(sender.id);
+  requestDeactivate(sender: Sender): void {
+    this.pendingDeactivateId.set(sender.id);
   }
 
-  cancelDelete(): void {
-    this.pendingDeleteId.set(null);
+  cancelDeactivate(): void {
+    this.pendingDeactivateId.set(null);
   }
 
-  confirmDelete(): void {
-    const id = this.pendingDeleteId();
-    if (!id || this.deleting()) {
+  confirmDeactivate(): void {
+    const id = this.pendingDeactivateId();
+    if (!id || this.deactivating()) {
       return;
     }
-    this.deleting.set(true);
+    this.deactivating.set(true);
     this.error.set(null);
     this.sendersApi
-      .delete(id)
+      .deactivate(id)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: () => {
-          this.deleting.set(false);
-          this.pendingDeleteId.set(null);
+          this.deactivating.set(false);
+          this.pendingDeactivateId.set(null);
           this.load();
         },
         error: (error: unknown) => {
-          this.deleting.set(false);
-          this.error.set(this.resolveErrorMessage(error, 'Не вдалося видалити відправника'));
+          this.deactivating.set(false);
+          this.error.set(this.resolveErrorMessage(error, 'Не вдалося деактивувати відправника'));
+        },
+      });
+  }
+
+  requestSetWarehouse(sender: Sender): void {
+    this.warehouseErrorMessage.set(null);
+    this.pendingWarehouseId.set(sender.id);
+  }
+
+  cancelSetWarehouse(): void {
+    this.pendingWarehouseId.set(null);
+  }
+
+  confirmSetWarehouse(payload: SetSenderWarehousePayload): void {
+    const id = this.pendingWarehouseId();
+    if (!id || this.settingWarehouse()) {
+      return;
+    }
+    this.settingWarehouse.set(true);
+    this.warehouseErrorMessage.set(null);
+    this.sendersApi
+      .setWarehouse(id, payload)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (updated) => {
+          this.settingWarehouse.set(false);
+          this.pendingWarehouseId.set(null);
+          this.senders.update((list) => list.map((s) => (s.id === updated.id ? updated : s)));
+        },
+        error: (error: unknown) => {
+          this.settingWarehouse.set(false);
+          this.warehouseErrorMessage.set(
+            this.resolveErrorMessage(error, 'Не вдалося змінити відділення відправки'),
+          );
         },
       });
   }
@@ -152,6 +204,15 @@ export class SendersList {
   private resolveErrorMessage(error: unknown, fallback: string): string {
     if (error instanceof HttpErrorResponse && error.status === 429) {
       return 'Забагато спроб — спробуйте пізніше';
+    }
+    if (error instanceof HttpErrorResponse && error.status === 400) {
+      const message = error.error?.message;
+      if (typeof message === 'string') {
+        return message;
+      }
+      if (Array.isArray(message) && message.length > 0) {
+        return message[0];
+      }
     }
     return fallback;
   }

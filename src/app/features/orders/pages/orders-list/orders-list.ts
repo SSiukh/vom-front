@@ -6,6 +6,7 @@ import { LucideCalendar, LucidePackageOpen, LucidePlus } from '@lucide/angular';
 import { OrdersApiService } from '../../../../core/api/orders-api.service';
 import { DictionariesService } from '../../../../core/dictionaries/dictionaries.service';
 import { FEATURE_ROUTES } from '../../../../core/routes.constants';
+import { DateFieldTriggerDirective } from '../../../../shared/directives/date-field-trigger.directive';
 import { Pagination } from '../../../../shared/ui/pagination/pagination';
 import type { Order } from '../../models/order.model';
 
@@ -15,7 +16,7 @@ type SortOrder = 'newest' | 'oldest';
 
 @Component({
   selector: 'app-orders-list',
-  imports: [DatePipe, Pagination, LucidePlus, LucideCalendar, LucidePackageOpen],
+  imports: [DatePipe, Pagination, DateFieldTriggerDirective, LucidePlus, LucideCalendar, LucidePackageOpen],
   templateUrl: './orders-list.html',
   styleUrl: './orders-list.css',
 })

@@ -15,6 +15,7 @@ export const routes: Routes = [
     component: Shell,
     canActivate: [authGuard, twoFaConfiguredGuard],
     children: [
+      { path: '', redirectTo: FEATURE_ROUTES.orders.slice(1), pathMatch: 'full' },
       {
         path: FEATURE_ROUTES.orders.slice(1),
         loadChildren: () => import('./features/orders/orders.routes').then((m) => m.ORDERS_ROUTES),

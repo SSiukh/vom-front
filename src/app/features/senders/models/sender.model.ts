@@ -16,3 +16,14 @@ export interface SenderAddress {
   npAddressRef: string;
   description: string;
 }
+
+export interface CreateSenderPayload {
+  apiKey: string;
+  cityRef: string;
+  warehouseRef: string;
+}
+
+export interface SetSenderWarehousePayload {
+  cityRef: string;
+  warehouseRef: string;
+}

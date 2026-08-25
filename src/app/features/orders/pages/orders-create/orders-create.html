@@ -139,15 +139,16 @@
             <div class="sender-card__divider"></div>
 
             <div class="field">
-              <label class="field-label" for="senderAddressRef">Адреса відправки</label>
-              <select id="senderAddressRef" class="text-input" formControlName="senderAddressRef">
-                <option value="" disabled>Оберіть адресу</option>
-                @for (address of senderAddresses(); track address.npAddressRef) {
-                  <option [value]="address.npAddressRef">{{ address.description }}</option>
-                }
-              </select>
-              @if (!senderAddressesLoading() && senderAddresses().length === 0) {
-                <span class="field-hint">У відправника немає збережених адрес відправки</span>
+              <span class="field-label">Адреса відправки</span>
+              @if (senderAddressesLoading()) {
+                <div class="loading-text">Завантаження…</div>
+              } @else if (senderAddress(); as address) {
+                <div class="locked-field">
+                  <span>{{ address.description }}</span>
+                  <svg lucideLock [size]="13" [strokeWidth]="1.5"></svg>
+                </div>
+              } @else {
+                <span class="field-hint">У відправника немає збереженої адреси відправки</span>
               }
             </div>
           } @else {

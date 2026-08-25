@@ -171,20 +171,32 @@ describe('OrdersCreate', () => {
     expect(el.querySelector('.empty-state--inline')?.textContent).toContain('Немає активного відправника');
   });
 
-  it('shows sender addresses in the address select once loaded', () => {
+  it('auto-fills the sender address once loaded, with no picker shown', () => {
     create();
     flushActiveSender();
-    flushAddresses([
-      { npAddressRef: 'addr-1', description: 'Склад №1' },
-      { npAddressRef: 'addr-2', description: 'Склад №2' },
-    ]);
+    flushAddresses([{ npAddressRef: 'addr-1', description: 'Склад №1' }]);
 
     const component = fixture.debugElement.componentInstance as OrdersCreate;
     component['step'].set(2);
     fixture.detectChanges();
 
-    const options = Array.from(el.querySelectorAll('#senderAddressRef option')).map((o) => o.textContent?.trim());
-    expect(options).toEqual(['Оберіть адресу', 'Склад №1', 'Склад №2']);
+    expect(component['form'].controls.senderAddressRef.value).toBe('addr-1');
+    expect(el.querySelector('#senderAddressRef')).toBeNull();
+    expect(el.querySelector('.locked-field span')?.textContent?.trim()).toBe('Склад №1');
+  });
+
+  it('shows a hint instead of a locked field when the sender has no address', () => {
+    create();
+    flushActiveSender();
+    flushAddresses([]);
+
+    const component = fixture.debugElement.componentInstance as OrdersCreate;
+    component['step'].set(2);
+    fixture.detectChanges();
+
+    expect(component['form'].controls.senderAddressRef.value).toBe('');
+    expect(el.querySelector('.locked-field')).toBeNull();
+    expect(el.querySelector('.field-hint')?.textContent).toContain('немає збереженої адреси');
   });
 
   it('does not offer the unsupported "Адреса" (door-to-door) delivery method', () => {
@@ -293,7 +305,6 @@ describe('OrdersCreate', () => {
 
     component['step'].set(2);
     fixture.detectChanges();
-    component['form'].controls.senderAddressRef.setValue('addr-1');
     component['form'].controls.recipient.setValue({
       phone: '+380501234567',
       lastName: 'Петренко',
@@ -339,7 +350,6 @@ describe('OrdersCreate', () => {
     component.items.at(0).controls.name.setValue('Кастом');
     component.items.at(0).controls.price.setValue(50);
     component['step'].set(2);
-    component['form'].controls.senderAddressRef.setValue('addr-1');
     component['form'].controls.recipient.setValue({
       phone: '+380501234567',
       lastName: 'Петренко',

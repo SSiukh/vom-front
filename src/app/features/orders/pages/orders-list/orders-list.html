@@ -11,7 +11,7 @@
 <div class="filters-row">
   <div class="date-field">
     <label for="date-from">Від</label>
-    <div class="date-field__input">
+    <div class="date-field__input" appDateFieldTrigger>
       <svg lucideCalendar [size]="13" [strokeWidth]="1.5"></svg>
       <input
         id="date-from"
@@ -23,7 +23,7 @@
   </div>
   <div class="date-field">
     <label for="date-to">До</label>
-    <div class="date-field__input">
+    <div class="date-field__input" appDateFieldTrigger>
       <svg lucideCalendar [size]="13" [strokeWidth]="1.5"></svg>
       <input id="date-to" type="date" [value]="dateTo() ?? ''" (change)="onDateToChange($event)" />
     </div>

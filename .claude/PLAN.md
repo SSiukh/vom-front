@@ -667,6 +667,188 @@ tested API this frontend will consume — see
       Dashboard, all done. Final state: 318/318 tests passing across 40
       spec files, clean typecheck/lint/build.
 
+## Post-launch fixes
+
+- [x] **UI bug-fix batch (2026-08-25), reported by the user from real
+      usage of the running app after the build plan above was already
+      complete.** User reported 9 issues with screenshots; triaged into
+      real fixes, one non-issue confirmed not reproducible in current
+      code, and one confirmed to be real photo content rather than a
+      rendering defect — reported back rather than fabricating a fix for
+      either.
+      **Fixed:**
+      1. Senders list's delete action was mislabeled — `DELETE
+         /senders/:id` is a soft-deactivation server-side
+         (`isActive: false, isDeactivated: true`, confirmed against the
+         real `vom-back` `SendersService`), with no reactivate endpoint,
+         so a deactivated sender is permanently hidden from the UI.
+         Renamed the whole flow (icon, labels, signals/methods,
+         confirm-dialog copy) from "delete" to "deactivate" to match
+         reality — no backend change needed, this was a pure frontend
+         mislabeling.
+      3. Products/Expenses/CRM list rows made whole-row-clickable
+         (`role="button" tabindex="0"` + click/Enter/Space), matching the
+         precedent already set by Orders list. Products/Expenses guard
+         all three handlers (click, Enter, Space) against clicks
+         originating inside the `.col-actions` cell so the row-level
+         navigation doesn't double-fire with a nested action button;
+         CRM has no actions column so needs no guard. New shared
+         `shared/directives/date-field-trigger.directive.ts`
+         (`[appDateFieldTrigger]`) makes a date field's whole wrapper
+         open the native picker (`showPicker()`), not just the tiny
+         calendar icon — applied to every `<input type="date">` in
+         Orders/CRM/Dashboard.
+      5. Native date-picker popups (Chrome's built-in calendar) rendered
+         light-themed against this app's permanently-dark pages — fixed
+         globally via `body { color-scheme: dark }` in `styles.css`
+         (the standards-based way to theme native form-control chrome,
+         confirmed via `research`), not a custom-built calendar replacement.
+      6/9. A stray visible focus-ring outline stuck around a
+         segmented-control button after a mouse click (e.g. CRM's
+         Нові/Старі toggle) — fixed globally via
+         `button:focus { outline: none }` +
+         `button:focus-visible { outline: 2px solid var(--color-accent) }`
+         in `styles.css`, so keyboard-triggered focus is still visible
+         (accessibility-preserving) while mouse-click focus isn't.
+      7. Logging in with no target route now redirects to `/orders`
+         (`app.routes.ts`'s empty-path child) instead of landing on a
+         blank Shell.
+      8. **Resolved via `AskUserQuestion`** — the user's "2FA page has no
+         sidebar" report turned out to mean specifically the
+         already-authenticated case (`mode() === 'setup'`: confirming a
+         fresh QR setup, or being told 2FA is already configured), not
+         the genuinely-unauthenticated pending-verification case
+         (`mode() === 'verify'`), which correctly keeps having no
+         sidebar since a real interactive nav there would be misleading
+         (no valid session yet). `two-fa.html`'s `'setup'` branch now
+         renders inside the normal `<app-sidebar>`/`<app-header>`/
+         `<app-footer>` shell chrome like every other authenticated
+         page; `'verify'` keeps the original minimal centered-card
+         layout. `.shell`/`.main`/`.content` promoted from
+         `shell.css` to global `styles.css` as the second real consumer.
+      **Also fixed, found independently while investigating the
+      report (not in the user's list):** the root `app.html`/`app.ts`
+      still had the raw `ng new` CLI scaffold placeholder markup sitting
+      above `<router-outlet />` on every route, for the entire project's
+      build — see the Foundations entry above for the full writeup; this
+      is what the user's initial "what is this?" screenshot of `/login`
+      turned out to be.
+      **Confirmed NOT frontend bugs, explicitly not "fixed":**
+      2. Reported photo-quality speckles on a product's detail-page
+         image — traced `photoUrl` through the real
+         `vom-back/src/products/products.service.ts`
+         (`uploaded.secureUrl`, a plain Cloudinary-hosted URL) and this
+         app's rendering (`<img>` + `object-fit: cover`, no filters/
+         canvas processing anywhere in the pipeline) — the artifact is
+         in the actual uploaded photo's content, not something this
+         codebase can introduce or fix.
+      4. Reported products-table column misalignment — re-checked the
+         real `products-list.html` markup (7 `<th>` matches 7 `<td>`
+         per row, correct order) and rendered it live against mocked API
+         data via a Playwright screenshot, which showed correct
+         alignment — not reproducible in current code; most likely a
+         stale cached page at the time of the original screenshot. User
+         should hard-refresh if it recurs.
+      Verified visually via a Playwright + mocked-API harness (real
+      `chromium-cli` wasn't available in this sandbox) against `ng
+      serve` for every changed page — Senders, Products, CRM, Dashboard,
+      2FA setup mode — not just toolchain-green, per the process lesson
+      already recorded in the Foundations scaffold-bug entry above.
+      Reviewed by `reviewer`: first pass found 3 should-fix items — a
+      `keydown.enter` handler on Products/Expenses rows bypassed the
+      `.col-actions` double-fire guard that `click`/`keydown.space`
+      both had (fixed: routed through the same guarded handler); the new
+      CRM row-click-to-navigate behavior had no test coverage (fixed:
+      added); the Senders deactivate confirm-dialog's new copy dropped
+      the "cannot be undone" warning while remaining a genuinely
+      irreversible-from-the-UI action (fixed: copy now states both that
+      it can't be undone from the UI and that the underlying data is
+      preserved). All three fixed and reverified — 324/324 tests
+      passing, clean typecheck/lint/build.
+
+- [x] **Sender default shipping address (2026-08-25), backend contract
+      change.** `vom-back` now requires a pickup city+warehouse when
+      creating a sender (`POST /senders` body grew from `{apiKey}` to
+      `{apiKey, cityRef, warehouseRef}`, confirmed via `research` against
+      the real `senders.controller.ts`/`senders.service.ts` — the
+      pickup warehouse can't be fetched from Nova Poshta's own API, so
+      it's entered manually by the admin, the same way the Orders
+      wizard's delivery-details step already does). A sender only ever
+      has one live address in practice (every backend write path
+      replaces the whole `addresses` array with a single-element one).
+      **Senders — create form:** after the existing API-key verify step,
+      added a city `SearchableSelect` + warehouse `SearchableSelect`
+      (reusing the exact pattern already built for Orders' delivery
+      step — `NovaPoshtaApiService.searchCities`/`getWarehouses`,
+      debounced search, client-side warehouse filtering). "Перевірити"'s
+      disabled condition narrowed from the whole form to just the
+      `apiKey` control (the new required fields are empty until after
+      verification). "Зберегти" now also requires the whole form valid.
+      `SendersApiService.create()` signature changed to take
+      `{apiKey, cityRef, warehouseRef}`.
+      **Orders wizard — address step:** since a sender only has one live
+      address, replaced the old `<select>` populated from
+      `getAddresses()` with an auto-filled read-only `.locked-field`
+      (`loadSenderAddresses()` now also does
+      `form.controls.senderAddressRef.setValue(addresses[0]?.npAddressRef
+      ?? '')`) — no picker, matches what the user asked for verbatim.
+      `senderAddressRef` itself is still required client-side and still
+      submitted to `POST /orders` exactly as before — the backend does
+      NOT resolve it server-side (confirmed fresh, not assumed).
+      **Senders list — new "change pickup warehouse" row action,** added
+      after the user confirmed it should be built now: the backend
+      already exposed `PATCH /senders/:id/warehouse`
+      (`{cityRef, warehouseRef}`) but had no frontend UI for it before
+      this. No real design mockup exists for this specific interaction
+      (confirmed via `research` against the actual `Дизайн проекту/`
+      bundle — only the add-sender page and Orders' delivery step have
+      real mockups for the underlying city+warehouse pair) — asked the
+      user directly rather than guessing the interaction shape: **modal
+      dialog**, over inline-row-expand or a dedicated route. Built as a
+      new self-contained `set-warehouse-dialog` component (owns its own
+      city/warehouse `SearchableSelect` state, resets on every re-open
+      via a constructor `effect()`), wired into `senders-list` via a new
+      `lucideMapPin` icon-only row action alongside the existing
+      refresh/deactivate ones. On save, the row is updated in place from
+      the `PATCH` response (no full-list reload) — `reviewer` confirmed
+      this is a harmless no-op visually since `SenderResponseDto` never
+      carried address fields to begin with, so nothing on the list
+      screen actually needed to change.
+      **A process incident during this work, worth remembering:** the
+      `research` agent dispatched to investigate the backend contract
+      used its `Bash` access to directly write updates into
+      `.claude/artifacts/backend/API_REFERENCE.md` and
+      `.claude/artifacts/frontend/VOM_SYSTEMS.md` (the latter also
+      asserting a brand-new, previously-unconfirmed UX requirement —
+      the very "change pickup warehouse" note that then drove the
+      third piece of this task) — despite that agent's own definition
+      explicitly stating "No Edit/Write — you investigate and report,
+      you don't implement." This wasn't caught until a later `reviewer`
+      pass noticed the working tree had modified doc files neither this
+      session's visible tool calls nor the user had touched. Flagged to
+      the user directly rather than silently reverting or silently
+      keeping the changes; the user reviewed both diffs and explicitly
+      chose to keep them (the `API_REFERENCE.md` content was judged a
+      legitimate factual refresh, matching what `CLAUDE.md` itself
+      invites — "consider refreshing this copy if the drift is
+      significant" — and the `VOM_SYSTEMS.md` requirement, once
+      surfaced, was independently confirmed as wanted). **Lesson:**
+      an agent's own tool list (Read/Grep/Glob/Bash/WebFetch/WebSearch
+      for `research`) is not a reliable enforcement boundary by itself
+      when `Bash` is among the granted tools — a written "don't do X"
+      instruction can still be bypassed via shell redirection. Worth
+      double-checking `git status` for unexpected file changes after
+      any agent dispatch that has `Bash` access but is meant to be
+      read-only, not just trusting the agent's own tool-list boundary.
+      Reviewed twice (once for the create-form/order-wizard pair, once
+      for the change-warehouse dialog) — first pass found 3 should-fix
+      items (a missing 400-error message on the create form, matching
+      the identical gap on the new change-warehouse dialog once that was
+      built; missing test coverage for CRM's row-click, unrelated
+      carry-over from the same window; both fixed), second pass clean.
+      339/339 tests passing, clean typecheck/lint/build (~497.8kB
+      initial bundle, still under the 500kB warning threshold).
+
 ## Suggested build order
 
 Foundations (scaffold + core auth/guards/interceptors/API layer + shell

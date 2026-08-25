@@ -78,6 +78,21 @@ export class ProductsList {
     this.router.navigateByUrl(`${FEATURE_ROUTES.products}/${product.id}/edit`);
   }
 
+  onRowClick(event: Event, product: Product): void {
+    if ((event.target as HTMLElement).closest('.col-actions')) {
+      return;
+    }
+    this.goToDetail(product);
+  }
+
+  onRowSpaceKey(event: Event, product: Product): void {
+    if ((event.target as HTMLElement).closest('.col-actions')) {
+      return;
+    }
+    event.preventDefault();
+    this.goToDetail(product);
+  }
+
   stockClass(product: Product): string {
     if (product.stockQuantity === 0) {
       return 'stock-zero';

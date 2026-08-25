@@ -1,116 +1,124 @@
 @if (mode(); as currentMode) {
-  <div class="two-fa-page">
-    <header class="page-header">
-      <span class="wordmark">VOM</span>
-      @if (authService.isAuthenticated()) {
-        <div class="account">
-          <span class="login-name">{{ authService.login() }}</span>
-          <button type="button" class="logout" (click)="authService.logout()" aria-label="Вийти">
-            <svg lucideLogOut [size]="16" [strokeWidth]="1.5"></svg>
-          </button>
-        </div>
-      }
-    </header>
+  @if (currentMode === 'setup') {
+    <div class="shell">
+      <app-sidebar />
+      <div class="main">
+        <app-header />
+        <main class="content">
+          <div class="two-fa-card blueprint-card">
+            <i class="corner corner--tl"></i>
+            <i class="corner corner--tr"></i>
+            <i class="corner corner--bl"></i>
+            <i class="corner corner--br"></i>
 
-    <div class="page-content">
-      <div class="two-fa-card blueprint-card">
-        <i class="corner corner--tl"></i>
-        <i class="corner corner--tr"></i>
-        <i class="corner corner--bl"></i>
-        <i class="corner corner--br"></i>
-
-        @if (currentMode === 'setup') {
-          @if (recoveryCodes(); as codes) {
-            <div class="card-header">
-              <h1 class="title">2FA налаштовано</h1>
-            </div>
-            <p class="hint">
-              Збережіть ці резервні коди — вони показуються лише один раз і знадобляться, якщо ви
-              втратите доступ до застосунку-автентифікатора.
-            </p>
-            <div class="recovery-section">
-              <div class="recovery-header">
-                <span class="field-label">Коди відновлення</span>
-                <button type="button" class="btn-ghost" (click)="copyRecoveryCodes()">
-                  <svg lucideCopy [size]="14" [strokeWidth]="1.5"></svg>
-                  Скопіювати
-                </button>
+            @if (recoveryCodes(); as codes) {
+              <div class="card-header">
+                <h1 class="title">2FA налаштовано</h1>
               </div>
-              <div class="recovery-grid">
-                @for (recoveryCode of codes; track recoveryCode) {
-                  <span class="recovery-code">{{ recoveryCode }}</span>
-                }
-              </div>
-            </div>
-            <button type="button" class="btn-primary" (click)="continueToApp()">Продовжити</button>
-          } @else if (alreadyConfigured()) {
-            <div class="card-header">
-              <h1 class="title">Двофакторна авторизація</h1>
-              <span class="status-badge status-badge--success">Налаштовано</span>
-            </div>
-            <p class="hint">Двофакторна автентифікація вже налаштована для цього облікового запису.</p>
-            <button type="button" class="btn-primary" (click)="continueToApp()">Продовжити</button>
-          } @else {
-            <div class="card-header">
-              <h1 class="title">Двофакторна авторизація</h1>
-              <span class="status-badge status-badge--warning">Не налаштовано</span>
-            </div>
-            <p class="hint">
-              Відскануйте QR-код застосунком-автентифікатором (наприклад, Google Authenticator).
-            </p>
-            <div class="setup-row">
-              <div class="qr-placeholder">
-                @if (qrCodeDataUrl(); as qr) {
-                  <img [src]="qr" alt="QR-код для підключення 2FA" />
-                }
-              </div>
-              <div class="setup-fields">
-                <div class="field">
-                  <span class="field-label">Секретний ключ</span>
-                  <div class="secret-row">
-                    <span class="secret-value">{{ secret() }}</span>
-                    <button
-                      type="button"
-                      class="icon-button"
-                      (click)="copySecret()"
-                      aria-label="Скопіювати секретний ключ"
-                    >
-                      <svg lucideCopy [size]="14" [strokeWidth]="1.5"></svg>
-                    </button>
-                  </div>
+              <p class="hint">
+                Збережіть ці резервні коди — вони показуються лише один раз і знадобляться, якщо ви
+                втратите доступ до застосунку-автентифікатора.
+              </p>
+              <div class="recovery-section">
+                <div class="recovery-header">
+                  <span class="field-label">Коди відновлення</span>
+                  <button type="button" class="btn-ghost" (click)="copyRecoveryCodes()">
+                    <svg lucideCopy [size]="14" [strokeWidth]="1.5"></svg>
+                    Скопіювати
+                  </button>
                 </div>
-                <fieldset class="field code-fieldset">
-                  <legend class="field-label">Код підтвердження</legend>
-                  <div class="code-cells">
-                    @for (i of [0, 1, 2, 3, 4, 5]; track i) {
-                      <input
-                        #digitCell
-                        class="code-cell"
-                        type="text"
-                        inputmode="numeric"
-                        maxlength="1"
-                        [value]="digits()[i]"
-                        (input)="onDigitInput($event, i)"
-                        (keydown)="onDigitKeydown($event, i)"
-                      />
-                    }
-                  </div>
-                </fieldset>
-                @if (errorMessage()) {
-                  <div class="error-text">{{ errorMessage() }}</div>
-                }
-                <button
-                  type="button"
-                  class="btn-primary confirm-button"
-                  [disabled]="!isCodeComplete() || submitting() || !secret()"
-                  (click)="confirmSetup()"
-                >
-                  Підтвердити
-                </button>
+                <div class="recovery-grid">
+                  @for (recoveryCode of codes; track recoveryCode) {
+                    <span class="recovery-code">{{ recoveryCode }}</span>
+                  }
+                </div>
               </div>
-            </div>
-          }
-        } @else {
+              <button type="button" class="btn-primary" (click)="continueToApp()">Продовжити</button>
+            } @else if (alreadyConfigured()) {
+              <div class="card-header">
+                <h1 class="title">Двофакторна авторизація</h1>
+                <span class="status-badge status-badge--success">Налаштовано</span>
+              </div>
+              <p class="hint">Двофакторна автентифікація вже налаштована для цього облікового запису.</p>
+              <button type="button" class="btn-primary" (click)="continueToApp()">Продовжити</button>
+            } @else {
+              <div class="card-header">
+                <h1 class="title">Двофакторна авторизація</h1>
+                <span class="status-badge status-badge--warning">Не налаштовано</span>
+              </div>
+              <p class="hint">
+                Відскануйте QR-код застосунком-автентифікатором (наприклад, Google Authenticator).
+              </p>
+              <div class="setup-row">
+                <div class="qr-placeholder">
+                  @if (qrCodeDataUrl(); as qr) {
+                    <img [src]="qr" alt="QR-код для підключення 2FA" />
+                  }
+                </div>
+                <div class="setup-fields">
+                  <div class="field">
+                    <span class="field-label">Секретний ключ</span>
+                    <div class="secret-row">
+                      <span class="secret-value">{{ secret() }}</span>
+                      <button
+                        type="button"
+                        class="icon-button"
+                        (click)="copySecret()"
+                        aria-label="Скопіювати секретний ключ"
+                      >
+                        <svg lucideCopy [size]="14" [strokeWidth]="1.5"></svg>
+                      </button>
+                    </div>
+                  </div>
+                  <fieldset class="field code-fieldset">
+                    <legend class="field-label">Код підтвердження</legend>
+                    <div class="code-cells">
+                      @for (i of [0, 1, 2, 3, 4, 5]; track i) {
+                        <input
+                          #digitCell
+                          class="code-cell"
+                          type="text"
+                          inputmode="numeric"
+                          maxlength="1"
+                          [value]="digits()[i]"
+                          (input)="onDigitInput($event, i)"
+                          (keydown)="onDigitKeydown($event, i)"
+                        />
+                      }
+                    </div>
+                  </fieldset>
+                  @if (errorMessage()) {
+                    <div class="error-text">{{ errorMessage() }}</div>
+                  }
+                  <button
+                    type="button"
+                    class="btn-primary confirm-button"
+                    [disabled]="!isCodeComplete() || submitting() || !secret()"
+                    (click)="confirmSetup()"
+                  >
+                    Підтвердити
+                  </button>
+                </div>
+              </div>
+            }
+          </div>
+        </main>
+        <app-footer />
+      </div>
+    </div>
+  } @else {
+    <div class="two-fa-page">
+      <header class="page-header">
+        <span class="wordmark">VOM</span>
+      </header>
+
+      <div class="page-content">
+        <div class="two-fa-card two-fa-card--compact blueprint-card">
+          <i class="corner corner--tl"></i>
+          <i class="corner corner--tr"></i>
+          <i class="corner corner--bl"></i>
+          <i class="corner corner--br"></i>
+
           <div class="card-header">
             <h1 class="title">Підтвердження входу</h1>
           </div>
@@ -143,10 +151,10 @@
           >
             Підтвердити
           </button>
-        }
+        </div>
       </div>
-    </div>
 
-    <app-footer />
-  </div>
+      <app-footer />
+    </div>
+  }
 }

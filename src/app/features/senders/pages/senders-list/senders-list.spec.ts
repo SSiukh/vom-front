@@ -1,9 +1,11 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { By } from '@angular/platform-browser';
 import { provideRouter, Router } from '@angular/router';
 import { environment } from '../../../../../environments/environment';
 import { SendersList } from './senders-list';
+import { SetWarehouseDialog } from './set-warehouse-dialog/set-warehouse-dialog';
 
 describe('SendersList', () => {
   let fixture: ComponentFixture<SendersList>;
@@ -130,7 +132,7 @@ describe('SendersList', () => {
     flushList([sender({ isActive: true }), sender({ id: '2', fullName: 'Петро Петров' })], 2);
   });
 
-  it('clamps back to the last valid page when a delete empties the current page', () => {
+  it('clamps back to the last valid page when a deactivate empties the current page', () => {
     create();
     flushList(
       Array.from({ length: 10 }, (_, i) => sender({ id: String(i) })),
@@ -167,7 +169,7 @@ describe('SendersList', () => {
     httpMock.expectNone(`${baseUrl}?page=1&pageSize=10`);
   });
 
-  it('opens the confirm dialog with the sender name, and deletes on confirm', () => {
+  it('opens the confirm dialog with the sender name, and deactivates on confirm', () => {
     create();
     flushList([sender()], 1);
 
@@ -183,7 +185,7 @@ describe('SendersList', () => {
     expect(el.querySelector('.dialog-overlay')).toBeNull();
   });
 
-  it('closes the confirm dialog without deleting on cancel', () => {
+  it('closes the confirm dialog without deactivating on cancel', () => {
     create();
     flushList([sender()], 1);
 
@@ -194,6 +196,62 @@ describe('SendersList', () => {
 
     expect(el.querySelector('.dialog-overlay')).toBeNull();
     httpMock.expectNone(`${baseUrl}/1`);
+  });
+
+  it('opens the set-warehouse dialog with the sender name, and updates the row in place on save', () => {
+    create();
+    flushList([sender()], 1);
+
+    (el.querySelector('.icon-action:not(.icon-action--danger)') as HTMLButtonElement).click();
+    fixture.detectChanges();
+
+    expect(el.querySelector('app-set-warehouse-dialog .dialog-message')?.textContent).toContain('Іван Іванов');
+
+    const dialog = fixture.debugElement.query(By.directive(SetWarehouseDialog)).componentInstance as SetWarehouseDialog;
+    dialog.saved.emit({ cityRef: 'city-1', warehouseRef: 'wh-1' });
+
+    const req = httpMock.expectOne(`${baseUrl}/1/warehouse`);
+    expect(req.request.method).toBe('PATCH');
+    expect(req.request.body).toEqual({ cityRef: 'city-1', warehouseRef: 'wh-1' });
+    req.flush(sender({ fullName: 'Іван Іванов' }));
+    fixture.detectChanges();
+
+    expect(el.querySelector('app-set-warehouse-dialog .dialog-overlay')).toBeNull();
+    httpMock.expectNone(`${baseUrl}?page=1&pageSize=10`);
+  });
+
+  it('closes the set-warehouse dialog without a request on cancel', () => {
+    create();
+    flushList([sender()], 1);
+
+    (el.querySelector('.icon-action:not(.icon-action--danger)') as HTMLButtonElement).click();
+    fixture.detectChanges();
+
+    const dialog = fixture.debugElement.query(By.directive(SetWarehouseDialog)).componentInstance as SetWarehouseDialog;
+    dialog.cancelled.emit();
+    fixture.detectChanges();
+
+    expect(el.querySelector('app-set-warehouse-dialog .dialog-overlay')).toBeNull();
+    httpMock.expectNone(`${baseUrl}/1/warehouse`);
+  });
+
+  it('shows an error message when changing the warehouse fails', () => {
+    create();
+    flushList([sender()], 1);
+
+    (el.querySelector('.icon-action:not(.icon-action--danger)') as HTMLButtonElement).click();
+    fixture.detectChanges();
+
+    const dialog = fixture.debugElement.query(By.directive(SetWarehouseDialog)).componentInstance as SetWarehouseDialog;
+    dialog.saved.emit({ cityRef: 'city-1', warehouseRef: 'wh-1' });
+    httpMock
+      .expectOne(`${baseUrl}/1/warehouse`)
+      .flush({ message: 'Unknown warehouse for the given city' }, { status: 400, statusText: 'Bad Request' });
+    fixture.detectChanges();
+
+    expect(el.querySelector('app-set-warehouse-dialog .error-text')?.textContent?.trim()).toBe(
+      'Unknown warehouse for the given city',
+    );
   });
 
   it('requests the next page from the pagination component', () => {
