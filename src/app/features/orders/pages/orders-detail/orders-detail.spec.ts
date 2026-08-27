@@ -54,6 +54,8 @@ describe('OrdersDetail', () => {
     npWaybillNumber: '20450182773641',
     npWaybillRef: 'ref-1',
     shipmentStatusId: null,
+    isPacked: false,
+    isOutOfStock: false,
     createdAt: '2026-08-22T09:14:00.000Z',
     updatedAt: '2026-08-22T09:14:00.000Z',
     ...overrides,
@@ -162,6 +164,94 @@ describe('OrdersDetail', () => {
     flushSenderLookups();
 
     expect(el.querySelector('.order-status-badge')).toBeNull();
+  });
+
+  it('renders the isPacked/isOutOfStock checkboxes reflecting the loaded order', () => {
+    create();
+    flushOrder({ isPacked: true, isOutOfStock: false });
+    flushSenderLookups();
+
+    const checkboxes = Array.from(el.querySelectorAll('.status-flags input[type="checkbox"]')) as HTMLInputElement[];
+    expect(checkboxes[0].checked).toBe(true);
+    expect(checkboxes[1].checked).toBe(false);
+  });
+
+  it('toggles isPacked via PATCH /orders/:id/status-flags and reflects the server response', () => {
+    create();
+    flushOrder({ isPacked: false });
+    flushSenderLookups();
+
+    const [packedCheckbox] = Array.from(el.querySelectorAll('.status-flags input[type="checkbox"]')) as HTMLInputElement[];
+    packedCheckbox.click();
+
+    const req = httpMock.expectOne(`${ordersUrl}/9/status-flags`);
+    expect(req.request.method).toBe('PATCH');
+    expect(req.request.body).toEqual({ isPacked: true });
+    req.flush(order({ isPacked: true }));
+    fixture.detectChanges();
+
+    expect((el.querySelectorAll('.status-flags input[type="checkbox"]')[0] as HTMLInputElement).checked).toBe(true);
+  });
+
+  it('toggles isOutOfStock independently from isPacked', () => {
+    create();
+    flushOrder({ isPacked: true, isOutOfStock: false });
+    flushSenderLookups();
+
+    const [, outOfStockCheckbox] = Array.from(el.querySelectorAll('.status-flags input[type="checkbox"]')) as HTMLInputElement[];
+    outOfStockCheckbox.click();
+
+    const req = httpMock.expectOne(`${ordersUrl}/9/status-flags`);
+    expect(req.request.body).toEqual({ isOutOfStock: true });
+    req.flush(order({ isPacked: true, isOutOfStock: true }));
+  });
+
+  it('shows an error and does not flip the checkbox state when the status-flags update fails', () => {
+    create();
+    flushOrder({ isPacked: false });
+    flushSenderLookups();
+
+    const [packedCheckbox] = Array.from(el.querySelectorAll('.status-flags input[type="checkbox"]')) as HTMLInputElement[];
+    packedCheckbox.click();
+    httpMock.expectOne(`${ordersUrl}/9/status-flags`).flush('boom', { status: 500, statusText: 'Server Error' });
+    fixture.detectChanges();
+
+    expect(el.querySelector('.status-flags')?.parentElement?.querySelector('.error-text')?.textContent?.trim()).toBe(
+      'Не вдалося оновити статус замовлення',
+    );
+    expect((el.querySelectorAll('.status-flags input[type="checkbox"]')[0] as HTMLInputElement).checked).toBe(false);
+  });
+
+  it('shows a rate-limit message when a status-flags update is throttled (429)', () => {
+    create();
+    flushOrder({ isPacked: false });
+    flushSenderLookups();
+
+    const [packedCheckbox] = Array.from(el.querySelectorAll('.status-flags input[type="checkbox"]')) as HTMLInputElement[];
+    packedCheckbox.click();
+    httpMock
+      .expectOne(`${ordersUrl}/9/status-flags`)
+      .flush('err', { status: 429, statusText: 'Too Many Requests' });
+    fixture.detectChanges();
+
+    expect(el.querySelector('.status-flags')?.parentElement?.querySelector('.error-text')?.textContent?.trim()).toBe(
+      'Забагато спроб — спробуйте пізніше',
+    );
+  });
+
+  it('ignores a second toggle click while one is already in flight', () => {
+    create();
+    flushOrder({ isPacked: false, isOutOfStock: false });
+    flushSenderLookups();
+
+    const [packedCheckbox, outOfStockCheckbox] = Array.from(
+      el.querySelectorAll('.status-flags input[type="checkbox"]'),
+    ) as HTMLInputElement[];
+    packedCheckbox.click();
+    outOfStockCheckbox.click();
+
+    httpMock.expectOne(`${ordersUrl}/9/status-flags`).flush(order({ isPacked: true }));
+    httpMock.expectNone(`${ordersUrl}/9/status-flags`);
   });
 
   it('shows an error message when loading the order fails', () => {

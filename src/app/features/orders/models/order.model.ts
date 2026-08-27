@@ -40,6 +40,8 @@ export interface Order {
   npWaybillNumber: string | null;
   npWaybillRef: string | null;
   shipmentStatusId: string | null;
+  isPacked: boolean;
+  isOutOfStock: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -82,4 +84,9 @@ export interface UpdateOrderPayload {
   paymentTypeId?: string;
   partialAmount?: number;
   items?: CreateOrderItemPayload[];
+}
+
+export interface SetOrderStatusFlagsPayload {
+  isPacked?: boolean;
+  isOutOfStock?: boolean;
 }

@@ -2,7 +2,12 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import type { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
-import type { CreateOrderPayload, Order, UpdateOrderPayload } from '../../features/orders/models/order.model';
+import type {
+  CreateOrderPayload,
+  Order,
+  SetOrderStatusFlagsPayload,
+  UpdateOrderPayload,
+} from '../../features/orders/models/order.model';
 import type { PaginatedResponse } from '../../shared/models/paginated-response.model';
 
 @Injectable({ providedIn: 'root' })
@@ -40,5 +45,9 @@ export class OrdersApiService {
 
   delete(id: string): Observable<void> {
     return this.http.delete<void>(`${this.baseUrl}/${id}`);
+  }
+
+  setStatusFlags(id: string, payload: SetOrderStatusFlagsPayload): Observable<Order> {
+    return this.http.patch<Order>(`${this.baseUrl}/${id}/status-flags`, payload);
   }
 }

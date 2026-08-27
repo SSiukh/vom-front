@@ -10,7 +10,7 @@ describe('OrdersApiService', () => {
   let httpMock: HttpTestingController;
   const baseUrl = `${environment.apiUrl}/orders`;
 
-  const order = () => ({
+  const order = (overrides: Partial<Record<string, unknown>> = {}) => ({
     id: '1',
     shipmentTypeId: 'st1',
     paymentTypeId: 'pt1',
@@ -32,8 +32,11 @@ describe('OrdersApiService', () => {
     npWaybillNumber: null,
     npWaybillRef: null,
     shipmentStatusId: null,
+    isPacked: false,
+    isOutOfStock: false,
     createdAt: '',
     updatedAt: '',
+    ...overrides,
   });
 
   const createPayload = (): CreateOrderPayload => ({
@@ -102,5 +105,13 @@ describe('OrdersApiService', () => {
     const req = httpMock.expectOne(`${baseUrl}/1`);
     expect(req.request.method).toBe('DELETE');
     req.flush(null);
+  });
+
+  it('patches /orders/:id/status-flags with only the provided flags', () => {
+    service.setStatusFlags('1', { isPacked: true }).subscribe();
+    const req = httpMock.expectOne(`${baseUrl}/1/status-flags`);
+    expect(req.request.method).toBe('PATCH');
+    expect(req.request.body).toEqual({ isPacked: true });
+    req.flush(order({ isPacked: true }));
   });
 });

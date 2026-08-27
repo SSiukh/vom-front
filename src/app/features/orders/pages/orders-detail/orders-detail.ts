@@ -12,7 +12,9 @@ import { FEATURE_ROUTES } from '../../../../core/routes.constants';
 import type { Sender } from '../../../senders/models/sender.model';
 import { ConfirmDialog } from '../../../../shared/ui/confirm-dialog/confirm-dialog';
 import { shipmentStatusBadgeClass } from '../../../../shared/utils/shipment-status-badge.util';
-import type { Order } from '../../models/order.model';
+import type { Order, SetOrderStatusFlagsPayload } from '../../models/order.model';
+
+type StatusFlag = keyof SetOrderStatusFlagsPayload;
 
 const SENDERS_FETCH_PAGE_SIZE = 100;
 
@@ -37,6 +39,8 @@ export class OrdersDetail {
   protected readonly error = signal<string | null>(null);
   protected readonly confirmingDelete = signal(false);
   protected readonly deleting = signal(false);
+  protected readonly updatingFlag = signal<StatusFlag | null>(null);
+  protected readonly flagsError = signal<string | null>(null);
 
   protected readonly senderInfo = signal<Sender | null>(null);
   protected readonly senderAddressLabel = signal<string | null>(null);
@@ -103,6 +107,40 @@ export class OrdersDetail {
     const id = this.order()?.shipmentStatusId;
     const code = this.dictionaries.shipmentStatuses().find((s) => s.id === id)?.code;
     return shipmentStatusBadgeClass(code);
+  }
+
+  toggleFlag(flag: StatusFlag, event: Event): void {
+    const order = this.order();
+    const checkbox = event.target as HTMLInputElement;
+    if (!order || this.updatingFlag() !== null) {
+      checkbox.checked = order?.[flag] ?? checkbox.checked;
+      return;
+    }
+    const previousValue = order[flag];
+    this.updatingFlag.set(flag);
+    this.flagsError.set(null);
+    this.ordersApi
+      .setStatusFlags(this.orderId, { [flag]: !previousValue })
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (updated) => {
+          this.updatingFlag.set(null);
+          this.order.set(updated);
+          checkbox.checked = updated[flag];
+        },
+        error: (error: unknown) => {
+          this.updatingFlag.set(null);
+          this.flagsError.set(this.resolveFlagsErrorMessage(error));
+          checkbox.checked = previousValue;
+        },
+      });
+  }
+
+  private resolveFlagsErrorMessage(error: unknown): string {
+    if (error instanceof HttpErrorResponse && error.status === 429) {
+      return 'Забагато спроб — спробуйте пізніше';
+    }
+    return 'Не вдалося оновити статус замовлення';
   }
 
   deleteConfirmMessage(): string {

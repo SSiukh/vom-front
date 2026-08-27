@@ -23,3 +23,8 @@
   margin-left: 10px;
   vertical-align: middle;
 }
+
+.status-flags {
+  display: flex;
+  gap: 20px;
+}

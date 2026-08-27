@@ -92,6 +92,7 @@
           <th>Товари</th>
           <th>Оплата</th>
           <th class="col-num">Вартість</th>
+          <th class="col-flags">Мітки</th>
         </tr>
       </thead>
       <tbody>
@@ -115,6 +116,18 @@
             <td class="items-summary">{{ itemsSummary(order) }}</td>
             <td>{{ paymentTypeLabelById().get(order.paymentTypeId) ?? '—' }}</td>
             <td class="col-num">{{ order.totalAmount }} ₴</td>
+            <td class="col-flags">
+              @if (order.isPacked) {
+                <span class="status-badge status-badge--success" title="Спаковано" aria-label="Спаковано">
+                  <svg lucidePackageCheck [size]="12" [strokeWidth]="1.5"></svg>
+                </span>
+              }
+              @if (order.isOutOfStock) {
+                <span class="status-badge status-badge--danger" title="Відсутній товар" aria-label="Відсутній товар">
+                  <svg lucideCircleAlert [size]="12" [strokeWidth]="1.5"></svg>
+                </span>
+              }
+            </td>
           </tr>
         }
       </tbody>

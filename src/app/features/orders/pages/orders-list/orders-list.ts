@@ -2,7 +2,7 @@ import { DatePipe } from '@angular/common';
 import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Router } from '@angular/router';
-import { LucideCalendar, LucidePackageOpen, LucidePlus } from '@lucide/angular';
+import { LucideCalendar, LucideCircleAlert, LucidePackageCheck, LucidePackageOpen, LucidePlus } from '@lucide/angular';
 import { OrdersApiService } from '../../../../core/api/orders-api.service';
 import { DictionariesService } from '../../../../core/dictionaries/dictionaries.service';
 import { FEATURE_ROUTES } from '../../../../core/routes.constants';
@@ -16,7 +16,16 @@ type SortOrder = 'newest' | 'oldest';
 
 @Component({
   selector: 'app-orders-list',
-  imports: [DatePipe, Pagination, DateFieldTriggerDirective, LucidePlus, LucideCalendar, LucidePackageOpen],
+  imports: [
+    DatePipe,
+    Pagination,
+    DateFieldTriggerDirective,
+    LucidePlus,
+    LucideCalendar,
+    LucidePackageOpen,
+    LucidePackageCheck,
+    LucideCircleAlert,
+  ],
   templateUrl: './orders-list.html',
   styleUrl: './orders-list.css',
 })

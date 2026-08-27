@@ -210,6 +210,7 @@ document, with Nova Poshta waybill creation/update/deletion kept in sync.
 | `GET /orders/:id` | default | — | `OrderResponseDto` |
 | `PATCH /orders/:id` | 20/min | `UpdateOrderDto` (all fields optional) | `OrderResponseDto` |
 | `PATCH /orders/:id/sync-status` | 20/min | — | `OrderResponseDto` (manual Nova Poshta status pull, no polling) |
+| `PATCH /orders/:id/status-flags` | default | `SetOrderStatusFlagsDto {isPacked?, isOutOfStock?}` | `OrderResponseDto` |
 | `DELETE /orders/:id` | 20/min | — | `204` |
 
 ```ts
@@ -242,6 +243,17 @@ never trust a client value), the embedded `items[]` (each with a captured
 don't change retroactively if the underlying product changes later),
 `recipient`, `deliveryDetails`, and `npWaybillNumber`/`npWaybillRef`/
 `shipmentStatusId` (all nullable until the Nova Poshta call completes).
+
+**`isPacked`/`isOutOfStock` are a separate, manual status axis — not
+Nova Poshta tracking.** `shipmentStatusId` is auto-synced from real NP
+tracking events (Доставлено/Відправлено/Отримано/Відмовлено) via
+`PATCH /orders/:id/sync-status`; `isPacked` ("Спаковано") and
+`isOutOfStock` ("Відсутній товар") are plain booleans (default `false`)
+with no dictionary/enum behind them and no connection to Nova Poshta —
+the operator sets them directly via `PATCH /orders/:id/status-flags`
+(either/both, independently) once fulfillment work on the order actually
+starts, sometime after creation. The frontend owns the label/UI for these;
+the backend just stores and returns the two flags.
 
 **Payment types and cash-on-delivery (накладений платіж):** three
 `payment_types` codes drive what Nova Poshta is told to collect on
@@ -362,6 +374,16 @@ these back autocomplete-style UI, not one-shot verification).
 | `GET /nova-poshta/warehouses` | `cityRef` | `AddressOptionDto[]` |
 | `GET /nova-poshta/streets` | `cityRef`, `query?` | `AddressOptionDto[]` |
 | `GET /nova-poshta/postomats` | `cityRef` | `AddressOptionDto[]` |
+
+**`/cities`'s `description` includes область/район, not just the bare
+locality name** — e.g. `"м. Львів, Львівська обл."` or `"с. Брюховичі,
+Перемишлянський р-н, Львівська обл."` (backed by Nova Poshta's
+`Address.searchSettlements`, not the older `Address.getCities`, which only
+returns the locality name and is ambiguous when multiple same-named
+localities exist in different regions). `ref` is the real deliverable-city
+ref (NP's `DeliveryCity` field) — the same ref accepted by `/warehouses`,
+`/streets`, `/postomats`, and `Order`'s `deliveryDetails.cityRef`/sender's
+`cityRef`, not the settlement's own internal ref.
 
 These resolve against the **currently active** sender's Nova Poshta API key
 server-side — the frontend never sends or sees an API key here.

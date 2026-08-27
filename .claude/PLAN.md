@@ -849,6 +849,58 @@ tested API this frontend will consume — see
       339/339 tests passing, clean typecheck/lint/build (~497.8kB
       initial bundle, still under the 500kB warning threshold).
 
+- [x] **Order status flags — `isPacked`/`isOutOfStock` (2026-08-27),
+      backend contract addition.** `vom-back` added two independent,
+      manually-set booleans on `OrderResponseDto` (default `false`, no
+      dictionary/enum, entirely separate from the Nova-Poshta-synced
+      `shipmentStatusId`), plus `PATCH /orders/:id/status-flags`
+      (`{isPacked?, isOutOfStock?}`, both optional/independent, omitted
+      fields left unchanged server-side). Added the two fields to the
+      `Order` model, `SetOrderStatusFlagsPayload` type, and
+      `OrdersApiService.setStatusFlags()`.
+      **Placement/interaction — confirmed with the user via
+      `AskUserQuestion` rather than guessed,** since neither
+      `VOM_SYSTEMS.md` nor the real design bundle describes this (a
+      genuinely new, backend-driven UI surface): **both** the Orders
+      list and detail page, with a deliberate split — the list (already
+      a dense 7-column table with no Nova-Poshta-status column at all)
+      gets a new "Мітки" column showing small read-only colored badges
+      (`lucidePackageCheck`/`lucideCircleAlert`, only rendered when
+      true) purely for at-a-glance scanning, no interaction; the detail
+      page (which has room) gets the actual toggles, as plain
+      `<input type="checkbox">`s reusing the exact `.checkbox-label`/
+      `.checkbox-input` classes already established for `OrderItemCard`'s
+      `isPromo` checkbox — chosen over toggle-chip styling per the
+      user's explicit choice.
+      **A real native-checkbox/zoneless-signals interaction bug caught
+      before it shipped:** clicking a checkbox flips its own `checked`
+      DOM property immediately as a browser default, independent of
+      Angular's `[checked]` one-way binding and ahead of any scheduled
+      change-detection pass — so a rejected click (blocked by the
+      in-flight guard, or a failed `PATCH`) would otherwise leave the
+      box visually toggled even though nothing was actually sent/saved,
+      violating this task's own explicit requirement to reflect only
+      what the server actually persisted. Fixed by reading the DOM
+      checkbox directly off the change event and explicitly setting
+      `.checked` back to the correct value in both the guard-rejection
+      branch and the error branch (the success branch also does this,
+      more defensively than strictly necessary, alongside the
+      `[checked]` template binding). `reviewer` independently re-derived
+      and confirmed this reasoning as sound, not overengineered.
+      Reviewed once — one should-fix (the new `toggleFlag` error path
+      didn't special-case `429`, unlike every other order-mutating call
+      in this same feature — fixed to match the established
+      `resolveDeleteErrorMessage`/`resolveErrorMessage` convention) and
+      one accepted-as-is nit (both checkboxes disable while either flag
+      update is in flight, even though the backend treats the two flags
+      as independent — deliberately left as the simpler, safer guard
+      rather than opening a narrower concurrent-request race for a
+      marginal UX gain). 350/350 tests passing, clean typecheck/lint/
+      build (504.66kB initial bundle — newly over the 500kB *warning*
+      threshold for the first time this session from ordinary feature
+      growth, confirmed by `reviewer` as not an eager-import regression;
+      still well under the 1MB error threshold).
+
 ## Suggested build order
 
 Foundations (scaffold + core auth/guards/interceptors/API layer + shell

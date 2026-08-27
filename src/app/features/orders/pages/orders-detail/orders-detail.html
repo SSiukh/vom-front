@@ -59,6 +59,35 @@
       </div>
 
       <div class="info-panel">
+        <span class="field-label">Виконання</span>
+        @if (flagsError()) {
+          <div class="error-text">{{ flagsError() }}</div>
+        }
+        <div class="status-flags">
+          <label class="checkbox-label">
+            <input
+              type="checkbox"
+              class="checkbox-input"
+              [checked]="order.isPacked"
+              [disabled]="updatingFlag() !== null"
+              (change)="toggleFlag('isPacked', $event)"
+            />
+            Спаковано
+          </label>
+          <label class="checkbox-label">
+            <input
+              type="checkbox"
+              class="checkbox-input"
+              [checked]="order.isOutOfStock"
+              [disabled]="updatingFlag() !== null"
+              (change)="toggleFlag('isOutOfStock', $event)"
+            />
+            Відсутній товар
+          </label>
+        </div>
+      </div>
+
+      <div class="info-panel">
         <span class="field-label">Товари</span>
         <div class="data-table-wrapper">
           <table class="data-table">

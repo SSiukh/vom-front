@@ -28,6 +28,8 @@ describe('OrdersList', () => {
     npWaybillNumber: '20450182773641',
     npWaybillRef: null,
     shipmentStatusId: null,
+    isPacked: false,
+    isOutOfStock: false,
     createdAt: '2026-08-22T10:00:00.000Z',
     updatedAt: '2026-08-22T10:00:00.000Z',
     ...overrides,
@@ -93,6 +95,38 @@ describe('OrdersList', () => {
     expect(cells[4]).toBe('Наклейка «Кіт» ×3');
     expect(cells[5]).toBe('Післяплата');
     expect(cells[6]).toBe('630 ₴');
+  });
+
+  it('shows no flag badges when neither isPacked nor isOutOfStock is set', () => {
+    create();
+    flushList([order()], 1);
+
+    expect(el.querySelector('.col-flags .status-badge')).toBeNull();
+  });
+
+  it('shows the packed badge when isPacked is true', () => {
+    create();
+    flushList([order({ isPacked: true })], 1);
+
+    const badge = el.querySelector('.col-flags .status-badge--success');
+    expect(badge?.getAttribute('title')).toBe('Спаковано');
+    expect(el.querySelector('.col-flags .status-badge--danger')).toBeNull();
+  });
+
+  it('shows the out-of-stock badge when isOutOfStock is true', () => {
+    create();
+    flushList([order({ isOutOfStock: true })], 1);
+
+    const badge = el.querySelector('.col-flags .status-badge--danger');
+    expect(badge?.getAttribute('title')).toBe('Відсутній товар');
+    expect(el.querySelector('.col-flags .status-badge--success')).toBeNull();
+  });
+
+  it('shows both badges together when both flags are true', () => {
+    create();
+    flushList([order({ isPacked: true, isOutOfStock: true })], 1);
+
+    expect(el.querySelectorAll('.col-flags .status-badge').length).toBe(2);
   });
 
   it('shows a dash for a missing waybill number', () => {
