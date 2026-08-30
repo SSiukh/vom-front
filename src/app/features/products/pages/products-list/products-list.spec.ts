@@ -62,6 +62,7 @@ describe('ProductsList', () => {
 
   afterEach(() => {
     httpMock.verify();
+    vi.useRealTimers();
   });
 
   it('fetches page 1 unfiltered on init and renders a row per product', () => {
@@ -179,6 +180,84 @@ describe('ProductsList', () => {
     flushList([], 0);
 
     expect(el.querySelector('.dialog-overlay')).toBeNull();
+  });
+
+  it('debounces the search input before refetching with name, resetting to page 1', () => {
+    vi.useFakeTimers();
+    create();
+    flushList([], 0);
+
+    const input = el.querySelector('.search-field input') as HTMLInputElement;
+    input.value = 'кіт';
+    input.dispatchEvent(new Event('input'));
+
+    httpMock.expectNone(`${baseUrl}?page=1&pageSize=10&name=%D0%BA%D1%96%D1%82`);
+    vi.advanceTimersByTime(300);
+
+    httpMock.expectOne(`${baseUrl}?page=1&pageSize=10&name=%D0%BA%D1%96%D1%82`).flush({ items: [product()], total: 1 });
+    fixture.detectChanges();
+
+    expect(el.querySelectorAll('tbody tr').length).toBe(1);
+  });
+
+  it('stops sending name once the search input is cleared', () => {
+    vi.useFakeTimers();
+    create();
+    flushList([], 0);
+
+    const input = el.querySelector('.search-field input') as HTMLInputElement;
+    input.value = 'кіт';
+    input.dispatchEvent(new Event('input'));
+    vi.advanceTimersByTime(300);
+    httpMock.expectOne(`${baseUrl}?page=1&pageSize=10&name=%D0%BA%D1%96%D1%82`).flush({ items: [product()], total: 1 });
+    fixture.detectChanges();
+
+    input.value = '';
+    input.dispatchEvent(new Event('input'));
+    vi.advanceTimersByTime(300);
+
+    httpMock.expectOne(`${baseUrl}?page=1&pageSize=10`).flush({ items: [product(), product({ id: '2' })], total: 2 });
+  });
+
+  it('combines the type filter and search term in the same request', () => {
+    vi.useFakeTimers();
+    create();
+    flushList([], 0);
+
+    const stickerButton = Array.from(el.querySelectorAll('.segmented-control__item')).find(
+      (b) => b.textContent?.trim() === 'Наклейка',
+    ) as HTMLButtonElement;
+    stickerButton.click();
+    flushList([], 0, 1, 't1');
+
+    const input = el.querySelector('.search-field input') as HTMLInputElement;
+    input.value = 'кіт';
+    input.dispatchEvent(new Event('input'));
+    vi.advanceTimersByTime(300);
+
+    httpMock
+      .expectOne(`${baseUrl}?page=1&pageSize=10&typeId=t1&name=%D0%BA%D1%96%D1%82`)
+      .flush({ items: [], total: 0 });
+  });
+
+  it('shows a filter-specific empty-state message and hides the create CTA while a search is active', () => {
+    vi.useFakeTimers();
+    create();
+    flushList([], 0);
+
+    const input = el.querySelector('.search-field input') as HTMLInputElement;
+    input.value = 'щось неіснуюче';
+    input.dispatchEvent(new Event('input'));
+    vi.advanceTimersByTime(300);
+
+    httpMock.expectOne(`${baseUrl}?page=1&pageSize=10&name=${encodeURIComponent('щось неіснуюче')}`).flush({
+      items: [],
+      total: 0,
+    });
+    fixture.detectChanges();
+
+    expect(el.querySelector('.empty-state__text')?.textContent?.trim()).toBe('За обраними фільтрами товарів не знайдено.');
+    expect(el.querySelector('.empty-state .btn-primary')).toBeNull();
   });
 
   it('shows an error message when the list request fails', () => {

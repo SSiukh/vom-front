@@ -10,10 +10,18 @@ export class ProductsApiService {
   private readonly http = inject(HttpClient);
   private readonly baseUrl = `${environment.apiUrl}/products`;
 
-  list(page: number, pageSize: number, typeId: string | null): Observable<PaginatedResponse<Product>> {
+  list(
+    page: number,
+    pageSize: number,
+    typeId: string | null,
+    name: string | null,
+  ): Observable<PaginatedResponse<Product>> {
     let params = new HttpParams().set('page', page).set('pageSize', pageSize);
     if (typeId) {
       params = params.set('typeId', typeId);
+    }
+    if (name) {
+      params = params.set('name', name);
     }
     return this.http.get<PaginatedResponse<Product>>(this.baseUrl, { params });
   }

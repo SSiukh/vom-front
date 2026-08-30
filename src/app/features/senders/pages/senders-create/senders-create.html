@@ -52,6 +52,7 @@
 
     <div class="field-group">
       <span class="field-label">Адреса відправки за замовчуванням</span>
+      <span class="field-hint">Не обов'язково — можна додати пізніше зі списку відправників</span>
       <div class="form-grid-2">
         <div class="field">
           <span class="field-label">Населений пункт</span>
@@ -88,7 +89,7 @@
   }
 
   <div class="form-footer">
-    <span class="footer-hint">Кнопка активна після перевірки ключа й вибору адреси відправки</span>
+    <span class="footer-hint">Кнопка активна після перевірки ключа</span>
     <button type="button" class="btn-primary" [disabled]="!verifiedContact() || form.invalid || saving()" (click)="save()">
       Зберегти
     </button>

@@ -51,6 +51,21 @@ describe('SendersApiService', () => {
     });
   });
 
+  it('posts just apiKey to /senders when no default address is given', () => {
+    service.create({ apiKey: 'key-1' }).subscribe();
+    const req = httpMock.expectOne(baseUrl);
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual({ apiKey: 'key-1' });
+    req.flush({
+      id: '1',
+      fullName: 'Іван Іванов',
+      phone: '+380501234567',
+      isActive: false,
+      createdAt: '',
+      updatedAt: '',
+    });
+  });
+
   it('patches /senders/:id/activate with an empty body', () => {
     service.activate('1').subscribe();
     const req = httpMock.expectOne(`${baseUrl}/1/activate`);

@@ -148,7 +148,7 @@ export class OrderItemCard implements OnInit {
   private loadProducts(typeId: string): void {
     this.productsLoading.set(true);
     this.productsApi
-      .list(1, PRODUCTS_FETCH_PAGE_SIZE, typeId)
+      .list(1, PRODUCTS_FETCH_PAGE_SIZE, typeId, null)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (response) => {

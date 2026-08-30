@@ -103,13 +103,20 @@ describe('SendersCreate', () => {
     expect(el.querySelector('.error-text')?.textContent?.trim()).toBe('Забагато спроб — спробуйте пізніше');
   });
 
-  it('keeps "Зберегти" disabled after verification until a city and warehouse are chosen', () => {
+  it('enables "Зберегти" right after verification, since the default address is optional', () => {
     create();
     const saveButton = el.querySelector('.btn-primary') as HTMLButtonElement;
     expect(saveButton.disabled).toBe(true);
 
     verify();
-    expect(saveButton.disabled).toBe(true);
+    expect(saveButton.disabled).toBe(false);
+  });
+
+  it('disables "Зберегти" while the address is only half-chosen, and re-enables once both parts are set', () => {
+    create();
+    verify();
+    const saveButton = el.querySelector('.btn-primary') as HTMLButtonElement;
+    expect(saveButton.disabled).toBe(false);
 
     const component = fixture.debugElement.componentInstance as SendersCreate;
     component.onCitySelected({ value: 'city-1', label: 'Київ' });
@@ -143,6 +150,25 @@ describe('SendersCreate', () => {
     (el.querySelector('.btn-primary') as HTMLButtonElement).click();
     const req = httpMock.expectOne(baseUrl);
     expect(req.request.body).toEqual({ apiKey: 'key-123', cityRef: 'city-1', warehouseRef: 'wh-1' });
+    req.flush({
+      id: '1',
+      fullName: 'Іван Іванов',
+      phone: '+380501234567',
+      isActive: false,
+      createdAt: '',
+      updatedAt: '',
+    });
+
+    expect(router.navigateByUrl).toHaveBeenCalledWith('/senders');
+  });
+
+  it('saves the sender with just the API key when no default address is chosen', () => {
+    create();
+    verify();
+
+    (el.querySelector('.btn-primary') as HTMLButtonElement).click();
+    const req = httpMock.expectOne(baseUrl);
+    expect(req.request.body).toEqual({ apiKey: 'key-123' });
     req.flush({
       id: '1',
       fullName: 'Іван Іванов',

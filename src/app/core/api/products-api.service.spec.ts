@@ -33,16 +33,30 @@ describe('ProductsApiService', () => {
     httpMock.verify();
   });
 
-  it('gets a paginated list with page/pageSize and no typeId when not filtering', () => {
-    service.list(1, 10, null).subscribe();
+  it('gets a paginated list with page/pageSize and no typeId/name when not filtering', () => {
+    service.list(1, 10, null, null).subscribe();
     const req = httpMock.expectOne(`${baseUrl}?page=1&pageSize=10`);
     expect(req.request.method).toBe('GET');
     req.flush({ items: [], total: 0 });
   });
 
   it('includes typeId in the query when filtering', () => {
-    service.list(2, 10, 't1').subscribe();
+    service.list(2, 10, 't1', null).subscribe();
     const req = httpMock.expectOne(`${baseUrl}?page=2&pageSize=10&typeId=t1`);
+    expect(req.request.method).toBe('GET');
+    req.flush({ items: [], total: 0 });
+  });
+
+  it('includes name in the query when searching', () => {
+    service.list(1, 10, null, 'кіт').subscribe();
+    const req = httpMock.expectOne(`${baseUrl}?page=1&pageSize=10&name=%D0%BA%D1%96%D1%82`);
+    expect(req.request.method).toBe('GET');
+    req.flush({ items: [], total: 0 });
+  });
+
+  it('includes both typeId and name when both filters are active', () => {
+    service.list(1, 10, 't1', 'кіт').subscribe();
+    const req = httpMock.expectOne(`${baseUrl}?page=1&pageSize=10&typeId=t1&name=%D0%BA%D1%96%D1%82`);
     expect(req.request.method).toBe('GET');
     req.flush({ items: [], total: 0 });
   });

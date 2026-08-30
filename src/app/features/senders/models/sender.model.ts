@@ -19,8 +19,8 @@ export interface SenderAddress {
 
 export interface CreateSenderPayload {
   apiKey: string;
-  cityRef: string;
-  warehouseRef: string;
+  cityRef?: string;
+  warehouseRef?: string;
 }
 
 export interface SetSenderWarehousePayload {

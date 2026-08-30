@@ -1,7 +1,8 @@
 import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Router } from '@angular/router';
-import { LucidePencil, LucidePlus, LucideTrash2 } from '@lucide/angular';
+import { LucidePencil, LucidePlus, LucideSearch, LucideTrash2 } from '@lucide/angular';
+import { Subject, debounceTime, distinctUntilChanged } from 'rxjs';
 import { DictionariesService } from '../../../../core/dictionaries/dictionaries.service';
 import { ProductsApiService } from '../../../../core/api/products-api.service';
 import { FEATURE_ROUTES } from '../../../../core/routes.constants';
@@ -10,10 +11,11 @@ import { Pagination } from '../../../../shared/ui/pagination/pagination';
 import type { Product } from '../../models/product.model';
 
 const PAGE_SIZE = 10;
+const SEARCH_DEBOUNCE_MS = 300;
 
 @Component({
   selector: 'app-products-list',
-  imports: [Pagination, ConfirmDialog, LucidePlus, LucidePencil, LucideTrash2],
+  imports: [Pagination, ConfirmDialog, LucidePlus, LucidePencil, LucideTrash2, LucideSearch],
   templateUrl: './products-list.html',
   styleUrl: './products-list.css',
 })
@@ -30,10 +32,17 @@ export class ProductsList {
   protected readonly loading = signal(false);
   protected readonly error = signal<string | null>(null);
   protected readonly selectedTypeId = signal<string | null>(null);
+  protected readonly searchTerm = signal('');
   protected readonly pendingDeleteId = signal<string | null>(null);
   protected readonly deleting = signal(false);
 
+  private readonly searchTermChanges = new Subject<string>();
+
   protected readonly filterableTypes = computed(() => this.dictionaries.productTypes().filter((t) => !t.isCustom));
+
+  protected readonly hasActiveFilters = computed(
+    () => this.selectedTypeId() !== null || this.searchTerm().trim() !== '',
+  );
 
   protected readonly typeLabelById = computed(() => {
     const map = new Map<string, string>();
@@ -50,6 +59,17 @@ export class ProductsList {
 
   constructor() {
     this.load();
+    this.searchTermChanges
+      .pipe(debounceTime(SEARCH_DEBOUNCE_MS), distinctUntilChanged(), takeUntilDestroyed(this.destroyRef))
+      .subscribe((term) => {
+        this.searchTerm.set(term);
+        this.page.set(1);
+        this.load();
+      });
+  }
+
+  onSearchTermChange(event: Event): void {
+    this.searchTermChanges.next((event.target as HTMLInputElement).value);
   }
 
   selectType(typeId: string | null): void {
@@ -138,7 +158,7 @@ export class ProductsList {
     this.loading.set(true);
     this.error.set(null);
     this.productsApi
-      .list(this.page(), this.pageSize, this.selectedTypeId())
+      .list(this.page(), this.pageSize, this.selectedTypeId(), this.searchTerm().trim() || null)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (response) => {

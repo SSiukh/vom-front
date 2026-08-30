@@ -29,6 +29,10 @@
       </button>
     }
   </div>
+  <div class="search-field">
+    <svg lucideSearch [size]="13" [strokeWidth]="1.5"></svg>
+    <input type="text" placeholder="Пошук за назвою…" (input)="onSearchTermChange($event)" />
+  </div>
 </div>
 
 @if (error()) {
@@ -40,11 +44,19 @@
 } @else if (products().length === 0) {
   <div class="empty-state">
     <div class="empty-state__title">Товарів поки немає</div>
-    <div class="empty-state__text">Додайте перший товар до каталогу.</div>
-    <button type="button" class="btn-primary" (click)="goToCreate()">
-      <svg lucidePlus [size]="14" [strokeWidth]="1.5"></svg>
-      Додати товар
-    </button>
+    <div class="empty-state__text">
+      @if (hasActiveFilters()) {
+        За обраними фільтрами товарів не знайдено.
+      } @else {
+        Додайте перший товар до каталогу.
+      }
+    </div>
+    @if (!hasActiveFilters()) {
+      <button type="button" class="btn-primary" (click)="goToCreate()">
+        <svg lucidePlus [size]="14" [strokeWidth]="1.5"></svg>
+        Додати товар
+      </button>
+    }
   </div>
 } @else {
   <div class="data-table-wrapper">

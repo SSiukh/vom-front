@@ -151,7 +151,7 @@ Orders wizard already uses for the recipient side), not auto-fetched.
 |---|---|---|---|
 | `GET /senders` | default | `?page&pageSize` | `ListSendersResponseDto` |
 | `POST /senders/verify` | 5/min | `VerifySenderDto {apiKey}` | `SenderVerificationResultDto {fullName, phone}` |
-| `POST /senders` | 5/min | `CreateSenderDto {apiKey, cityRef, warehouseRef}` | `SenderResponseDto` |
+| `POST /senders` | 5/min | `CreateSenderDto {apiKey, cityRef?, warehouseRef?}` | `SenderResponseDto` |
 | `PATCH /senders/:id/activate` | default | — | `SenderResponseDto` |
 | `PATCH /senders/:id/refresh` | 5/min | — | `SenderResponseDto` |
 | `PATCH /senders/:id/warehouse` | 5/min | `SetSenderWarehouseDto {cityRef, warehouseRef}` | `SenderResponseDto` |
@@ -172,6 +172,15 @@ it does **not** touch the configured pickup warehouse; use
 `PATCH /senders/:id/warehouse` to change that. `SenderResponseDto`:
 `{id, fullName, phone, isActive, createdAt, updatedAt}`.
 
+`cityRef`/`warehouseRef` on **create** are optional — a sender can be
+created identity-only, with no pickup address yet (`addresses: []`,
+`GET /senders/:id/addresses` returns `[]`), and given one later via
+`PATCH /senders/:id/warehouse`. They must be given **together or not at
+all** — `cityRef` without `warehouseRef` (or vice versa) is rejected with
+`400`. A sender with no address can't be used on an order yet
+(`POST /orders` requires a valid `senderAddressRef`) until its warehouse is
+set.
+
 ## 5. Products (`/products`)
 
 **Multipart only** for create/update — see the skill doc's "File upload"
@@ -179,7 +188,7 @@ section for the exact form-field mechanics.
 
 | Method & path | Body | Response |
 |---|---|---|
-| `GET /products` | `?page&pageSize&typeId` | `ListProductsResponseDto` |
+| `GET /products` | `?page&pageSize&typeId&name` | `ListProductsResponseDto` |
 | `GET /products/:id` | — | `ProductResponseDto` |
 | `POST /products` | multipart: `photo` (required) + `CreateProductDto` fields | `ProductResponseDto` |
 | `PATCH /products/:id` | multipart: `photo` (optional) + partial `CreateProductDto` fields | `ProductResponseDto` |
@@ -197,6 +206,11 @@ product with the custom product type"`. Photo validated server-side by
 real magic-number sniffing (jpeg/png/webp), 5MB max; if the DB write fails
 after a successful upload, the just-uploaded Cloudinary asset is deleted
 automatically (no orphaned images).
+
+`name` (optional, max 100 chars) does a case-insensitive substring search
+over the product name, combinable with `typeId`. Regex metacharacters in
+the value are escaped server-side, so it is always a literal substring
+match, never a pattern.
 
 ## 6. Orders (`/orders`)
 

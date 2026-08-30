@@ -1,6 +1,7 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, DestroyRef, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import type { AbstractControl, ValidationErrors } from '@angular/forms';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 import { LucideChevronLeft, LucideCircleCheck, LucideLock, LucideSearchCheck } from '@lucide/angular';
@@ -8,7 +9,13 @@ import { NovaPoshtaApiService } from '../../../../core/api/nova-poshta-api.servi
 import { SendersApiService } from '../../../../core/api/senders-api.service';
 import { FEATURE_ROUTES } from '../../../../core/routes.constants';
 import { SearchableSelect, type SelectOption } from '../../../../shared/ui/searchable-select/searchable-select';
-import type { SenderVerificationResult } from '../../models/sender.model';
+import type { CreateSenderPayload, SenderVerificationResult } from '../../models/sender.model';
+
+function cityAndWarehouseTogether(control: AbstractControl): ValidationErrors | null {
+  const cityRef = control.get('cityRef')?.value;
+  const warehouseRef = control.get('warehouseRef')?.value;
+  return !!cityRef === !!warehouseRef ? null : { addressIncomplete: true };
+}
 
 @Component({
   selector: 'app-senders-create',
@@ -30,11 +37,14 @@ export class SendersCreate {
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
 
-  protected readonly form = this.fb.nonNullable.group({
-    apiKey: ['', Validators.required],
-    cityRef: ['', Validators.required],
-    warehouseRef: ['', Validators.required],
-  });
+  protected readonly form = this.fb.nonNullable.group(
+    {
+      apiKey: ['', Validators.required],
+      cityRef: [''],
+      warehouseRef: [''],
+    },
+    { validators: cityAndWarehouseTogether },
+  );
 
   protected readonly verifying = signal(false);
   protected readonly saving = signal(false);
@@ -133,8 +143,12 @@ export class SendersCreate {
     this.errorMessage.set(null);
 
     const raw = this.form.getRawValue();
+    const payload: CreateSenderPayload =
+      raw.cityRef && raw.warehouseRef
+        ? { apiKey: raw.apiKey, cityRef: raw.cityRef, warehouseRef: raw.warehouseRef }
+        : { apiKey: raw.apiKey };
     this.sendersApi
-      .create({ apiKey: raw.apiKey, cityRef: raw.cityRef, warehouseRef: raw.warehouseRef })
+      .create(payload)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: () => {

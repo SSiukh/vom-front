@@ -901,6 +901,78 @@ tested API this frontend will consume — see
       growth, confirmed by `reviewer` as not an eager-import regression;
       still well under the 1MB error threshold).
 
+## Blocked — waiting on the backend
+
+- [ ] **Order status sync — bulk "sync all" button (2026-08-27).** User
+      wants a button that pulls real Nova Poshta shipment status for
+      every order (not just one), visible from both the Orders list and
+      CRM table. Root cause confirmed: the frontend has never once
+      called the existing `PATCH /orders/:id/sync-status` endpoint —
+      there's no button for it anywhere yet, so `shipmentStatusId` never
+      actually updates today. Confirmed via the real `vom-back` source
+      there is no bulk-sync endpoint, only the per-order one (throttled
+      20/min, shared with order create/update). User agreed to build
+      this as a client-side sequential loop with pacing (progress
+      indicator, final success/skipped-no-waybill/failed summary),
+      scope = every order in the system with a waybill (ignore current
+      list filters/pagination). **Paused mid-scoping** — user asked an
+      unrelated Claude Code Remote Control question, then pivoted to a
+      different request (Products search) before implementation
+      started. Resume from: build `OrdersApiService.syncStatus()`,
+      then the bulk-loop UI (button, progress, summary), most likely on
+      the Orders list page since that's the "sync everything" entry
+      point; CRM just needs to keep reading `shipmentStatusId` as it
+      already does — no changes needed there beyond the status already
+      updating once orders are synced elsewhere.
+
+- [x] **Products — search by name (2026-08-27).** `GET /products`
+      previously only accepted `?page&pageSize&typeId` — waited on the
+      backend rather than building a client-side-filter compromise (see
+      "No guessing" — read-only `vom-back` access meant a server-side
+      param couldn't be added from here). Backend landed an optional
+      `name` param (`ListProductsQueryDto`, case-insensitive substring
+      match via a regex-escaped Prisma `contains`). Added: 4th param on
+      `ProductsApiService.list()`; a debounced (300ms, matching
+      `SearchableSelect`'s own convention) search field on
+      `products-list`, combinable with the existing type-segment filter
+      in the same request, resetting to page 1 on change; a
+      `hasActiveFilters` computed driving a filter-aware empty-state
+      message (mirrors `orders-list.ts`'s identical pattern) so the
+      "Додати товар" CTA doesn't show when the emptiness is just a
+      no-match search, not a genuinely empty catalog. The order wizard's
+      own unrelated `productsApi.list()` call (catalog search by type)
+      updated to pass `null` for the new param, behavior unchanged.
+      Reviewed once — one minor test-coverage gap (missing an explicit
+      "clear the search box" test, though the underlying code already
+      handled it correctly) — added, reverified clean.
+- [x] **Senders — allow creating a sender without a default address
+      (2026-08-27).** `CreateSenderDto` previously hard-required
+      `cityRef`/`warehouseRef` server-side — waited on the backend for
+      the same read-only-access reason as above. Backend landed: a
+      separate optional `cityRef`/`warehouseRef` on `CreateSenderDto`
+      (no longer sharing `SetSenderWarehouseDto` with the standalone
+      `PATCH /senders/:id/warehouse` endpoint, which correctly still
+      requires both) with `@ValidateIf` cross-field rules — send neither
+      or both, never just one; `senders.service.ts#create()` skips the
+      live Nova-Poshta warehouse-resolve call and creates the sender
+      with `addresses: []` when both are omitted. Added: `senders-create`
+      form's `cityRef`/`warehouseRef` controls dropped their individual
+      `Validators.required` in favor of a new group-level
+      `cityAndWarehouseTogether` cross-field validator
+      (`!!cityRef === !!warehouseRef`) mirroring the backend's own rule
+      exactly; `save()` builds `{apiKey}` alone or the full
+      `{apiKey, cityRef, warehouseRef}` depending on which; copy updated
+      to state the address is optional and addable later via the
+      already-built "змінити відділення" dialog on the senders list.
+      Reviewed once — clean, no findings (the cross-field validator was
+      independently re-derived and confirmed correct for all four
+      boolean states, including the one unreachable through the real UI,
+      and confirmed to never disagree with `save()`'s own payload-
+      building condition).
+      359/359 tests passing, clean typecheck/lint/build (506.73kB
+      initial bundle, ordinary cumulative-growth warning, still well
+      under the 1MB error threshold).
+
 ## Suggested build order
 
 Foundations (scaffold + core auth/guards/interceptors/API layer + shell
