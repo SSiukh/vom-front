@@ -1,14 +1,18 @@
-import { HttpClient, HttpParams } from '@angular/common/http';
+import { HttpClient, HttpContext, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import type { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import type {
+  BulkSyncStatusResult,
   CreateOrderPayload,
   Order,
   SetOrderStatusFlagsPayload,
   UpdateOrderPayload,
 } from '../../features/orders/models/order.model';
 import type { PaginatedResponse } from '../../shared/models/paginated-response.model';
+import { REQUEST_TIMEOUT_MS } from '../interceptors/request-timeout.interceptor';
+
+const SYNC_ALL_STATUSES_TIMEOUT_MS = 90_000;
 
 @Injectable({ providedIn: 'root' })
 export class OrdersApiService {
@@ -49,5 +53,11 @@ export class OrdersApiService {
 
   setStatusFlags(id: string, payload: SetOrderStatusFlagsPayload): Observable<Order> {
     return this.http.patch<Order>(`${this.baseUrl}/${id}/status-flags`, payload);
+  }
+
+  syncAllStatuses(): Observable<BulkSyncStatusResult> {
+    return this.http.patch<BulkSyncStatusResult>(`${this.baseUrl}/sync-statuses`, null, {
+      context: new HttpContext().set(REQUEST_TIMEOUT_MS, SYNC_ALL_STATUSES_TIMEOUT_MS),
+    });
   }
 }

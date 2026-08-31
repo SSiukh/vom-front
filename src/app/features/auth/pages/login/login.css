@@ -14,8 +14,10 @@
 
 .login-card {
   width: 340px;
-  border: 1px solid var(--color-border-inner);
-  background: var(--color-bg-panel-nested);
+  border: 1px solid var(--color-border-outer);
+  background: var(--color-bg-panel);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow);
   padding: 26px 24px 24px;
 }
 

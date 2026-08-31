@@ -1,14 +1,24 @@
 import { DatePipe } from '@angular/common';
+import { HttpErrorResponse } from '@angular/common/http';
 import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Router } from '@angular/router';
-import { LucideCalendar, LucideCircleAlert, LucidePackageCheck, LucidePackageOpen, LucidePlus } from '@lucide/angular';
+import {
+  LucideCalendar,
+  LucideCircleAlert,
+  LucidePackageCheck,
+  LucidePackageOpen,
+  LucidePlus,
+  LucideRefreshCw,
+} from '@lucide/angular';
 import { OrdersApiService } from '../../../../core/api/orders-api.service';
 import { DictionariesService } from '../../../../core/dictionaries/dictionaries.service';
 import { FEATURE_ROUTES } from '../../../../core/routes.constants';
 import { DateFieldTriggerDirective } from '../../../../shared/directives/date-field-trigger.directive';
+import { CopyableText } from '../../../../shared/ui/copyable-text/copyable-text';
 import { Pagination } from '../../../../shared/ui/pagination/pagination';
-import type { Order } from '../../models/order.model';
+import { shipmentStatusBadgeClass } from '../../../../shared/utils/shipment-status-badge.util';
+import type { BulkSyncStatusResult, Order } from '../../models/order.model';
 
 const PAGE_SIZE = 10;
 
@@ -20,11 +30,13 @@ type SortOrder = 'newest' | 'oldest';
     DatePipe,
     Pagination,
     DateFieldTriggerDirective,
+    CopyableText,
     LucidePlus,
     LucideCalendar,
     LucidePackageOpen,
     LucidePackageCheck,
     LucideCircleAlert,
+    LucideRefreshCw,
   ],
   templateUrl: './orders-list.html',
   styleUrl: './orders-list.css',
@@ -44,6 +56,8 @@ export class OrdersList {
   protected readonly dateFrom = signal<string | null>(null);
   protected readonly dateTo = signal<string | null>(null);
   protected readonly sortOrder = signal<SortOrder>('newest');
+  protected readonly syncing = signal(false);
+  protected readonly syncResultMessage = signal<string | null>(null);
 
   protected readonly hasActiveFilters = computed(() => this.dateFrom() !== null || this.dateTo() !== null);
 
@@ -105,13 +119,73 @@ export class OrdersList {
     this.router.navigateByUrl(`${FEATURE_ROUTES.orders}/${order.id}`);
   }
 
+  onRowClick(event: Event, order: Order): void {
+    if ((event.target as HTMLElement).closest('.copyable-text')) {
+      return;
+    }
+    this.goToDetail(order);
+  }
+
   onRowSpaceKey(event: Event, order: Order): void {
+    if ((event.target as HTMLElement).closest('.copyable-text')) {
+      return;
+    }
     event.preventDefault();
     this.goToDetail(order);
   }
 
   itemsSummary(order: Order): string {
     return order.items.map((item) => `${item.nameSnapshot} ×${item.quantity}`).join(', ');
+  }
+
+  statusLabel(order: Order): string | null {
+    if (!order.shipmentStatusId) {
+      return null;
+    }
+    return this.dictionaries.shipmentStatuses().find((s) => s.id === order.shipmentStatusId)?.label ?? null;
+  }
+
+  statusBadgeClass(order: Order): string {
+    const code = this.dictionaries.shipmentStatuses().find((s) => s.id === order.shipmentStatusId)?.code;
+    return shipmentStatusBadgeClass(code);
+  }
+
+  syncAllStatuses(): void {
+    if (this.syncing()) {
+      return;
+    }
+    this.syncing.set(true);
+    this.error.set(null);
+    this.syncResultMessage.set(null);
+    this.ordersApi
+      .syncAllStatuses()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (result) => {
+          this.syncing.set(false);
+          this.syncResultMessage.set(this.buildSyncResultMessage(result));
+          this.load();
+        },
+        error: (error: unknown) => {
+          this.syncing.set(false);
+          this.error.set(this.resolveSyncErrorMessage(error));
+        },
+      });
+  }
+
+  private buildSyncResultMessage(result: BulkSyncStatusResult): string {
+    if (result.totalOrders === 0) {
+      return 'Немає замовлень з номером ЕН для синхронізації';
+    }
+    const base = `Оновлено ${result.updatedCount} із ${result.totalOrders} замовлень`;
+    return result.unmappedCount > 0 ? `${base}, ${result.unmappedCount} не вдалося визначити` : base;
+  }
+
+  private resolveSyncErrorMessage(error: unknown): string {
+    if (error instanceof HttpErrorResponse && error.status === 429) {
+      return 'Забагато спроб — спробуйте пізніше';
+    }
+    return 'Не вдалося синхронізувати статуси замовлень';
   }
 
   private load(): void {

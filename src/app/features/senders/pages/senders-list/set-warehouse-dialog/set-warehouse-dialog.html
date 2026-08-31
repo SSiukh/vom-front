@@ -1,11 +1,6 @@
 @if (open()) {
   <div class="dialog-overlay">
-    <div class="warehouse-dialog-card blueprint-card">
-      <i class="corner corner--tl"></i>
-      <i class="corner corner--tr"></i>
-      <i class="corner corner--bl"></i>
-      <i class="corner corner--br"></i>
-
+    <div class="warehouse-dialog-card">
       <div class="warehouse-dialog-title">Змінити відділення відправки</div>
       @if (senderName()) {
         <p class="dialog-message">{{ senderName() }}</p>

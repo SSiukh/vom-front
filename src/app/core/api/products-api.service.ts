@@ -15,6 +15,7 @@ export class ProductsApiService {
     pageSize: number,
     typeId: string | null,
     name: string | null,
+    stockSortOrder: 'asc' | 'desc' | null = null,
   ): Observable<PaginatedResponse<Product>> {
     let params = new HttpParams().set('page', page).set('pageSize', pageSize);
     if (typeId) {
@@ -22,6 +23,9 @@ export class ProductsApiService {
     }
     if (name) {
       params = params.set('name', name);
+    }
+    if (stockSortOrder) {
+      params = params.set('sortOrder', stockSortOrder);
     }
     return this.http.get<PaginatedResponse<Product>>(this.baseUrl, { params });
   }

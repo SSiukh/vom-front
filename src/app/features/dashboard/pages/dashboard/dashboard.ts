@@ -7,17 +7,17 @@ import { DictionariesService } from '../../../../core/dictionaries/dictionaries.
 import { DateFieldTriggerDirective } from '../../../../shared/directives/date-field-trigger.directive';
 import type { DashboardSummary, ShipmentStatusBreakdown } from '../../models/dashboard-summary.model';
 
-const EXPENSE_CATEGORY_COLORS = ['#5980a6', '#7ba0c4', '#3f6486', '#8d959c'];
+const EXPENSE_CATEGORY_COLORS = ['#e8871e', '#c76a12', '#f3c98a', '#9a9d9f'];
 
 const SHIPMENT_STATUS_COLORS: Record<string, string> = {
-  shipped: '#5980a6',
-  delivered: '#4e9c74',
-  received: '#8d959c',
-  refused: '#a34747',
+  shipped: '#e8871e',
+  delivered: '#5fae74',
+  received: '#9a9d9f',
+  refused: '#e0755d',
 };
 
-const CHART_GRID_COLOR = '#1b1f23';
-const CHART_TICK_COLOR = '#5e666d';
+const CHART_GRID_COLOR = '#3a3f44';
+const CHART_TICK_COLOR = '#83878b';
 
 @Component({
   selector: 'app-dashboard',
@@ -61,9 +61,9 @@ export class Dashboard {
         {
           data: days.map((day) => day.revenue),
           label: 'Дохід',
-          borderColor: '#5980a6',
-          backgroundColor: 'rgba(89, 128, 166, 0.14)',
-          pointBackgroundColor: '#5980a6',
+          borderColor: '#e8871e',
+          backgroundColor: 'rgba(232, 135, 30, 0.14)',
+          pointBackgroundColor: '#e8871e',
           pointRadius: 2,
           fill: true,
           tension: 0.3,
@@ -139,7 +139,7 @@ export class Dashboard {
 
   private shipmentStatusColor(status: ShipmentStatusBreakdown): string {
     const code = this.dictionaries.shipmentStatuses().find((s) => s.id === status.shipmentStatusId)?.code;
-    return SHIPMENT_STATUS_COLORS[code ?? ''] ?? '#5980a6';
+    return SHIPMENT_STATUS_COLORS[code ?? ''] ?? '#e8871e';
   }
 
   private buildLegend<T extends { label: string }>(
@@ -153,7 +153,7 @@ export class Dashboard {
       label: item.label,
       value: valueOf(item),
       percentage: total > 0 ? Math.round((valueOf(item) / total) * 1000) / 10 : 0,
-      color: colorOf ? colorOf(item) : (palette?.[index % palette.length] ?? '#5980a6'),
+      color: colorOf ? colorOf(item) : (palette?.[index % palette.length] ?? '#e8871e'),
     }));
   }
 

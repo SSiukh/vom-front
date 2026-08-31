@@ -57,11 +57,11 @@ describe('ExpensesList', () => {
     httpMock.verify();
   });
 
-  it('fetches page 1 on init and renders a row per expense', () => {
+  it('fetches page 1 on init and renders a card per expense', () => {
     create();
     flushList([expense(), expense({ id: '2' })], 2);
 
-    expect(el.querySelectorAll('tbody tr').length).toBe(2);
+    expect(el.querySelectorAll('.entity-card').length).toBe(2);
   });
 
   it('shows the empty state when there are no expenses', () => {
@@ -75,19 +75,19 @@ describe('ExpensesList', () => {
     create();
     flushList([expense()], 1);
 
-    const cells = Array.from(el.querySelectorAll('tbody td')).map((td) => td.textContent?.trim());
-    expect(cells[0]).toBe('Доставка');
-    expect(cells[1]).toBe('—');
-    expect(cells[2]).toBe('150 ₴');
-    expect(cells[3]).toBe('22.08.2026');
+    const card = el.querySelector('.entity-card') as HTMLElement;
+    const metaRow = card.querySelector('.entity-card__meta-row');
+    expect(metaRow?.textContent?.trim()).toBe('Доставка22.08.2026');
+    expect(card.querySelector('.entity-card__title')?.textContent?.trim()).toBe('—');
+    expect(card.querySelector('.entity-card__field-value')?.textContent?.trim()).toBe('150 ₴');
   });
 
   it('renders the real name for an "Інше" expense instead of a dash', () => {
     create();
     flushList([expense({ typeId: 't2', name: 'Ремонт принтера' })], 1);
 
-    const cells = Array.from(el.querySelectorAll('tbody td')).map((td) => td.textContent?.trim());
-    expect(cells[1]).toBe('Ремонт принтера');
+    const card = el.querySelector('.entity-card') as HTMLElement;
+    expect(card.querySelector('.entity-card__title')?.textContent?.trim()).toBe('Ремонт принтера');
   });
 
   it('navigates to the create page when "Внести витрату" is clicked', () => {
@@ -112,7 +112,7 @@ describe('ExpensesList', () => {
     create();
     flushList([expense()], 1);
 
-    (el.querySelector('tbody tr') as HTMLElement).click();
+    (el.querySelector('.entity-card') as HTMLElement).click();
 
     expect(router.navigateByUrl).toHaveBeenCalledWith('/expenses/1/edit');
   });

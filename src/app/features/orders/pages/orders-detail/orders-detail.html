@@ -13,7 +13,11 @@
   <div class="page-header">
     <div>
       <h1 class="page-title">
-        {{ order.npWaybillNumber ?? 'Замовлення №' + order.id }}
+        @if (order.npWaybillNumber; as waybill) {
+          <app-copyable-text [value]="waybill" />
+        } @else {
+          Замовлення №{{ order.id }}
+        }
         @if (statusLabel(); as label) {
           <span class="status-badge order-status-badge" [class]="statusBadgeClass()">{{ label }}</span>
         }

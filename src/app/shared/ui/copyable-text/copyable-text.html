@@ -1,0 +1,15 @@
+<span class="copyable-text">
+  <span class="copyable-text__value">{{ value() }}</span>
+  <button
+    type="button"
+    class="copyable-text__btn"
+    (click)="copy($event)"
+    [attr.aria-label]="'Скопіювати ' + value()"
+  >
+    @if (copied()) {
+      <svg lucideCheck [size]="12" [strokeWidth]="1.5"></svg>
+    } @else {
+      <svg lucideCopy [size]="12" [strokeWidth]="1.5"></svg>
+    }
+  </button>
+</span>

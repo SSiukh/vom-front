@@ -61,6 +61,20 @@ describe('ProductsApiService', () => {
     req.flush({ items: [], total: 0 });
   });
 
+  it('includes sortOrder when sorting by stock quantity', () => {
+    service.list(1, 10, null, null, 'asc').subscribe();
+    const req = httpMock.expectOne(`${baseUrl}?page=1&pageSize=10&sortOrder=asc`);
+    expect(req.request.method).toBe('GET');
+    req.flush({ items: [], total: 0 });
+  });
+
+  it('omits sortOrder when stockSortOrder is null', () => {
+    service.list(1, 10, null, null, null).subscribe();
+    const req = httpMock.expectOne(`${baseUrl}?page=1&pageSize=10`);
+    expect(req.request.method).toBe('GET');
+    req.flush({ items: [], total: 0 });
+  });
+
   it('gets a single product by id', () => {
     service.get('1').subscribe();
     const req = httpMock.expectOne(`${baseUrl}/1`);

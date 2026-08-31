@@ -1,38 +1,45 @@
 :root {
-  --color-accent: #5980a6;
-  --color-bg-page: #0e1012;
-  --color-bg-panel: #111417;
-  --color-bg-panel-nested: #131619;
-  --color-bg-footer: #0b0d0f;
-  --color-border-outer: #23282d;
-  --color-border-inner: #2b3137;
-  --color-text-primary: #e6e8ea;
-  --color-text-secondary: #cfd4d8;
-  --color-text-muted: #8d959c;
-  --color-text-meta: #7b848c;
-  --color-text-faint: #5e666d;
-  --color-text-nav-active: #cfe0f0;
-  --color-text-accent-data: #8fb2d4;
-  --color-nav-active-bg-expanded: rgba(89, 128, 166, 0.16);
-  --color-nav-active-bg-collapsed: rgba(89, 128, 166, 0.18);
+  --color-accent: #e8871e;
+  --color-accent-ink: #201503;
+  --color-bg-page: #1a1c1f;
+  --color-bg-panel: #232629;
+  --color-bg-panel-nested: #2b2f33;
+  --color-bg-footer: #1a1c1f;
+  --color-border-outer: #3a3f44;
+  --color-border-inner: #3a3f44;
+  --color-text-primary: #eae7e0;
+  --color-text-secondary: #eae7e0;
+  --color-text-muted: #9a9d9f;
+  --color-text-meta: #9a9d9f;
+  --color-text-faint: #83878b;
+  --color-text-nav-active: #f3c98a;
+  --color-text-accent-data: #e8871e;
+  --color-nav-active-bg-expanded: rgba(232, 135, 30, 0.16);
+  --color-nav-active-bg-collapsed: rgba(232, 135, 30, 0.18);
 
-  --color-error-text: #d97b7b;
-  --color-error-border: #6b3131;
-  --color-error-bg: rgba(163, 71, 71, 0.14);
-  --color-warning-border: #6b5a2e;
-  --color-warning-bg: rgba(184, 148, 58, 0.13);
-  --color-warning-text: #c9a94a;
-  --color-success-border: #3f6b4a;
-  --color-success-bg: rgba(74, 158, 106, 0.13);
-  --color-success-text: #6fbf8b;
-  --color-info-border: #2f4f6b;
-  --color-info-bg: rgba(89, 128, 166, 0.14);
-  --color-info-text: #8fb2d4;
+  --color-error-text: #e0755d;
+  --color-error-border: rgba(224, 117, 93, 0.35);
+  --color-error-bg: #33221e;
+  --color-warning-border: rgba(232, 135, 30, 0.35);
+  --color-warning-bg: rgba(232, 135, 30, 0.13);
+  --color-warning-text: #e8871e;
+  --color-success-border: rgba(95, 174, 116, 0.35);
+  --color-success-bg: #223129;
+  --color-success-text: #5fae74;
+  --color-info-border: rgba(232, 135, 30, 0.35);
+  --color-info-bg: rgba(232, 135, 30, 0.14);
+  --color-info-text: #e8871e;
 
-  --font-heading: 'Barlow Condensed', sans-serif;
-  --font-body: 'Barlow', system-ui, sans-serif;
+  --font-heading: 'Turret Road', 'Oswald', system-ui, sans-serif;
+  --font-body: 'IBM Plex Sans', system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
 
-  --radius-sm: 2px;
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 10px;
+  --radius-pill: 999px;
+
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 1px 1px rgba(0, 0, 0, 0.3);
 
   --header-height: 46px;
   --sidebar-width-expanded: 206px;
@@ -92,48 +99,6 @@ button:focus-visible {
   padding: 20px;
 }
 
-.blueprint-card {
-  position: relative;
-}
-
-.blueprint-card .corner {
-  position: absolute;
-  width: 7px;
-  height: 7px;
-}
-
-.blueprint-card .corner--tl {
-  top: -4px;
-  left: -4px;
-  border-left: 1px solid var(--corner-color, var(--color-accent));
-  border-top: 1px solid var(--corner-color, var(--color-accent));
-}
-
-.blueprint-card .corner--tr {
-  top: -4px;
-  right: -4px;
-  border-right: 1px solid var(--corner-color, var(--color-accent));
-  border-top: 1px solid var(--corner-color, var(--color-accent));
-}
-
-.blueprint-card .corner--bl {
-  bottom: -4px;
-  left: -4px;
-  border-left: 1px solid var(--corner-color, var(--color-accent));
-  border-bottom: 1px solid var(--corner-color, var(--color-accent));
-}
-
-.blueprint-card .corner--br {
-  bottom: -4px;
-  right: -4px;
-  border-right: 1px solid var(--corner-color, var(--color-accent));
-  border-bottom: 1px solid var(--corner-color, var(--color-accent));
-}
-
-.blueprint-card--danger {
-  --corner-color: var(--color-error-text);
-}
-
 .field {
   display: flex;
   flex-direction: column;
@@ -159,7 +124,7 @@ fieldset.field legend {
 
 .text-input {
   width: 100%;
-  background: var(--color-bg-page);
+  background: var(--color-bg-panel-nested);
   border: 1px solid var(--color-border-inner);
   border-radius: var(--radius-sm);
   color: var(--color-text-primary);
@@ -175,14 +140,12 @@ fieldset.field legend {
 
 .btn-primary {
   background: var(--color-accent);
-  color: var(--color-bg-page);
-  border: none;
-  border-radius: var(--radius-sm);
+  color: var(--color-accent-ink);
+  border: 1px solid var(--color-accent);
+  border-radius: var(--radius-md);
   font-family: var(--font-body);
   font-weight: 600;
   font-size: 13px;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
   padding: 9px 16px;
   cursor: pointer;
   display: inline-flex;
@@ -202,10 +165,10 @@ fieldset.field legend {
   background: transparent;
   border: 1px solid var(--color-border-inner);
   color: var(--color-text-secondary);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-md);
   font-family: var(--font-body);
-  font-size: 11.5px;
-  padding: 6px 10px;
+  font-size: 12.5px;
+  padding: 8px 14px;
   cursor: pointer;
 }
 
@@ -218,32 +181,28 @@ fieldset.field legend {
   display: inline-flex;
   align-items: center;
   font-size: 10.5px;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
-  padding: 4px 9px;
-  border-radius: var(--radius-sm);
+  padding: 3px 9px;
+  border-radius: var(--radius-pill);
 }
 
 .status-badge--warning {
-  border: 1px solid var(--color-warning-border);
   background: var(--color-warning-bg);
   color: var(--color-warning-text);
 }
 
 .status-badge--success {
-  border: 1px solid var(--color-success-border);
   background: var(--color-success-bg);
   color: var(--color-success-text);
 }
 
 .status-badge--muted {
-  border: 1px solid #3d444a;
-  background: rgba(140, 150, 160, 0.1);
-  color: #a8b0b7;
+  background: var(--color-bg-panel-nested);
+  color: var(--color-text-muted);
 }
 
 .status-badge--danger {
-  border: 1px solid var(--color-error-border);
   background: var(--color-error-bg);
   color: var(--color-error-text);
 }
@@ -254,8 +213,8 @@ fieldset.field legend {
   gap: 6px;
   background: transparent;
   border: 1px solid var(--color-accent);
-  color: var(--color-text-accent-data);
-  border-radius: var(--radius-sm);
+  color: var(--color-accent);
+  border-radius: var(--radius-md);
   font-family: var(--font-body);
   font-size: 12.5px;
   padding: 9px 16px;
@@ -278,7 +237,6 @@ fieldset.field legend {
   gap: 8px;
   font-size: 12px;
   color: var(--color-success-text);
-  border: 1px solid var(--color-success-border);
   background: var(--color-success-bg);
   padding: 8px 10px;
   border-radius: var(--radius-sm);
@@ -287,6 +245,8 @@ fieldset.field legend {
 .info-panel {
   border: 1px solid var(--color-border-outer);
   background: var(--color-bg-panel);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow);
   padding: 14px;
   display: flex;
   flex-direction: column;
@@ -299,7 +259,6 @@ fieldset.field legend {
   gap: 8px;
   font-size: 12px;
   color: var(--color-warning-text);
-  border: 1px solid var(--color-warning-border);
   background: var(--color-warning-bg);
   padding: 8px 10px;
   border-radius: var(--radius-sm);
@@ -315,7 +274,7 @@ fieldset.field legend {
   border-radius: var(--radius-sm);
   padding: 8px 10px;
   font-size: 12.5px;
-  color: #a8b0b7;
+  color: var(--color-text-muted);
 }
 
 .locked-field .field-label {
@@ -326,7 +285,7 @@ fieldset.field legend {
   width: 14px;
   height: 14px;
   border-radius: 50%;
-  border: 1px solid #3d444a;
+  border: 1px solid var(--color-border-inner);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -360,9 +319,11 @@ fieldset.field legend {
 
 .page-title {
   font-family: var(--font-heading);
-  font-weight: 600;
+  font-weight: 700;
   font-size: 27px;
   line-height: 1.05;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
   color: var(--color-text-primary);
   margin: 0;
 }
@@ -393,6 +354,8 @@ fieldset.field legend {
 .data-table-wrapper {
   border: 1px solid var(--color-border-outer);
   background: var(--color-bg-panel);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow);
   overflow: hidden;
 }
 
@@ -404,7 +367,7 @@ fieldset.field legend {
 .data-table th {
   text-align: left;
   font-size: 10.5px;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--color-text-meta);
   font-weight: 500;
@@ -414,16 +377,20 @@ fieldset.field legend {
 
 .data-table td {
   padding: 10px 12px;
-  border-bottom: 1px solid #1b1f23;
+  border-bottom: 1px solid var(--color-border-inner);
   font-size: 12.5px;
 }
 
+.data-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
 .data-table tbody tr:hover {
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--color-bg-panel-nested);
 }
 
 .data-table tbody tr.is-active {
-  background: rgba(89, 128, 166, 0.07);
+  background: var(--color-nav-active-bg-expanded);
 }
 
 .data-table tbody tr.is-clickable {
@@ -459,9 +426,45 @@ fieldset.field legend {
   color: var(--color-error-text);
 }
 
+.copyable-text {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.page-title .copyable-text__value {
+  font-family: var(--font-mono);
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+.copyable-text__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.12s ease;
+}
+
+.copyable-text:hover .copyable-text__btn,
+.copyable-text__btn:focus-visible {
+  opacity: 1;
+}
+
+.copyable-text__btn:hover {
+  color: var(--color-accent);
+}
+
 .empty-state {
   border: 1px solid var(--color-border-outer);
   background: var(--color-bg-panel);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow);
   padding: 44px 20px;
   display: flex;
   flex-direction: column;
@@ -473,6 +476,7 @@ fieldset.field legend {
 .empty-state__icon {
   width: 46px;
   height: 46px;
+  border-radius: 50%;
   border: 1px solid var(--color-border-inner);
   display: flex;
   align-items: center;
@@ -481,9 +485,9 @@ fieldset.field legend {
 }
 
 .empty-state__title {
-  font-family: var(--font-heading);
+  font-family: var(--font-body);
   font-weight: 600;
-  font-size: 21px;
+  font-size: 16px;
   color: var(--color-text-primary);
 }
 
@@ -494,15 +498,13 @@ fieldset.field legend {
 }
 
 .btn-destructive {
-  background: #a34747;
-  color: var(--color-bg-page);
-  border: none;
-  border-radius: var(--radius-sm);
+  background: var(--color-error-text);
+  color: var(--color-error-bg);
+  border: 1px solid var(--color-error-text);
+  border-radius: var(--radius-md);
   font-family: var(--font-body);
   font-weight: 600;
   font-size: 12px;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
   padding: 9px 18px;
   cursor: pointer;
 }
@@ -515,7 +517,7 @@ fieldset.field legend {
 .dialog-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(6, 8, 9, 0.72);
+  background: rgba(10, 8, 4, 0.6);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -524,10 +526,11 @@ fieldset.field legend {
 
 .dialog-card {
   width: 400px;
-  border: 1px solid var(--color-error-border);
-  background: var(--color-bg-panel-nested);
+  border: 1px solid var(--color-border-outer);
+  background: var(--color-bg-panel);
+  border-radius: var(--radius-lg);
   padding: 20px 22px;
-  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.6);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
 }
 
 .dialog-title {
@@ -535,8 +538,8 @@ fieldset.field legend {
   align-items: center;
   gap: 10px;
   color: var(--color-error-text);
-  font-family: var(--font-heading);
-  font-size: 21px;
+  font-family: var(--font-body);
+  font-size: 16px;
   font-weight: 600;
 }
 
@@ -546,7 +549,7 @@ fieldset.field legend {
 
 .dialog-message {
   font-size: 12.5px;
-  color: #a8b0b7;
+  color: var(--color-text-muted);
   margin-top: 10px;
   line-height: 1.5;
 }
@@ -580,7 +583,7 @@ fieldset.field legend {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #a8b0b7;
+  color: var(--color-text-muted);
   font-size: 12px;
   background: none;
   border-radius: var(--radius-sm);
@@ -594,7 +597,7 @@ fieldset.field legend {
 
 .pagination-box.is-active {
   border-color: var(--color-accent);
-  background: rgba(89, 128, 166, 0.18);
+  background: var(--color-nav-active-bg-collapsed);
   color: var(--color-text-nav-active);
   cursor: default;
 }
@@ -606,29 +609,26 @@ fieldset.field legend {
 
 .segmented-control {
   display: flex;
-  border: 1px solid var(--color-border-inner);
-  border-radius: var(--radius-sm);
-  overflow: hidden;
+  gap: 6px;
+  flex-wrap: wrap;
   width: fit-content;
 }
 
 .segmented-control__item {
-  padding: 7px 14px;
+  padding: 6px 14px;
   font-size: 12px;
   color: var(--color-text-muted);
-  border-left: 1px solid var(--color-border-inner);
-  background: none;
+  border: 1px solid var(--color-border-inner);
+  border-radius: var(--radius-pill);
+  background: var(--color-bg-panel);
   cursor: pointer;
   font-family: var(--font-body);
 }
 
-.segmented-control__item:first-child {
-  border-left: none;
-}
-
 .segmented-control__item--active {
-  background: rgba(89, 128, 166, 0.18);
-  color: var(--color-text-nav-active);
+  background: var(--color-text-primary);
+  color: var(--color-bg-page);
+  border-color: var(--color-text-primary);
 }
 
 .filters-row {
@@ -636,6 +636,7 @@ fieldset.field legend {
   align-items: center;
   gap: 12px;
   margin-bottom: 14px;
+  flex-wrap: wrap;
 }
 
 .filters-row__reset {
@@ -652,7 +653,7 @@ fieldset.field legend {
 .date-field label,
 .date-field__label {
   font-size: 10.5px;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--color-text-meta);
 }
@@ -688,7 +689,8 @@ fieldset.field legend {
 }
 
 .waybill-number {
-  color: var(--color-text-accent-data);
+  color: var(--color-accent);
+  font-family: var(--font-mono);
 }
 
 .items-summary {
@@ -703,18 +705,21 @@ fieldset.field legend {
   width: 36px;
   height: 36px;
   border: 1px solid var(--color-border-inner);
+  border-radius: var(--radius-sm);
   object-fit: cover;
 }
 
 .photo-thumb--lg {
   width: 180px;
   height: 180px;
+  border-radius: var(--radius-lg);
 }
 
 .dropzone {
   width: 100%;
-  border: 1px dashed #3d444a;
-  background: var(--color-bg-footer);
+  border: 1px dashed var(--color-border-inner);
+  border-radius: var(--radius-lg);
+  background: var(--color-bg-panel-nested);
   height: 130px;
   display: flex;
   flex-direction: column;
@@ -738,11 +743,11 @@ fieldset.field legend {
 }
 
 .dropzone__hint-accent {
-  color: var(--color-text-accent-data);
+  color: var(--color-accent);
 }
 
 .dropzone__meta {
-  font-family: ui-monospace, Menlo, monospace;
+  font-family: var(--font-mono);
   font-size: 10px;
   color: var(--color-text-faint);
 }
@@ -758,6 +763,7 @@ fieldset.field legend {
 .dropzone__preview img {
   height: 100%;
   border: 1px solid var(--color-border-inner);
+  border-radius: var(--radius-sm);
   object-fit: cover;
 }
 
@@ -778,7 +784,6 @@ fieldset.field legend {
 }
 
 .badge-info {
-  border: 1px solid var(--color-info-border);
   background: var(--color-info-bg);
   color: var(--color-info-text);
 }
@@ -787,14 +792,11 @@ fieldset.field legend {
   position: relative;
   border: 1px solid var(--color-border-inner);
   background: var(--color-bg-panel);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow);
   padding: 16px;
   display: flex;
   gap: 16px;
-}
-
-.detail-card .corner {
-  width: 7px;
-  height: 7px;
 }
 
 .detail-fields {
@@ -812,7 +814,7 @@ fieldset.field legend {
 .detail-row {
   display: flex;
   justify-content: space-between;
-  border-bottom: 1px solid #1b1f23;
+  border-bottom: 1px solid var(--color-border-inner);
   padding-bottom: 7px;
   font-size: 12.5px;
 }
@@ -840,9 +842,9 @@ fieldset.field legend {
   align-items: center;
   gap: 6px;
   background: transparent;
-  border: 1px solid var(--color-error-border);
+  border: 1px solid var(--color-error-text);
   color: var(--color-error-text);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-md);
   font-family: var(--font-body);
   font-size: 12px;
   padding: 9px 16px;
@@ -866,6 +868,7 @@ fieldset.field legend {
 
 .col-num {
   text-align: right;
+  font-family: var(--font-mono);
 }
 
 .col-photo {
@@ -901,7 +904,9 @@ fieldset.field legend {
   gap: 14px;
   border: 1px solid var(--color-border-outer);
   background: var(--color-bg-panel);
-  padding: 14px;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow);
+  padding: 18px;
   max-width: 700px;
   margin-top: 14px;
 }
@@ -981,6 +986,7 @@ fieldset.field legend {
   overflow-y: auto;
   border: 1px solid var(--color-border-inner);
   background: var(--color-bg-panel-nested);
+  border-radius: var(--radius-sm);
   box-shadow: 0 12px 24px rgba(0, 0, 0, 0.4);
 }
 
@@ -998,7 +1004,7 @@ fieldset.field legend {
 
 .searchable-select__option:hover,
 .searchable-select__option--highlighted {
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--color-bg-page);
   color: var(--color-accent);
 }
 
@@ -1006,4 +1012,101 @@ fieldset.field legend {
   padding: 10px;
   font-size: 12px;
   color: var(--color-text-meta);
+}
+
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 16px;
+}
+
+.entity-card {
+  position: relative;
+  background: var(--color-bg-panel);
+  border: 1px solid var(--color-border-outer);
+  border-left: 3px solid var(--color-border-outer);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow);
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.entity-card:hover {
+  border-top-color: var(--color-accent);
+  border-right-color: var(--color-accent);
+  border-bottom-color: var(--color-accent);
+}
+
+.entity-card:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 1px;
+}
+
+.entity-card--danger {
+  border-left-color: var(--color-error-text);
+}
+
+.entity-card--warning {
+  border-left-color: var(--color-warning-text);
+}
+
+.entity-card__thumb {
+  position: relative;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  background: var(--color-bg-panel-nested);
+  aspect-ratio: 1 / 1;
+}
+
+.entity-card__thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.entity-card__title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.entity-card__meta-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 11px;
+  color: var(--color-text-meta);
+}
+
+.entity-card__fields {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12.5px;
+}
+
+.entity-card__field-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.entity-card__field-label {
+  color: var(--color-text-meta);
+}
+
+.entity-card__field-value {
+  color: var(--color-text-primary);
+  font-family: var(--font-mono);
+}
+
+.entity-card__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 2px;
 }

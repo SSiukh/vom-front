@@ -24,51 +24,43 @@
     </button>
   </div>
 } @else {
-  <div class="data-table-wrapper">
-    <table class="data-table">
-      <thead>
-        <tr>
-          <th>Тип витрати</th>
-          <th>Назва</th>
-          <th class="col-num">Вартість</th>
-          <th>Дата</th>
-          <th class="col-actions">Дії</th>
-        </tr>
-      </thead>
-      <tbody>
-        @for (expense of expenses(); track expense.id) {
-          <tr
-            class="is-clickable"
-            role="button"
-            tabindex="0"
-            [attr.aria-label]="'Редагувати витрату ' + (expense.name ?? typeLabel(expense))"
-            (click)="onRowClick($event, expense)"
-            (keydown.enter)="onRowClick($event, expense)"
-            (keydown.space)="onRowSpaceKey($event, expense)"
+  <div class="card-grid">
+    @for (expense of expenses(); track expense.id) {
+      <div
+        class="entity-card"
+        role="button"
+        tabindex="0"
+        [attr.aria-label]="'Редагувати витрату ' + (expense.name ?? typeLabel(expense))"
+        (click)="onRowClick($event, expense)"
+        (keydown.enter)="onRowClick($event, expense)"
+        (keydown.space)="onRowSpaceKey($event, expense)"
+      >
+        <div class="entity-card__meta-row">
+          <span>{{ typeLabel(expense) }}</span>
+          <span>{{ expense.createdAt | date: 'dd.MM.yyyy' }}</span>
+        </div>
+        <div class="entity-card__title">{{ expense.name ?? '—' }}</div>
+        <div class="entity-card__fields">
+          <div class="entity-card__field-row">
+            <span class="entity-card__field-label">Вартість</span>
+            <span class="entity-card__field-value">{{ expense.amount }} ₴</span>
+          </div>
+        </div>
+        <div class="entity-card__actions col-actions">
+          <button type="button" class="icon-action" (click)="goToEdit(expense)" aria-label="Редагувати витрату">
+            <svg lucidePencil [size]="15" [strokeWidth]="1.5"></svg>
+          </button>
+          <button
+            type="button"
+            class="icon-action icon-action--danger"
+            (click)="requestDelete(expense)"
+            aria-label="Видалити витрату"
           >
-            <td>{{ typeLabel(expense) }}</td>
-            <td>{{ expense.name ?? '—' }}</td>
-            <td class="col-num">{{ expense.amount }} ₴</td>
-            <td>{{ expense.createdAt | date: 'dd.MM.yyyy' }}</td>
-            <td class="col-actions">
-              <span class="row-actions">
-                <button type="button" class="icon-action" (click)="goToEdit(expense)" aria-label="Редагувати витрату">
-                  <svg lucidePencil [size]="15" [strokeWidth]="1.5"></svg>
-                </button>
-                <button
-                  type="button"
-                  class="icon-action icon-action--danger"
-                  (click)="requestDelete(expense)"
-                  aria-label="Видалити витрату"
-                >
-                  <svg lucideTrash2 [size]="15" [strokeWidth]="1.5"></svg>
-                </button>
-              </span>
-            </td>
-          </tr>
-        }
-      </tbody>
-    </table>
+            <svg lucideTrash2 [size]="15" [strokeWidth]="1.5"></svg>
+          </button>
+        </div>
+      </div>
+    }
   </div>
 
   <app-pagination [page]="page()" [pageSize]="pageSize" [total]="total()" (pageChange)="onPageChange($event)" />

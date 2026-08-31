@@ -63,6 +63,10 @@ describe('CrmTable', () => {
     fixture.detectChanges();
   };
 
+  beforeEach(() => {
+    Object.assign(navigator, { clipboard: { writeText: vi.fn().mockResolvedValue(undefined) } });
+  });
+
   afterEach(() => {
     httpMock.verify();
   });
@@ -189,6 +193,16 @@ describe('CrmTable', () => {
     (el.querySelector('tbody tr') as HTMLElement).click();
 
     expect(router.navigateByUrl).toHaveBeenCalledWith('/orders/1');
+  });
+
+  it('copies the waybill number without navigating when the copy button is clicked', () => {
+    create();
+    flushList([row()], 1, 300);
+
+    (el.querySelector('.copyable-text__btn') as HTMLButtonElement).click();
+
+    expect(navigator.clipboard.writeText).toHaveBeenCalledWith('20450182773641');
+    expect(router.navigateByUrl).not.toHaveBeenCalled();
   });
 
   it('shows an error message when the request fails', () => {

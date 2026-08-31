@@ -105,9 +105,9 @@ describe('Dashboard', () => {
     const shipmentLegend = legends[1];
     const swatches = Array.from(shipmentLegend.querySelectorAll('.chart-legend__swatch')) as HTMLElement[];
 
-    expect(swatches[0].style.background).toBe('rgb(89, 128, 166)');
-    expect(swatches[1].style.background).toBe('rgb(78, 156, 116)');
-    expect(swatches[2].style.background).toBe('rgb(163, 71, 71)');
+    expect(swatches[0].style.background).toBe('rgb(232, 135, 30)');
+    expect(swatches[1].style.background).toBe('rgb(95, 174, 116)');
+    expect(swatches[2].style.background).toBe('rgb(224, 117, 93)');
   });
 
   it('falls back to the default color for a shipmentStatusId with no matching dictionary entry, independently of a real neighboring status', () => {
@@ -121,8 +121,8 @@ describe('Dashboard', () => {
 
     const shipmentLegend = el.querySelectorAll('.chart-legend')[1];
     const swatches = Array.from(shipmentLegend.querySelectorAll('.chart-legend__swatch')) as HTMLElement[];
-    expect(swatches[0].style.background).toBe('rgb(89, 128, 166)');
-    expect(swatches[1].style.background).toBe('rgb(78, 156, 116)');
+    expect(swatches[0].style.background).toBe('rgb(232, 135, 30)');
+    expect(swatches[1].style.background).toBe('rgb(95, 174, 116)');
   });
 
   it('shows an empty-data message instead of a chart when a breakdown array is empty', () => {

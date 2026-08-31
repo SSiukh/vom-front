@@ -2,11 +2,21 @@
   <div>
     <h1 class="page-title">Замовлення</h1>
   </div>
-  <button type="button" class="btn-primary" (click)="goToCreate()">
-    <svg lucidePlus [size]="14" [strokeWidth]="1.5"></svg>
-    Створити замовлення
-  </button>
+  <div class="detail-actions">
+    <button type="button" class="btn-ghost" [disabled]="syncing()" (click)="syncAllStatuses()">
+      <svg lucideRefreshCw [size]="14" [strokeWidth]="1.5"></svg>
+      {{ syncing() ? 'Синхронізація…' : 'Синхронізувати статуси' }}
+    </button>
+    <button type="button" class="btn-primary" (click)="goToCreate()">
+      <svg lucidePlus [size]="14" [strokeWidth]="1.5"></svg>
+      Створити замовлення
+    </button>
+  </div>
 </div>
+
+@if (syncResultMessage()) {
+  <div class="success-banner">{{ syncResultMessage() }}</div>
+}
 
 <div class="filters-row">
   <div class="date-field">
@@ -92,6 +102,7 @@
           <th>Товари</th>
           <th>Оплата</th>
           <th class="col-num">Вартість</th>
+          <th>Статус</th>
           <th class="col-flags">Мітки</th>
         </tr>
       </thead>
@@ -102,11 +113,17 @@
             role="button"
             tabindex="0"
             [attr.aria-label]="'Деталі замовлення ' + (order.npWaybillNumber ?? order.id)"
-            (click)="goToDetail(order)"
-            (keydown.enter)="goToDetail(order)"
+            (click)="onRowClick($event, order)"
+            (keydown.enter)="onRowClick($event, order)"
             (keydown.space)="onRowSpaceKey($event, order)"
           >
-            <td class="waybill-number">{{ order.npWaybillNumber ?? '—' }}</td>
+            <td class="waybill-number">
+              @if (order.npWaybillNumber; as waybill) {
+                <app-copyable-text [value]="waybill" />
+              } @else {
+                —
+              }
+            </td>
             <td>{{ order.createdAt | date: 'dd.MM.yyyy' }}</td>
             <td>
               {{ order.recipient.lastName }} {{ order.recipient.firstName }}
@@ -116,6 +133,13 @@
             <td class="items-summary">{{ itemsSummary(order) }}</td>
             <td>{{ paymentTypeLabelById().get(order.paymentTypeId) ?? '—' }}</td>
             <td class="col-num">{{ order.totalAmount }} ₴</td>
+            <td>
+              @if (statusLabel(order); as label) {
+                <span class="status-badge" [class]="statusBadgeClass(order)">{{ label }}</span>
+              } @else {
+                <span class="dash">—</span>
+              }
+            </td>
             <td class="col-flags">
               @if (order.isPacked) {
                 <span class="status-badge status-badge--success" title="Спаковано" aria-label="Спаковано">

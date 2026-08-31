@@ -33,6 +33,35 @@
     <svg lucideSearch [size]="13" [strokeWidth]="1.5"></svg>
     <input type="text" placeholder="Пошук за назвою…" (input)="onSearchTermChange($event)" />
   </div>
+  <div class="date-field">
+    <span class="date-field__label">Кількість</span>
+    <div class="segmented-control">
+      <button
+        type="button"
+        class="segmented-control__item"
+        [class.segmented-control__item--active]="stockSortOrder() === null"
+        (click)="setStockSortOrder(null)"
+      >
+        За замовчуванням
+      </button>
+      <button
+        type="button"
+        class="segmented-control__item"
+        [class.segmented-control__item--active]="stockSortOrder() === 'asc'"
+        (click)="setStockSortOrder('asc')"
+      >
+        Зростання
+      </button>
+      <button
+        type="button"
+        class="segmented-control__item"
+        [class.segmented-control__item--active]="stockSortOrder() === 'desc'"
+        (click)="setStockSortOrder('desc')"
+      >
+        Спадання
+      </button>
+    </div>
+  </div>
 </div>
 
 @if (error()) {
@@ -59,63 +88,60 @@
     }
   </div>
 } @else {
-  <div class="data-table-wrapper">
-    <table class="data-table">
-      <thead>
-        <tr>
-          <th class="col-photo"></th>
-          <th>Тип товару</th>
-          <th>Назва</th>
-          <th class="col-num">Ціна</th>
-          <th class="col-num">Акційна ціна</th>
-          <th class="col-num">На складі</th>
-          <th class="col-actions">Дії</th>
-        </tr>
-      </thead>
-      <tbody>
-        @for (product of products(); track product.id) {
-          <tr
-            class="is-clickable"
-            role="button"
-            tabindex="0"
-            [attr.aria-label]="'Деталі товару ' + product.name"
-            (click)="onRowClick($event, product)"
-            (keydown.enter)="onRowClick($event, product)"
-            (keydown.space)="onRowSpaceKey($event, product)"
-          >
-            <td>
-              <img class="photo-thumb" [src]="product.photoUrl" [alt]="product.name" />
-            </td>
-            <td>{{ typeLabelById().get(product.typeId) }}</td>
-            <td>{{ product.name }}</td>
-            <td class="col-num">{{ product.price }} ₴</td>
-            <td class="col-num">
+  <div class="card-grid">
+    @for (product of products(); track product.id) {
+      <div
+        class="entity-card"
+        [class]="cardAccentClass(product)"
+        role="button"
+        tabindex="0"
+        [attr.aria-label]="'Деталі товару ' + product.name"
+        (click)="onRowClick($event, product)"
+        (keydown.enter)="onRowClick($event, product)"
+        (keydown.space)="onRowSpaceKey($event, product)"
+      >
+        <div class="entity-card__thumb">
+          <img [src]="product.photoUrl" [alt]="product.name" />
+        </div>
+        <div class="entity-card__meta-row">
+          <span>{{ typeLabelById().get(product.typeId) }}</span>
+        </div>
+        <div class="entity-card__title">{{ product.name }}</div>
+        <div class="entity-card__fields">
+          <div class="entity-card__field-row">
+            <span class="entity-card__field-label">Ціна</span>
+            <span class="entity-card__field-value">{{ product.price }} ₴</span>
+          </div>
+          <div class="entity-card__field-row">
+            <span class="entity-card__field-label">Акційна ціна</span>
+            <span class="entity-card__field-value">
               @if (product.promoPrice !== null) {
                 <span class="promo-price">{{ product.promoPrice }} ₴</span>
               } @else {
                 <span class="dash">—</span>
               }
-            </td>
-            <td class="col-num" [class]="stockClass(product)">{{ product.stockQuantity }}</td>
-            <td class="col-actions">
-              <span class="row-actions">
-                <button type="button" class="icon-action" (click)="goToEdit(product)" aria-label="Редагувати товар">
-                  <svg lucidePencil [size]="15" [strokeWidth]="1.5"></svg>
-                </button>
-                <button
-                  type="button"
-                  class="icon-action icon-action--danger"
-                  (click)="requestDelete(product)"
-                  aria-label="Видалити товар"
-                >
-                  <svg lucideTrash2 [size]="15" [strokeWidth]="1.5"></svg>
-                </button>
-              </span>
-            </td>
-          </tr>
-        }
-      </tbody>
-    </table>
+            </span>
+          </div>
+          <div class="entity-card__field-row">
+            <span class="entity-card__field-label">На складі</span>
+            <span class="entity-card__field-value" [class]="stockClass(product)">{{ product.stockQuantity }}</span>
+          </div>
+        </div>
+        <div class="entity-card__actions col-actions">
+          <button type="button" class="icon-action" (click)="goToEdit(product)" aria-label="Редагувати товар">
+            <svg lucidePencil [size]="15" [strokeWidth]="1.5"></svg>
+          </button>
+          <button
+            type="button"
+            class="icon-action icon-action--danger"
+            (click)="requestDelete(product)"
+            aria-label="Видалити товар"
+          >
+            <svg lucideTrash2 [size]="15" [strokeWidth]="1.5"></svg>
+          </button>
+        </div>
+      </div>
+    }
   </div>
 
   <app-pagination [page]="page()" [pageSize]="pageSize" [total]="total()" (pageChange)="onPageChange($event)" />

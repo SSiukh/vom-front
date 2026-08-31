@@ -90,3 +90,9 @@ export interface SetOrderStatusFlagsPayload {
   isPacked?: boolean;
   isOutOfStock?: boolean;
 }
+
+export interface BulkSyncStatusResult {
+  totalOrders: number;
+  updatedCount: number;
+  unmappedCount: number;
+}

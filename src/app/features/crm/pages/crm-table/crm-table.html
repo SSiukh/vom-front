@@ -95,12 +95,18 @@
             role="button"
             tabindex="0"
             [attr.aria-label]="'Деталі замовлення ' + (row.npWaybillNumber ?? row.id)"
-            (click)="goToOrderDetail(row)"
-            (keydown.enter)="goToOrderDetail(row)"
+            (click)="onRowClick($event, row)"
+            (keydown.enter)="onRowClick($event, row)"
             (keydown.space)="onRowSpaceKey($event, row)"
           >
             <td>{{ row.createdAt | date: 'dd.MM.yyyy' }}</td>
-            <td class="waybill-number">{{ row.npWaybillNumber ?? '—' }}</td>
+            <td class="waybill-number">
+              @if (row.npWaybillNumber; as waybill) {
+                <app-copyable-text [value]="waybill" />
+              } @else {
+                —
+              }
+            </td>
             <td>{{ paymentTypeLabel(row) }}</td>
             <td>{{ row.recipientFullName }}</td>
             <td>{{ row.recipientPhone }}</td>

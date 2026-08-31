@@ -903,27 +903,145 @@ tested API this frontend will consume — see
 
 ## Blocked — waiting on the backend
 
-- [ ] **Order status sync — bulk "sync all" button (2026-08-27).** User
-      wants a button that pulls real Nova Poshta shipment status for
-      every order (not just one), visible from both the Orders list and
-      CRM table. Root cause confirmed: the frontend has never once
-      called the existing `PATCH /orders/:id/sync-status` endpoint —
-      there's no button for it anywhere yet, so `shipmentStatusId` never
-      actually updates today. Confirmed via the real `vom-back` source
-      there is no bulk-sync endpoint, only the per-order one (throttled
-      20/min, shared with order create/update). User agreed to build
-      this as a client-side sequential loop with pacing (progress
-      indicator, final success/skipped-no-waybill/failed summary),
-      scope = every order in the system with a waybill (ignore current
-      list filters/pagination). **Paused mid-scoping** — user asked an
-      unrelated Claude Code Remote Control question, then pivoted to a
-      different request (Products search) before implementation
-      started. Resume from: build `OrdersApiService.syncStatus()`,
-      then the bulk-loop UI (button, progress, summary), most likely on
-      the Orders list page since that's the "sync everything" entry
-      point; CRM just needs to keep reading `shipmentStatusId` as it
-      already does — no changes needed there beyond the status already
-      updating once orders are synced elsewhere.
+(none currently)
+
+## Done (2026-08-30 batch)
+
+- [x] **HTTP requests hanging forever after long idle — no timeout
+      anywhere in the interceptor chain.** User reported the app
+      sending a request (usually `GET /auth/2fa/status`, since it's
+      cached in-memory and only re-fires on a fresh load/guard-check —
+      exactly what happens after a tab gets discarded or reloaded post-
+      idle) that never resolves. Root-caused by reading the actual
+      interceptor chain (`auth-token.interceptor.ts`,
+      `auth-refresh.interceptor.ts`, `app.config.ts`): no `timeout()`
+      anywhere, and the token interceptor never checks expiry before
+      attaching a token — everything is purely reactive to a 401. After
+      long idle (laptop sleep, backgrounded tab), a kept-alive TCP
+      connection can go stale without the browser knowing until its own
+      OS-level retransmission timeout fires (can take minutes) — with no
+      app-level timeout, `HttpClient` just waits. Fix: a new
+      `requestTimeoutInterceptor` applying `rxjs`'s `timeout()`,
+      registered last in the interceptor array (closest to the backend)
+      so every individual physical HTTP call — including the refresh
+      call itself and the retried original request — gets its own
+      timeout budget, not one shared budget across a whole 401→refresh→
+      retry cycle. Default 20s; overridable per-request via a
+      `HttpContextToken` since the new bulk order-status-sync endpoint
+      (see below) can legitimately take much longer than a normal
+      request (it's a real server-side loop over every distinct sender,
+      one Nova Poshta call per sender, sequential — not something a
+      blanket short timeout should kill).
+- [x] **Copy-to-clipboard for order waybill numbers.** Hover over a
+      waybill number → a copy icon appears → click copies it. Applies
+      everywhere a waybill number is actually shown: Orders list,
+      CRM table, Orders detail page title. Built as a new reusable
+      `shared/ui/copyable-text` component (global CSS from the start,
+      since it has 3 real consumers immediately) rather than duplicating
+      the hover/click/feedback logic three times. Orders list's and CRM
+      table's rows are both whole-row-clickable-to-detail already — the
+      new copy button needed the same `.closest('.<marker-class>')`
+      click/keydown-guard pattern already established for Products/
+      Expenses' `.col-actions` columns, applied via a `stopPropagation()`
+      in the button's own click handler plus a guard check in each
+      page's `onRowClick`/`onRowSpaceKey`, since neither list had any
+      per-cell interactive element before this.
+- [x] **Bulk Nova Poshta status sync — real button (2026-08-30).** The
+      backend now has a genuine bulk endpoint,
+      `PATCH /orders/sync-statuses` → `BulkSyncStatusResponseDto
+      {totalOrders, updatedCount, unmappedCount}` (confirmed in the real
+      `orders.controller.ts`/`orders.service.ts#syncAllStatuses` — it
+      groups every order with a waybill by sender, does one batched
+      `getShipmentStatuses` Nova Poshta call per distinct sender
+      sequentially, and updates whatever actually changed) — this
+      replaces the earlier client-side-loop plan entirely, since a
+      single request now does the whole job server-side. Added a
+      "Синхронізувати статуси" button to the Orders list page (the
+      original ask's "sync everything" entry point), which also now
+      gets a shipment-status column (it had none before — CRM already
+      showed status, Orders list didn't, and the original ask was for
+      both pages to show it). Same throttle bucket as order create/
+      update (20/min) but a request that can legitimately run long
+      given the sequential-per-sender NP calls, hence the longer
+      per-request timeout override above.
+- [x] **Auto-format recipient phone number on order creation
+      (2026-08-30).** Whatever format gets pasted/typed into the
+      recipient phone field on the order-creation wizard should
+      normalize to `+380XXXXXXXXX` (no spaces/parens). Backend's
+      `RecipientDto.phone` already accepts a range of formats via
+      `@IsPhoneNumber('UA')` (`class-validator` + `libphonenumber-js`
+      under the hood) — this is a pure frontend UX/data-hygiene
+      improvement, not something blocked on the backend. Normalizes on
+      `paste` (matches what was literally asked) and on `blur` (so
+      manually-typed input in any format also gets cleaned up once the
+      user leaves the field) rather than on every keystroke, to avoid
+      the cursor-jumping problem live-masking a text input has when
+      editing isn't happening strictly at the end of the string.
+      **Reviewed once, two should-fix findings, both fixed:** (1)
+      `normalizeUaPhone` originally fabricated a plausible-looking but
+      wrong `+380` number from *any* digit string regardless of length
+      or actual origin (e.g. a pasted foreign number, or a clearly
+      incomplete one) — silent data corruption a reviewer could
+      concretely trace to "courier can't reach the customer." Fixed by
+      only auto-prefixing `+380` when the digits match one of three
+      genuinely-UA-shaped patterns (`380` + 9 digits, `0` + 9 digits, or
+      a bare 9-digit national number) — anything else is returned
+      untouched (digits-only, unprefixed) rather than fabricated, so it
+      visibly fails validation instead of silently looking valid. (2)
+      The phone `FormControl` had no format validator at all (just
+      `Validators.required`), so a malformed/incomplete result from (1)
+      — or any hand-typed malformed number — sailed through step-2
+      validation and only ever surfaced as a disconnected, generic 400
+      from the backend after the operator had already moved on. Fixed
+      by adding `Validators.pattern(/^\+380\d{9}$/)` alongside
+      `required`, so the wizard itself now blocks progression on a
+      malformed number instead of the backend catching it late.
+      Also fixed a matching nit in the copy-to-clipboard component
+      (below): `CopyableText`'s 1.5s "copied" feedback reset used a bare
+      untracked `setTimeout`, which could still fire and write to a
+      destroyed component's signal if the row unmounted first (e.g. the
+      Orders list reloading right after a copy, as the sync-statuses
+      flow above does) — fixed via `DestroyRef.onDestroy` clearing the
+      pending timer.
+      392/392 tests passing, clean typecheck/lint/build (508.01kB
+      initial bundle, ordinary cumulative-growth warning, still well
+      under the 1MB error threshold).
+
+- [x] **Products — negative stock display + sort by stock quantity
+      (2026-08-31).** Backend contract change, confirmed by reading the
+      real `vom-back` source rather than assumed: order creation/update
+      no longer rejects insufficient stock — `orders.service.ts
+      #resolveItems` has no "not enough stock" throw at all anymore,
+      `stockQuantity` is decremented unconditionally (can go negative in
+      the DB), and `willBeOutOfStock` (→ the order's `isOutOfStock`
+      flag, already wired up frontend-side from the earlier status-flags
+      work) is auto-set to `true` whenever any involved product's
+      post-decrement remaining stock is `<= 0`. Frontend implications,
+      scoped to the Products list page per the user's explicit ask:
+      `products-list.ts#stockClass()`'s zero-check was `=== 0`, so a
+      genuinely negative `stockQuantity` (now a real possibility) fell
+      through to the `< 10` branch and rendered as amber "low stock"
+      instead of red "out of stock" — fixed to `<= 0`. No other
+      products-list logic needed to change: the quantity cell already
+      just interpolates the raw number with no clamping, so negative
+      values already display correctly once the color logic is fixed.
+      Also added: sort-by-stock-quantity, confirmed already supported
+      server-side (`ListProductsQueryDto.sortOrder: 'asc'|'desc'` on
+      `GET /products`, sorts by `stockQuantity` when present, falls back
+      to `createdAt desc` when omitted) — a third `stockSortOrder`
+      segmented control (`За замовчуванням`/`Зростання`/`Спадання`)
+      added to the existing filters row, mirroring the
+      type-filter/date-sort segmented-control pattern already
+      established elsewhere in this app (CRM/Orders list's "Сортування"
+      control) rather than inventing a new interaction shape.
+      Reviewed once — clean, no findings (specifically checked: no other
+      page had a hidden zero/non-negative assumption on `stockQuantity`
+      that a negative value would now break — `products-detail.html` and
+      the order wizard's stock-decrement hint line both just interpolate
+      the raw number with no arithmetic; and no second test in the spec
+      file had the same latent ambiguous-`.segmented-control__item`-
+      selector problem as the one that needed fixing). 396/396 tests
+      passing, clean typecheck/lint/build.
 
 - [x] **Products — search by name (2026-08-27).** `GET /products`
       previously only accepted `?page&pageSize&typeId` — waited on the
@@ -972,6 +1090,102 @@ tested API this frontend will consume — see
       359/359 tests passing, clean typecheck/lint/build (506.73kB
       initial bundle, ordinary cumulative-growth warning, still well
       under the 1MB error threshold).
+
+## Done — global visual redesign (2026-08-30/31)
+
+- [x] **Restyled the whole app to match two Claude Design reference
+      artifacts**, dark-only (per an explicit `AskUserQuestion` — the
+      references define light+dark, VOM adopts only the dark values).
+      Reference artifacts (read in full via `Artifact` read, not just
+      the `<style>` head captured below):
+      `https://claude.ai/code/artifact/d8f32def-f6a3-4078-badb-47226b722c40`
+      ("Картотека наліпок") and
+      `https://claude.ai/code/artifact/617b082c-4c39-40ad-ad89-16387701bef0`
+      ("Картотека замовлень"). **Important:** these two artifacts are
+      NOT admin-dashboard UI references in their own content — they're
+      unrelated one-off data-recovery tools (a sticker-catalog
+      reconstruction page and a Nova-Poshta-export order-reconstruction
+      page). The user is pointing at their *visual language/style*, not
+      asking to copy their actual layout or content — confirm exact
+      per-component treatment (card layout specifics, table-to-card
+      breakpoints, filter placement, etc.) against the user rather than
+      assuming the artifacts' own literal layout maps 1:1 onto VOM's
+      pages, since neither artifact is actually a page-by-page dashboard
+      spec.
+      Concrete design tokens already extracted from both artifacts'
+      shared CSS (identical `:root` variables in both, both light+dark
+      defined):
+      - **Palette (light):** `--bg:#f0ede6` `--surface:#ffffff`
+        `--surface-2:#f5f2ea` `--border:#d8d3c8` `--text:#232323`
+        `--text-dim:#6b6b66` `--accent:#c76a12` `--accent-ink:#fff8ef`
+        `--good:#3f8a54`/`--good-bg:#e5f1e8` `--bad:#b6482f`/
+        `--bad-bg:#f6e6e2` (order-catalog artifact only) `--skip:#8a8d90`/
+        `--skip-bg:#e8e6e2` (sticker-catalog artifact only) — a warm
+        cream/paper palette with a burnt-orange accent, a clear
+        departure from VOM's current dark blueprint palette in
+        `src/styles.css`.
+      - **Palette (dark):** `--bg:#1a1c1f` `--surface:#232629`
+        `--surface-2:#2b2f33` `--border:#3a3f44` `--text:#eae7e0`
+        `--text-dim:#9a9d9f` `--accent:#e8871e` `--accent-ink:#201503`
+        `--good:#5fae74`/`--good-bg:#223129` `--bad:#e0755d`/
+        `--bad-bg:#33221e`.
+      - **Fonts:** `IBM Plex Sans` (400/500/600/700 — body/UI text,
+        replacing VOM's current Barlow), `IBM Plex Mono` (400/500 —
+        likely for numeric/tabular data, matching this project's
+        existing convention of a monospace font for numbers/codes),
+        `Turret Road` (700/800 — a condensed display font used for a
+        `.tag-face`-style heading treatment, candidate replacement for
+        VOM's current Barlow Condensed wordmark/heading font).
+      - **Shadow:** soft two-layer
+        `0 1px 2px rgba(30,25,15,.08), 0 1px 1px rgba(30,25,15,.04)`
+        (light) — a subtle card-lift treatment VOM's current flat
+        blueprint style doesn't use at all.
+      Explicit scope from the user, verbatim requirements: restyle tabs
+      (segmented controls) to match; restyle tables to match; **switch
+      Products and Expenses list pages from tables to card grids**
+      (Orders/Senders/CRM stay as tables — not mentioned); restyle
+      filters to match; restyle buttons to match; swap the font
+      throughout to match; match the artifacts' spacing scale
+      throughout ("всі відступи мають бути такі ж адекватні"); restyle
+      selects/dropdowns to match.
+      **What was actually built:** full rewrite of `src/styles.css`'s
+      `:root` token layer (dark palette above, `IBM Plex Sans` body/
+      `IBM Plex Mono` numeric-tabular/`Turret Road` display fonts, new
+      6/8/10/999px radius tiers, the two-layer soft shadow) plus every
+      page-local CSS file touched for consistency (login/2FA/warehouse-
+      dialog card containers, dashboard/CRM/orders numeric displays
+      switched to mono, hardcoded old-blue hex/rgba swept to the new
+      orange accent throughout, `dashboard.ts`'s Chart.js color
+      constants remapped since they live in TS not CSS). Segmented
+      controls became independent inverted-pill chips (was a joined
+      bordered box); status badges lost their border (flat filled
+      pills). Products and Expenses list pages converted from
+      `<table>` to `.card-grid`/`.entity-card` grids (Orders/Senders/
+      CRM stayed tables, restyled in place, per the user's explicit
+      scope). `Turret Road` scoped strictly to `.page-title`/
+      `.wordmark` — dialog/card sub-headings use body font, matching
+      the reference artifacts' own H2 convention rather than a blanket
+      display-font application (a judgment call made by cross-
+      referencing the artifacts' own markup, not guessed).
+      Reviewed twice (`reviewer` agent): first pass found the old
+      "blueprint corner-mark" decoration hidden via CSS rather than
+      removed from 5 templates (now removed, along with the newly-
+      orphaned `.blueprint-card`/`--danger` classes), an empty unused
+      `copyable-text.css` still wired via `styleUrl` (deleted), and the
+      Orders-detail waybill number leaking the uppercase display font
+      via `.page-title` cascade (fixed with a scoped `.page-title
+      .copyable-text__value` mono-font override) — plus flagged a
+      missing `API_REFERENCE.md` entry for `PATCH /orders/sync-statuses`,
+      which was added (with a note, verified against the real
+      `vom-back` source, that this endpoint can only ever 400 on a Nova
+      Poshta failure, never 502, since it has no compensating-cleanup
+      step — so the existing frontend error handling needed no change).
+      Second pass: clean, no findings.
+      396/396 tests passing, clean typecheck/lint, clean build
+      (509.22kB initial bundle, same ordinary pre-existing >500kB
+      budget warning). Visually verified via Playwright + mocked-API
+      screenshots across Login, Products, Expenses, Orders (list +
+      detail), Senders, 2FA, and Dashboard.
 
 ## Suggested build order
 

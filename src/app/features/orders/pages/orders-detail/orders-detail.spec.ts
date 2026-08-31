@@ -100,6 +100,10 @@ describe('OrdersDetail', () => {
     fixture.detectChanges();
   };
 
+  beforeEach(() => {
+    Object.assign(navigator, { clipboard: { writeText: vi.fn().mockResolvedValue(undefined) } });
+  });
+
   afterEach(() => {
     httpMock.verify();
   });
@@ -115,6 +119,25 @@ describe('OrdersDetail', () => {
     expect(el.querySelector('.data-table tbody')?.textContent).toContain('Наклейка');
     expect(el.querySelector('.data-table tbody')?.textContent).toContain('Наклейка «Кіт»');
     expect(el.querySelector('.data-table tbody')?.textContent).toContain('300 ₴');
+  });
+
+  it('copies the waybill number to the clipboard from the page title', () => {
+    create();
+    flushOrder();
+    flushSenderLookups();
+
+    (el.querySelector('.page-title .copyable-text__btn') as HTMLButtonElement).click();
+
+    expect(navigator.clipboard.writeText).toHaveBeenCalledWith('20450182773641');
+  });
+
+  it('shows a synthetic order number instead of a copy button when there is no waybill', () => {
+    create();
+    flushOrder({ npWaybillNumber: null });
+    flushSenderLookups();
+
+    expect(el.querySelector('.page-title')?.textContent).toContain('Замовлення №9');
+    expect(el.querySelector('.page-title .copyable-text')).toBeNull();
   });
 
   it('shows the sender name/phone and resolved sender-address label once loaded', () => {

@@ -199,6 +199,42 @@ describe('OrdersCreate', () => {
     expect(el.querySelector('.field-hint')?.textContent).toContain('немає збереженої адреси');
   });
 
+  it('normalizes a pasted phone number to +380XXXXXXXXX', () => {
+    create();
+    flushActiveSender();
+    flushAddresses();
+    const component = fixture.debugElement.componentInstance as OrdersCreate;
+    component['step'].set(2);
+    fixture.detectChanges();
+
+    const phoneInput = el.querySelector('#phone') as HTMLInputElement;
+    const pasteEvent = new Event('paste', { cancelable: true }) as ClipboardEvent;
+    Object.defineProperty(pasteEvent, 'clipboardData', {
+      value: { getData: () => '+38 (050) 123-45-67' },
+    });
+    phoneInput.dispatchEvent(pasteEvent);
+    fixture.detectChanges();
+
+    expect(component['form'].controls.recipient.controls.phone.value).toBe('+380501234567');
+  });
+
+  it('normalizes a manually typed phone number once the field loses focus', () => {
+    create();
+    flushActiveSender();
+    flushAddresses();
+    const component = fixture.debugElement.componentInstance as OrdersCreate;
+    component['step'].set(2);
+    fixture.detectChanges();
+
+    const phoneInput = el.querySelector('#phone') as HTMLInputElement;
+    phoneInput.value = '0501234567';
+    phoneInput.dispatchEvent(new Event('input'));
+    phoneInput.dispatchEvent(new Event('blur'));
+    fixture.detectChanges();
+
+    expect(component['form'].controls.recipient.controls.phone.value).toBe('+380501234567');
+  });
+
   it('does not offer the unsupported "Адреса" (door-to-door) delivery method', () => {
     create();
     flushActiveSender();
@@ -287,6 +323,30 @@ describe('OrdersCreate', () => {
     component.onCitySearchTermChange('   ');
 
     httpMock.expectNone(`${novaPoshtaUrl}/cities?query=`);
+  });
+
+  it('blocks step 2 when the recipient phone is not a valid +380XXXXXXXXX shape', () => {
+    create();
+    flushActiveSender();
+    flushAddresses();
+    const component = fixture.debugElement.componentInstance as OrdersCreate;
+    component['step'].set(2);
+    fixture.detectChanges();
+
+    component['form'].controls.recipient.setValue({
+      phone: '050',
+      lastName: 'Петренко',
+      firstName: 'Петро',
+      middleName: '',
+    });
+    component.selectDeliveryMethod('warehouse');
+    component.onCitySelected({ value: 'city-1', label: 'Київ' });
+    httpMock.expectOne(`${novaPoshtaUrl}/warehouses?cityRef=city-1`).flush([{ ref: 'w1', description: 'Відділення 1' }]);
+    httpMock.expectOne(`${novaPoshtaUrl}/postomats?cityRef=city-1`).flush([]);
+    component.onWarehouseSelected({ value: 'w1', label: 'Відділення 1' });
+    fixture.detectChanges();
+
+    expect(component.isStep2Valid()).toBe(false);
   });
 
   it('submits the built payload and navigates to the orders list on success', () => {

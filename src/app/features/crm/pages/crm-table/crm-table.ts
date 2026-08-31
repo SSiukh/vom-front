@@ -7,6 +7,7 @@ import { CrmApiService } from '../../../../core/api/crm-api.service';
 import { DictionariesService } from '../../../../core/dictionaries/dictionaries.service';
 import { FEATURE_ROUTES } from '../../../../core/routes.constants';
 import { DateFieldTriggerDirective } from '../../../../shared/directives/date-field-trigger.directive';
+import { CopyableText } from '../../../../shared/ui/copyable-text/copyable-text';
 import { Pagination } from '../../../../shared/ui/pagination/pagination';
 import { shipmentStatusBadgeClass } from '../../../../shared/utils/shipment-status-badge.util';
 import type { CrmRow } from '../../models/crm-row.model';
@@ -17,7 +18,7 @@ type SortOrder = 'asc' | 'desc';
 
 @Component({
   selector: 'app-crm-table',
-  imports: [DatePipe, Pagination, DateFieldTriggerDirective, LucideListChecks],
+  imports: [DatePipe, Pagination, DateFieldTriggerDirective, CopyableText, LucideListChecks],
   templateUrl: './crm-table.html',
   styleUrl: './crm-table.css',
 })
@@ -115,7 +116,17 @@ export class CrmTable {
     this.router.navigateByUrl(`${FEATURE_ROUTES.orders}/${row.id}`);
   }
 
+  onRowClick(event: Event, row: CrmRow): void {
+    if ((event.target as HTMLElement).closest('.copyable-text')) {
+      return;
+    }
+    this.goToOrderDetail(row);
+  }
+
   onRowSpaceKey(event: Event, row: CrmRow): void {
+    if ((event.target as HTMLElement).closest('.copyable-text')) {
+      return;
+    }
     event.preventDefault();
     this.goToOrderDetail(row);
   }

@@ -11,6 +11,7 @@ import { DictionariesService } from '../../../../core/dictionaries/dictionaries.
 import { FEATURE_ROUTES } from '../../../../core/routes.constants';
 import type { Sender } from '../../../senders/models/sender.model';
 import { ConfirmDialog } from '../../../../shared/ui/confirm-dialog/confirm-dialog';
+import { CopyableText } from '../../../../shared/ui/copyable-text/copyable-text';
 import { shipmentStatusBadgeClass } from '../../../../shared/utils/shipment-status-badge.util';
 import type { Order, SetOrderStatusFlagsPayload } from '../../models/order.model';
 
@@ -20,7 +21,7 @@ const SENDERS_FETCH_PAGE_SIZE = 100;
 
 @Component({
   selector: 'app-orders-detail',
-  imports: [DatePipe, ConfirmDialog, LucideChevronLeft, LucidePencil, LucideTrash2],
+  imports: [DatePipe, ConfirmDialog, CopyableText, LucideChevronLeft, LucidePencil, LucideTrash2],
   templateUrl: './orders-detail.html',
   styleUrl: './orders-detail.css',
 })

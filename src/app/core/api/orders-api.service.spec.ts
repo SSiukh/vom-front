@@ -3,6 +3,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { TestBed } from '@angular/core/testing';
 import { environment } from '../../../environments/environment';
 import type { CreateOrderPayload } from '../../features/orders/models/order.model';
+import { REQUEST_TIMEOUT_MS } from '../interceptors/request-timeout.interceptor';
 import { OrdersApiService } from './orders-api.service';
 
 describe('OrdersApiService', () => {
@@ -113,5 +114,14 @@ describe('OrdersApiService', () => {
     expect(req.request.method).toBe('PATCH');
     expect(req.request.body).toEqual({ isPacked: true });
     req.flush(order({ isPacked: true }));
+  });
+
+  it('patches /orders/sync-statuses with no body and a longer request-timeout budget', () => {
+    service.syncAllStatuses().subscribe();
+    const req = httpMock.expectOne(`${baseUrl}/sync-statuses`);
+    expect(req.request.method).toBe('PATCH');
+    expect(req.request.body).toBeNull();
+    expect(req.request.context.get(REQUEST_TIMEOUT_MS)).toBe(90_000);
+    req.flush({ totalOrders: 12, updatedCount: 5, unmappedCount: 1 });
   });
 });

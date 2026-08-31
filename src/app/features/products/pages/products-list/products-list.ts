@@ -33,6 +33,7 @@ export class ProductsList {
   protected readonly error = signal<string | null>(null);
   protected readonly selectedTypeId = signal<string | null>(null);
   protected readonly searchTerm = signal('');
+  protected readonly stockSortOrder = signal<'asc' | 'desc' | null>(null);
   protected readonly pendingDeleteId = signal<string | null>(null);
   protected readonly deleting = signal(false);
 
@@ -81,6 +82,15 @@ export class ProductsList {
     this.load();
   }
 
+  setStockSortOrder(order: 'asc' | 'desc' | null): void {
+    if (this.stockSortOrder() === order) {
+      return;
+    }
+    this.stockSortOrder.set(order);
+    this.page.set(1);
+    this.load();
+  }
+
   onPageChange(page: number): void {
     this.page.set(page);
     this.load();
@@ -114,11 +124,21 @@ export class ProductsList {
   }
 
   stockClass(product: Product): string {
-    if (product.stockQuantity === 0) {
+    if (product.stockQuantity <= 0) {
       return 'stock-zero';
     }
     if (product.stockQuantity < 10) {
       return 'stock-low';
+    }
+    return '';
+  }
+
+  cardAccentClass(product: Product): string {
+    if (product.stockQuantity <= 0) {
+      return 'entity-card--danger';
+    }
+    if (product.stockQuantity < 10) {
+      return 'entity-card--warning';
     }
     return '';
   }
@@ -158,7 +178,13 @@ export class ProductsList {
     this.loading.set(true);
     this.error.set(null);
     this.productsApi
-      .list(this.page(), this.pageSize, this.selectedTypeId(), this.searchTerm().trim() || null)
+      .list(
+        this.page(),
+        this.pageSize,
+        this.selectedTypeId(),
+        this.searchTerm().trim() || null,
+        this.stockSortOrder(),
+      )
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (response) => {

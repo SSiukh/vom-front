@@ -65,12 +65,12 @@ describe('ProductsList', () => {
     vi.useRealTimers();
   });
 
-  it('fetches page 1 unfiltered on init and renders a row per product', () => {
+  it('fetches page 1 unfiltered on init and renders a card per product', () => {
     create();
     flushList([product(), product({ id: '2', name: 'Ракета' })], 2);
 
-    const rows = el.querySelectorAll('tbody tr');
-    expect(rows.length).toBe(2);
+    const cards = el.querySelectorAll('.entity-card');
+    expect(cards.length).toBe(2);
   });
 
   it('shows the empty state when there are no products', () => {
@@ -84,9 +84,9 @@ describe('ProductsList', () => {
     create();
     flushList([], 0);
 
-    const labels = Array.from(el.querySelectorAll('.segmented-control__item')).map((b) =>
-      b.textContent?.trim(),
-    );
+    const labels = Array.from(
+      el.querySelector('.segmented-control')?.querySelectorAll('.segmented-control__item') ?? [],
+    ).map((b) => b.textContent?.trim());
     expect(labels).toEqual(['Усі', 'Наклейка', 'Брелок']);
   });
 
@@ -106,36 +106,86 @@ describe('ProductsList', () => {
     create();
     flushList([product({ promoPrice: 180 }), product({ id: '2', promoPrice: null })], 2);
 
-    const promoCells = el.querySelectorAll('.col-num .promo-price, .col-num .dash');
+    const promoCells = el.querySelectorAll('.entity-card__field-value .promo-price, .entity-card__field-value .dash');
     expect(promoCells[0].textContent?.trim()).toBe('180 ₴');
     expect(promoCells[1].textContent?.trim()).toBe('—');
   });
 
-  it('applies stock-zero/stock-low classes based on quantity', () => {
+  it('applies stock-zero/stock-low classes based on quantity, and an accent border on the card', () => {
     create();
     flushList(
       [
         product({ id: '1', stockQuantity: 0 }),
         product({ id: '2', stockQuantity: 4 }),
         product({ id: '3', stockQuantity: 24 }),
+        product({ id: '4', stockQuantity: -3 }),
       ],
-      3,
+      4,
     );
 
-    const stockCells = Array.from(el.querySelectorAll('tbody tr')).map(
-      (row) => row.querySelector('td:nth-child(6)') as HTMLElement,
-    );
-    expect(stockCells[0].classList.contains('stock-zero')).toBe(true);
-    expect(stockCells[1].classList.contains('stock-low')).toBe(true);
-    expect(stockCells[2].classList.contains('stock-zero')).toBe(false);
-    expect(stockCells[2].classList.contains('stock-low')).toBe(false);
+    const cards = Array.from(el.querySelectorAll('.entity-card'));
+    const stockValue = (card: Element) => card.querySelectorAll('.entity-card__field-value')[2] as HTMLElement;
+
+    expect(stockValue(cards[0]).classList.contains('stock-zero')).toBe(true);
+    expect(cards[0].classList.contains('entity-card--danger')).toBe(true);
+
+    expect(stockValue(cards[1]).classList.contains('stock-low')).toBe(true);
+    expect(cards[1].classList.contains('entity-card--warning')).toBe(true);
+
+    expect(stockValue(cards[2]).classList.contains('stock-zero')).toBe(false);
+    expect(stockValue(cards[2]).classList.contains('stock-low')).toBe(false);
+    expect(cards[2].classList.contains('entity-card--danger')).toBe(false);
+    expect(cards[2].classList.contains('entity-card--warning')).toBe(false);
+
+    expect(stockValue(cards[3]).classList.contains('stock-zero')).toBe(true);
+    expect(cards[3].classList.contains('entity-card--danger')).toBe(true);
+    expect(stockValue(cards[3]).textContent?.trim()).toBe('-3');
+  });
+
+  it('refetches sorted by stock quantity when a sort segment is clicked, resetting to page 1', () => {
+    create();
+    flushList([], 0);
+
+    const ascButton = Array.from(el.querySelectorAll('.segmented-control__item')).find(
+      (b) => b.textContent?.trim() === 'Зростання',
+    ) as HTMLButtonElement;
+    ascButton.click();
+
+    httpMock.expectOne(`${baseUrl}?page=1&pageSize=10&sortOrder=asc`).flush({ items: [], total: 0 });
+    fixture.detectChanges();
+
+    const descButton = Array.from(el.querySelectorAll('.segmented-control__item')).find(
+      (b) => b.textContent?.trim() === 'Спадання',
+    ) as HTMLButtonElement;
+    descButton.click();
+
+    httpMock.expectOne(`${baseUrl}?page=1&pageSize=10&sortOrder=desc`).flush({ items: [], total: 0 });
+  });
+
+  it('drops the sortOrder param when switching back to "За замовчуванням"', () => {
+    create();
+    flushList([], 0);
+
+    const ascButton = Array.from(el.querySelectorAll('.segmented-control__item')).find(
+      (b) => b.textContent?.trim() === 'Зростання',
+    ) as HTMLButtonElement;
+    ascButton.click();
+    httpMock.expectOne(`${baseUrl}?page=1&pageSize=10&sortOrder=asc`).flush({ items: [], total: 0 });
+    fixture.detectChanges();
+
+    const defaultButton = Array.from(el.querySelectorAll('.segmented-control__item')).find(
+      (b) => b.textContent?.trim() === 'За замовчуванням',
+    ) as HTMLButtonElement;
+    defaultButton.click();
+
+    httpMock.expectOne(`${baseUrl}?page=1&pageSize=10`).flush({ items: [], total: 0 });
   });
 
   it('navigates to the detail page when clicking anywhere on the row', () => {
     create();
     flushList([product()], 1);
 
-    (el.querySelector('tbody tr') as HTMLElement).click();
+    (el.querySelector('.entity-card') as HTMLElement).click();
 
     expect(router.navigateByUrl).toHaveBeenCalledWith('/products/1');
   });
@@ -197,7 +247,7 @@ describe('ProductsList', () => {
     httpMock.expectOne(`${baseUrl}?page=1&pageSize=10&name=%D0%BA%D1%96%D1%82`).flush({ items: [product()], total: 1 });
     fixture.detectChanges();
 
-    expect(el.querySelectorAll('tbody tr').length).toBe(1);
+    expect(el.querySelectorAll('.entity-card').length).toBe(1);
   });
 
   it('stops sending name once the search input is cleared', () => {

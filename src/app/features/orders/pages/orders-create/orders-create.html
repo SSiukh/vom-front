@@ -168,7 +168,14 @@
           <div class="form-grid-2">
             <div class="field">
               <label class="field-label" for="phone">Телефон</label>
-              <input id="phone" type="tel" class="text-input" formControlName="phone" />
+              <input
+                id="phone"
+                type="tel"
+                class="text-input"
+                formControlName="phone"
+                (paste)="onPhonePaste($event)"
+                (blur)="onPhoneBlur()"
+              />
             </div>
             <div class="field">
               <label class="field-label" for="lastName">Прізвище</label>

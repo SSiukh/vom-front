@@ -19,6 +19,7 @@ import { FEATURE_ROUTES } from '../../../../core/routes.constants';
 import type { Product } from '../../../products/models/product.model';
 import type { Sender, SenderAddress } from '../../../senders/models/sender.model';
 import { SearchableSelect, type SelectOption } from '../../../../shared/ui/searchable-select/searchable-select';
+import { normalizeUaPhone } from '../../../../shared/utils/phone-format.util';
 import type { CreateOrderPayload } from '../../models/order.model';
 import { buildOrderItemPayload, createOrderItemFormGroup } from '../../order-item-form.util';
 import { OrderItemCard, type OrderItemFormGroup } from './order-item-card/order-item-card';
@@ -88,7 +89,7 @@ export class OrdersCreate {
     items: this.fb.array<OrderItemFormGroup>([createOrderItemFormGroup(this.fb)]),
     senderAddressRef: this.fb.nonNullable.control('', Validators.required),
     recipient: this.fb.group({
-      phone: this.fb.nonNullable.control('', Validators.required),
+      phone: this.fb.nonNullable.control('', [Validators.required, Validators.pattern(/^\+380\d{9}$/)]),
       lastName: this.fb.nonNullable.control('', Validators.required),
       firstName: this.fb.nonNullable.control('', Validators.required),
       middleName: this.fb.nonNullable.control(''),
@@ -219,6 +220,20 @@ export class OrdersCreate {
 
   goBack(): void {
     this.router.navigateByUrl(FEATURE_ROUTES.orders);
+  }
+
+  onPhonePaste(event: ClipboardEvent): void {
+    const pasted = event.clipboardData?.getData('text') ?? '';
+    if (!pasted) {
+      return;
+    }
+    event.preventDefault();
+    this.form.controls.recipient.controls.phone.setValue(normalizeUaPhone(pasted));
+  }
+
+  onPhoneBlur(): void {
+    const control = this.form.controls.recipient.controls.phone;
+    control.setValue(normalizeUaPhone(control.value));
   }
 
   onCitySearchTermChange(term: string): void {

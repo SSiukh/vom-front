@@ -188,7 +188,7 @@ section for the exact form-field mechanics.
 
 | Method & path | Body | Response |
 |---|---|---|
-| `GET /products` | `?page&pageSize&typeId&name` | `ListProductsResponseDto` |
+| `GET /products` | `?page&pageSize&typeId&name&sortOrder` | `ListProductsResponseDto` |
 | `GET /products/:id` | — | `ProductResponseDto` |
 | `POST /products` | multipart: `photo` (required) + `CreateProductDto` fields | `ProductResponseDto` |
 | `PATCH /products/:id` | multipart: `photo` (optional) + partial `CreateProductDto` fields | `ProductResponseDto` |
@@ -212,6 +212,9 @@ over the product name, combinable with `typeId`. Regex metacharacters in
 the value are escaped server-side, so it is always a literal substring
 match, never a pattern.
 
+`sortOrder` (optional, `asc`|`desc`) sorts the list by `stockQuantity`
+instead of the default `createdAt desc`; combinable with `typeId`/`name`.
+
 ## 6. Orders (`/orders`)
 
 The largest module — a multi-step wizard collapsed into one `Order`
@@ -224,6 +227,7 @@ document, with Nova Poshta waybill creation/update/deletion kept in sync.
 | `GET /orders/:id` | default | — | `OrderResponseDto` |
 | `PATCH /orders/:id` | 20/min | `UpdateOrderDto` (all fields optional) | `OrderResponseDto` |
 | `PATCH /orders/:id/sync-status` | 20/min | — | `OrderResponseDto` (manual Nova Poshta status pull, no polling) |
+| `PATCH /orders/sync-statuses` | 20/min | — | `BulkSyncStatusResponseDto {totalOrders, updatedCount, unmappedCount}` (syncs every order with a waybill, grouped by sender) |
 | `PATCH /orders/:id/status-flags` | default | `SetOrderStatusFlagsDto {isPacked?, isOutOfStock?}` | `OrderResponseDto` |
 | `DELETE /orders/:id` | 20/min | — | `204` |
 
@@ -257,6 +261,13 @@ never trust a client value), the embedded `items[]` (each with a captured
 don't change retroactively if the underlying product changes later),
 `recipient`, `deliveryDetails`, and `npWaybillNumber`/`npWaybillRef`/
 `shipmentStatusId` (all nullable until the Nova Poshta call completes).
+
+`PATCH /orders/sync-statuses` batches this same pull across every order
+that has a waybill number, grouped by sender (one Nova Poshta call per
+sender rather than per order). A Nova Poshta API failure (e.g. `apiKey`
+rejected) surfaces as a `400` from the underlying `callMethod` helper,
+not a `502` — this endpoint has no compensating-transaction/cleanup step
+that could fail independently, unlike waybill create/update/delete.
 
 **`isPacked`/`isOutOfStock` are a separate, manual status axis — not
 Nova Poshta tracking.** `shipmentStatusId` is auto-synced from real NP

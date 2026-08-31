@@ -19,9 +19,9 @@
 }
 
 .total-card__amount {
-  font-family: var(--font-heading);
-  font-size: 26px;
-  font-weight: 600;
+  font-family: var(--font-mono);
+  font-size: 24px;
+  font-weight: 500;
   color: var(--color-text-primary);
 }
 

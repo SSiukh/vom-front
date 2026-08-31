@@ -40,6 +40,10 @@ describe('OrdersList', () => {
       { id: 'pt1', code: 'cod', label: 'Післяплата' },
       { id: 'pt2', code: 'full', label: 'Повна оплата' },
     ],
+    shipmentStatuses: () => [
+      { id: 'ss1', code: 'shipped', label: 'Відправлено' },
+      { id: 'ss2', code: 'delivered', label: 'Доставлено' },
+    ],
   };
 
   const create = () => {
@@ -64,6 +68,10 @@ describe('OrdersList', () => {
     httpMock.expectOne(url).flush({ items, total });
     fixture.detectChanges();
   };
+
+  beforeEach(() => {
+    Object.assign(navigator, { clipboard: { writeText: vi.fn().mockResolvedValue(undefined) } });
+  });
 
   afterEach(() => {
     httpMock.verify();
@@ -143,6 +151,27 @@ describe('OrdersList', () => {
     (el.querySelector('tbody tr') as HTMLElement).click();
 
     expect(router.navigateByUrl).toHaveBeenCalledWith('/orders/1');
+  });
+
+  it('does not navigate when clicking the copy-waybill button', () => {
+    create();
+    flushList([order()], 1);
+
+    (el.querySelector('.copyable-text__btn') as HTMLButtonElement).click();
+
+    expect(router.navigateByUrl).not.toHaveBeenCalled();
+  });
+
+  it('renders the shipment status badge, and a dash when there is none', () => {
+    create();
+    flushList([order({ shipmentStatusId: 'ss2' }), order({ id: '2', shipmentStatusId: null })], 2);
+
+    const rows = el.querySelectorAll('tbody tr');
+    const firstStatusCell = rows[0].querySelectorAll('td')[7];
+    const secondStatusCell = rows[1].querySelectorAll('td')[7];
+    expect(firstStatusCell.querySelector('.status-badge')?.textContent?.trim()).toBe('Доставлено');
+    expect(firstStatusCell.querySelector('.status-badge')?.classList.contains('status-badge--success')).toBe(true);
+    expect(secondStatusCell.querySelector('.dash')?.textContent?.trim()).toBe('—');
   });
 
   it('navigates to the create page when "Створити замовлення" is clicked', () => {
@@ -260,5 +289,50 @@ describe('OrdersList', () => {
     fixture.detectChanges();
 
     expect(el.querySelector('.error-text')?.textContent?.trim()).toBe('Не вдалося завантажити список замовлень');
+  });
+
+  it('syncs all statuses and shows a result summary, then reloads the list', () => {
+    create();
+    flushList([order()], 1);
+
+    const syncButtons = Array.from(el.querySelectorAll('.btn-ghost')) as HTMLButtonElement[];
+    const syncButton = syncButtons.find((b) => b.textContent?.includes('Синхронізувати статуси')) as HTMLButtonElement;
+    syncButton.click();
+    fixture.detectChanges();
+
+    expect(syncButton.disabled).toBe(true);
+    httpMock.expectOne(`${baseUrl}/sync-statuses`).flush({ totalOrders: 10, updatedCount: 4, unmappedCount: 1 });
+    flushList([order()], 1);
+
+    expect(el.querySelector('.success-banner')?.textContent?.trim()).toBe(
+      'Оновлено 4 із 10 замовлень, 1 не вдалося визначити',
+    );
+    expect(syncButton.disabled).toBe(false);
+  });
+
+  it('shows a rate-limit message when the status sync is throttled (429)', () => {
+    create();
+    flushList([order()], 1);
+
+    const syncButtons = Array.from(el.querySelectorAll('.btn-ghost')) as HTMLButtonElement[];
+    const syncButton = syncButtons.find((b) => b.textContent?.includes('Синхронізувати статуси')) as HTMLButtonElement;
+    syncButton.click();
+    httpMock.expectOne(`${baseUrl}/sync-statuses`).flush('err', { status: 429, statusText: 'Too Many Requests' });
+    fixture.detectChanges();
+
+    expect(el.querySelector('.error-text')?.textContent?.trim()).toBe('Забагато спроб — спробуйте пізніше');
+  });
+
+  it('ignores a second sync click while one is already in flight', () => {
+    create();
+    flushList([order()], 1);
+
+    const syncButtons = Array.from(el.querySelectorAll('.btn-ghost')) as HTMLButtonElement[];
+    const syncButton = syncButtons.find((b) => b.textContent?.includes('Синхронізувати статуси')) as HTMLButtonElement;
+    syncButton.click();
+    syncButton.click();
+
+    httpMock.expectOne(`${baseUrl}/sync-statuses`).flush({ totalOrders: 0, updatedCount: 0, unmappedCount: 0 });
+    flushList([order()], 1);
   });
 });
