@@ -1,3 +1,5 @@
+import type { ProductBrand } from './product-brand.model';
+
 export interface DictionaryItem {
   id: string;
   code: string;
@@ -10,6 +12,7 @@ export interface ShipmentType extends DictionaryItem {
 
 export interface ProductType extends DictionaryItem {
   isCustom: boolean;
+  brand: ProductBrand;
 }
 
 export interface ExpenseType extends DictionaryItem {

@@ -1,0 +1,18 @@
+@if (connection.blockedUrl()) {
+  <div class="server-status server-status--error" role="alert">
+    <svg lucideWifiOff [size]="16" [strokeWidth]="1.5"></svg>
+    <span class="server-status__text">Не вдалося отримати дані з сервера</span>
+    <button type="button" class="btn-primary server-status__action" (click)="retry()">
+      <svg lucideRefreshCw [size]="14" [strokeWidth]="1.5"></svg>
+      Спробувати ще
+    </button>
+  </div>
+}
+<div role="status">
+  @if (connection.waking() && !connection.blockedUrl()) {
+    <div class="server-status">
+      <svg lucideLoaderCircle class="server-status__spinner" [size]="16" [strokeWidth]="1.5"></svg>
+      <span class="server-status__text">Сервер прокидається після простою — це може зайняти до двох хвилин…</span>
+    </div>
+  }
+</div>

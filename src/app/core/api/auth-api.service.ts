@@ -1,7 +1,8 @@
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpContext } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import type { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
+import { REQUEST_TIMEOUT_MS } from '../interceptors/request-timeout.interceptor';
 import type {
   ConfirmTwoFaRequest,
   ConfirmTwoFaResponse,
@@ -13,6 +14,8 @@ import type {
   TwoFaStatusResponse,
   VerifyLoginRequest,
 } from '../auth/auth.models';
+
+const REFRESH_TIMEOUT_MS = 120_000;
 
 @Injectable({ providedIn: 'root' })
 export class AuthApiService {
@@ -28,7 +31,9 @@ export class AuthApiService {
   }
 
   refresh(request: RefreshRequest): Observable<TokenPairResponse> {
-    return this.http.post<TokenPairResponse>(`${this.baseUrl}/refresh`, request);
+    return this.http.post<TokenPairResponse>(`${this.baseUrl}/refresh`, request, {
+      context: new HttpContext().set(REQUEST_TIMEOUT_MS, REFRESH_TIMEOUT_MS),
+    });
   }
 
   logout(): Observable<void> {

@@ -18,6 +18,7 @@ describe('ExpensesList', () => {
     typeId: 't1',
     name: null,
     amount: 150,
+    brand: null,
     createdAt: '2026-08-22T10:00:00.000Z',
     updatedAt: '2026-08-22T10:00:00.000Z',
     ...overrides,
@@ -80,6 +81,23 @@ describe('ExpensesList', () => {
     expect(metaRow?.textContent?.trim()).toBe('Доставка22.08.2026');
     expect(card.querySelector('.entity-card__title')?.textContent?.trim()).toBe('—');
     expect(card.querySelector('.entity-card__field-value')?.textContent?.trim()).toBe('150 ₴');
+  });
+
+  it('shows no group badge for a shared expense', () => {
+    create();
+    flushList([expense()], 1);
+
+    const card = el.querySelector('.entity-card') as HTMLElement;
+    expect(card.querySelector('.entity-card__meta-group .status-badge')).toBeNull();
+  });
+
+  it('shows a VOM/M group badge when the expense belongs to a group', () => {
+    create();
+    flushList([expense({ brand: 'vom' }), expense({ id: '2', brand: 'm' })], 2);
+
+    const cards = el.querySelectorAll('.entity-card');
+    expect(cards[0].querySelector('.entity-card__meta-group .status-badge')?.textContent?.trim()).toBe('VOM');
+    expect(cards[1].querySelector('.entity-card__meta-group .status-badge')?.textContent?.trim()).toBe('M');
   });
 
   it('renders the real name for an "Інше" expense instead of a dash', () => {

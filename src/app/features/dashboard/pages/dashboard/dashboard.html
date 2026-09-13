@@ -18,6 +18,35 @@
       <input id="date-to" type="date" [value]="dateTo() ?? ''" (change)="onDateToChange($event)" />
     </div>
   </div>
+  <div class="date-field">
+    <span class="date-field__label">Група</span>
+    <div class="segmented-control">
+      <button
+        type="button"
+        class="segmented-control__item"
+        [class.segmented-control__item--active]="brand() === null"
+        (click)="setBrand(null)"
+      >
+        Усі
+      </button>
+      <button
+        type="button"
+        class="segmented-control__item"
+        [class.segmented-control__item--active]="brand() === 'vom'"
+        (click)="setBrand('vom')"
+      >
+        VOM
+      </button>
+      <button
+        type="button"
+        class="segmented-control__item"
+        [class.segmented-control__item--active]="brand() === 'm'"
+        (click)="setBrand('m')"
+      >
+        M
+      </button>
+    </div>
+  </div>
 </div>
 
 @if (error()) {
@@ -31,16 +60,28 @@
     <div class="info-panel metric-card">
       <span class="field-label">Загальний дохід</span>
       <div class="metric-value">{{ summary.totalRevenue }} ₴</div>
+      <span class="metric-card__hint">реалізовано: {{ summary.realizedRevenue }} ₴</span>
+      <span class="metric-card__hint">в очікуванні: {{ summary.pendingRevenue }} ₴</span>
+      @if (summary.lostRevenue > 0) {
+        <span class="metric-card__hint metric-card__hint--negative">втрачено: {{ summary.lostRevenue }} ₴</span>
+      }
     </div>
     <div class="info-panel metric-card">
       <span class="field-label">Загальні витрати</span>
       <div class="metric-value">{{ summary.totalExpenses }} ₴</div>
+      @if (summary.sharedExpenses !== null) {
+        <span class="metric-card__hint">спільні витрати: {{ summary.sharedExpenses }} ₴</span>
+      }
     </div>
     <div class="info-panel metric-card">
       <span class="field-label">Прибуток</span>
       <div class="metric-value" [class.metric-value--negative]="summary.profit < 0">{{ summary.profit }} ₴</div>
+      <span class="metric-card__hint">на основі реалізованого доходу</span>
       @if (profitMargin(); as margin) {
         <span class="metric-card__hint">маржа {{ margin }}%</span>
+      }
+      @if (summary.sharedExpenses !== null) {
+        <span class="metric-card__hint">без спільних витрат</span>
       }
     </div>
     <div class="info-panel metric-card">

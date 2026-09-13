@@ -5,15 +5,17 @@ import { BaseChartDirective } from 'ng2-charts';
 import { DashboardApiService } from '../../../../core/api/dashboard-api.service';
 import { DictionariesService } from '../../../../core/dictionaries/dictionaries.service';
 import { DateFieldTriggerDirective } from '../../../../shared/directives/date-field-trigger.directive';
+import type { ProductBrand } from '../../../../shared/models/product-brand.model';
 import type { DashboardSummary, ShipmentStatusBreakdown } from '../../models/dashboard-summary.model';
 
 const EXPENSE_CATEGORY_COLORS = ['#e8871e', '#c76a12', '#f3c98a', '#9a9d9f'];
 
 const SHIPMENT_STATUS_COLORS: Record<string, string> = {
   shipped: '#e8871e',
-  delivered: '#5fae74',
-  received: '#9a9d9f',
+  delivered: '#6ea2dd',
+  received: '#5fae74',
   refused: '#e0755d',
+  redirected: '#dbb866',
 };
 
 const CHART_GRID_COLOR = '#3a3f44';
@@ -36,6 +38,7 @@ export class Dashboard {
 
   protected readonly dateFrom = signal<string | null>(null);
   protected readonly dateTo = signal<string | null>(null);
+  protected readonly brand = signal<ProductBrand | null>(null);
 
   protected readonly averageOrderValue = computed(() => {
     const summary = this.summary();
@@ -47,10 +50,10 @@ export class Dashboard {
 
   protected readonly profitMargin = computed(() => {
     const summary = this.summary();
-    if (!summary || summary.totalRevenue === 0) {
+    if (!summary || summary.realizedRevenue === 0) {
       return null;
     }
-    return Math.round((summary.profit / summary.totalRevenue) * 1000) / 10;
+    return Math.round((summary.profit / summary.realizedRevenue) * 1000) / 10;
   });
 
   protected readonly revenueChartData = computed<ChartConfiguration<'line'>['data']>(() => {
@@ -137,6 +140,11 @@ export class Dashboard {
     this.load();
   }
 
+  setBrand(brand: ProductBrand | null): void {
+    this.brand.set(brand);
+    this.load();
+  }
+
   private shipmentStatusColor(status: ShipmentStatusBreakdown): string {
     const code = this.dictionaries.shipmentStatuses().find((s) => s.id === status.shipmentStatusId)?.code;
     return SHIPMENT_STATUS_COLORS[code ?? ''] ?? '#e8871e';
@@ -161,7 +169,7 @@ export class Dashboard {
     this.loading.set(true);
     this.error.set(null);
     this.dashboardApi
-      .getSummary(this.dateFrom(), this.dateTo())
+      .getSummary(this.dateFrom(), this.dateTo(), this.brand())
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (summary) => {

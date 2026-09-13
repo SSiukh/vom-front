@@ -82,6 +82,16 @@ export class ExpensesList {
     return this.typeLabelById().get(expense.typeId) ?? '';
   }
 
+  brandLabel(expense: Expense): string | null {
+    if (expense.brand === 'vom') {
+      return 'VOM';
+    }
+    if (expense.brand === 'm') {
+      return 'M';
+    }
+    return null;
+  }
+
   deleteConfirmMessage(): string {
     const expense = this.pendingDeleteExpense();
     if (!expense) {

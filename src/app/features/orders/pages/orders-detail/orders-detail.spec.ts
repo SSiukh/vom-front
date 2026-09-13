@@ -19,12 +19,13 @@ describe('OrdersDetail', () => {
     shipmentTypes: () => [{ id: 'st1', code: 'documents', label: 'Документи' }],
     paymentTypes: () => [{ id: 'pt1', code: 'cod', label: 'Післяплата' }],
     deliveryTypes: () => [{ id: 'dt1', code: 'warehouse', label: 'Відділення' }],
-    productTypes: () => [{ id: 'prt1', code: 'sticker', label: 'Наклейка', isCustom: false }],
+    productTypes: () => [{ id: 'prt1', code: 'sticker', label: 'Наклейка', isCustom: false, brand: 'm' }],
     shipmentStatuses: () => [
       { id: 'ss-shipped', code: 'shipped', label: 'Відправлено' },
       { id: 'ss-delivered', code: 'delivered', label: 'Доставлено' },
       { id: 'ss-received', code: 'received', label: 'Отримано' },
       { id: 'ss-refused', code: 'refused', label: 'Відмовлено' },
+      { id: 'ss-redirected', code: 'redirected', label: 'Переадресовано' },
     ],
   };
 
@@ -168,9 +169,10 @@ describe('OrdersDetail', () => {
 
   it.each([
     ['ss-shipped', 'Відправлено', 'badge-info'],
-    ['ss-delivered', 'Доставлено', 'status-badge--success'],
-    ['ss-received', 'Отримано', 'status-badge--muted'],
+    ['ss-delivered', 'Доставлено', 'status-badge--delivered'],
+    ['ss-received', 'Отримано', 'status-badge--success'],
     ['ss-refused', 'Відмовлено', 'status-badge--danger'],
+    ['ss-redirected', 'Переадресовано', 'status-badge--redirected'],
   ])('renders the %s status as "%s" with class %s', (statusId, label, expectedClass) => {
     create();
     flushOrder({ shipmentStatusId: statusId });

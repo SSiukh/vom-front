@@ -29,6 +29,10 @@
   --color-info-border: rgba(232, 135, 30, 0.35);
   --color-info-bg: rgba(232, 135, 30, 0.14);
   --color-info-text: #e8871e;
+  --color-delivered-bg: #192534;
+  --color-delivered-text: #6ea2dd;
+  --color-redirected-bg: #2e2614;
+  --color-redirected-text: #dbb866;
 
   --font-heading: 'Turret Road', 'Oswald', system-ui, sans-serif;
   --font-body: 'IBM Plex Sans', system-ui, sans-serif;
@@ -205,6 +209,16 @@ fieldset.field legend {
 .status-badge--danger {
   background: var(--color-error-bg);
   color: var(--color-error-text);
+}
+
+.status-badge--delivered {
+  background: var(--color-delivered-bg);
+  color: var(--color-delivered-text);
+}
+
+.status-badge--redirected {
+  background: var(--color-redirected-bg);
+  color: var(--color-redirected-text);
 }
 
 .btn-ghost-accent {
@@ -862,12 +876,7 @@ fieldset.field legend {
   padding: 20px 0;
 }
 
-.col-actions {
-  text-align: right;
-}
-
 .col-num {
-  text-align: right;
   font-family: var(--font-mono);
 }
 
@@ -1016,7 +1025,7 @@ fieldset.field legend {
 
 .card-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(max(220px, calc((100% - 4 * 16px) / 5)), 1fr));
   gap: 16px;
 }
 
@@ -1080,6 +1089,12 @@ fieldset.field legend {
   align-items: center;
   font-size: 11px;
   color: var(--color-text-meta);
+}
+
+.entity-card__meta-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .entity-card__fields {

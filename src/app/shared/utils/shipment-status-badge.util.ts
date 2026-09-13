@@ -3,11 +3,13 @@ export function shipmentStatusBadgeClass(code: string | undefined): string {
     case 'shipped':
       return 'badge-info';
     case 'delivered':
-      return 'status-badge--success';
+      return 'status-badge--delivered';
     case 'received':
-      return 'status-badge--muted';
+      return 'status-badge--success';
     case 'refused':
       return 'status-badge--danger';
+    case 'redirected':
+      return 'status-badge--redirected';
     default:
       return 'status-badge--muted';
   }

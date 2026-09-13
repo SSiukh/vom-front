@@ -2,6 +2,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { environment } from '../../../environments/environment';
+import { REQUEST_TIMEOUT_MS } from '../interceptors/request-timeout.interceptor';
 import { AuthApiService } from './auth-api.service';
 
 describe('AuthApiService', () => {
@@ -37,11 +38,12 @@ describe('AuthApiService', () => {
     req.flush({ accessToken: 'a', refreshToken: 'r' });
   });
 
-  it('posts refreshToken to /auth/refresh', () => {
+  it('posts refreshToken to /auth/refresh with a long request-timeout budget', () => {
     service.refresh({ refreshToken: 'r' }).subscribe();
     const req = httpMock.expectOne(`${baseUrl}/refresh`);
     expect(req.request.method).toBe('POST');
     expect(req.request.body).toEqual({ refreshToken: 'r' });
+    expect(req.request.context.get(REQUEST_TIMEOUT_MS)).toBe(120_000);
     req.flush({ accessToken: 'a', refreshToken: 'r2' });
   });
 

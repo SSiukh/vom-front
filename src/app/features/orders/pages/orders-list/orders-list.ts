@@ -55,11 +55,14 @@ export class OrdersList {
   protected readonly error = signal<string | null>(null);
   protected readonly dateFrom = signal<string | null>(null);
   protected readonly dateTo = signal<string | null>(null);
+  protected readonly productTypeId = signal<string | null>(null);
   protected readonly sortOrder = signal<SortOrder>('newest');
   protected readonly syncing = signal(false);
   protected readonly syncResultMessage = signal<string | null>(null);
 
-  protected readonly hasActiveFilters = computed(() => this.dateFrom() !== null || this.dateTo() !== null);
+  protected readonly hasActiveFilters = computed(
+    () => this.dateFrom() !== null || this.dateTo() !== null || this.productTypeId() !== null,
+  );
 
   protected readonly canSort = computed(() => this.total() <= this.pageSize);
 
@@ -94,6 +97,13 @@ export class OrdersList {
     this.load();
   }
 
+  onProductTypeChange(event: Event): void {
+    const value = (event.target as HTMLSelectElement).value;
+    this.productTypeId.set(value || null);
+    this.page.set(1);
+    this.load();
+  }
+
   setSortOrder(order: SortOrder): void {
     this.sortOrder.set(order);
   }
@@ -101,6 +111,7 @@ export class OrdersList {
   resetFilters(): void {
     this.dateFrom.set(null);
     this.dateTo.set(null);
+    this.productTypeId.set(null);
     this.sortOrder.set('newest');
     this.page.set(1);
     this.load();
@@ -192,7 +203,7 @@ export class OrdersList {
     this.loading.set(true);
     this.error.set(null);
     this.ordersApi
-      .list(this.page(), this.pageSize, this.dateFrom(), this.dateTo())
+      .list(this.page(), this.pageSize, this.dateFrom(), this.dateTo(), this.productTypeId())
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (response) => {

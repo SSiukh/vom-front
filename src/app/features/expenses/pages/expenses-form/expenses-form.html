@@ -29,6 +29,15 @@
       </select>
     </div>
 
+    <div class="field">
+      <label class="field-label" for="brand">Група</label>
+      <select id="brand" class="text-input" formControlName="brand">
+        <option value="">Спільна</option>
+        <option value="vom">VOM</option>
+        <option value="m">M</option>
+      </select>
+    </div>
+
     @if (requiresName()) {
       <div class="field">
         <label class="field-label" for="name">Назва витрати</label>

@@ -25,6 +25,10 @@
   color: var(--color-text-meta);
 }
 
+.metric-card__hint--negative {
+  color: var(--color-error-text);
+}
+
 .revenue-panel,
 .chart-grid {
   margin-top: 14px;

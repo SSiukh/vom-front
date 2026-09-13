@@ -44,6 +44,10 @@ describe('OrdersList', () => {
       { id: 'ss1', code: 'shipped', label: 'Відправлено' },
       { id: 'ss2', code: 'delivered', label: 'Доставлено' },
     ],
+    productTypes: () => [
+      { id: 't1', code: 'sticker', label: 'Наклейка', isCustom: false, brand: 'm' },
+      { id: 't2', code: 'keychain', label: 'Брелок', isCustom: false, brand: 'vom' },
+    ],
   };
 
   const create = () => {
@@ -170,7 +174,7 @@ describe('OrdersList', () => {
     const firstStatusCell = rows[0].querySelectorAll('td')[7];
     const secondStatusCell = rows[1].querySelectorAll('td')[7];
     expect(firstStatusCell.querySelector('.status-badge')?.textContent?.trim()).toBe('Доставлено');
-    expect(firstStatusCell.querySelector('.status-badge')?.classList.contains('status-badge--success')).toBe(true);
+    expect(firstStatusCell.querySelector('.status-badge')?.classList.contains('status-badge--delivered')).toBe(true);
     expect(secondStatusCell.querySelector('.dash')?.textContent?.trim()).toBe('—');
   });
 
@@ -212,6 +216,33 @@ describe('OrdersList', () => {
     resetButton.click();
     flushList([], 0);
     expect(el.querySelector('.filters-row__reset')).toBeNull();
+  });
+
+  it('refetches with productTypeId when the type filter changes, resetting to page 1', () => {
+    create();
+    flushList([], 0);
+
+    const select = el.querySelector('#productTypeId') as HTMLSelectElement;
+    select.value = 't2';
+    select.dispatchEvent(new Event('change'));
+    flushList([], 0, `${baseUrl}?page=1&pageSize=10&productTypeId=t2`);
+
+    expect(el.querySelector('.filters-row__reset')).not.toBeNull();
+  });
+
+  it('clears the type filter (and its select value) on reset', () => {
+    create();
+    flushList([], 0);
+
+    const select = el.querySelector('#productTypeId') as HTMLSelectElement;
+    select.value = 't2';
+    select.dispatchEvent(new Event('change'));
+    flushList([], 0, `${baseUrl}?page=1&pageSize=10&productTypeId=t2`);
+
+    (el.querySelector('.filters-row__reset') as HTMLButtonElement).click();
+    flushList([], 0);
+
+    expect(select.value).toBe('');
   });
 
   it('reverses the row order client-side when "Старі" sort is selected', () => {

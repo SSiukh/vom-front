@@ -14,8 +14,8 @@ describe('OrderItemCard', () => {
   const baseUrl = `${environment.apiUrl}/products`;
 
   const productTypes: ProductType[] = [
-    { id: 't1', code: 'sticker', label: 'Наклейка', isCustom: false },
-    { id: 't2', code: 'custom_sticker', label: 'Кастомна наклейка', isCustom: true },
+    { id: 't1', code: 'sticker', label: 'Наклейка', isCustom: false, brand: 'm' },
+    { id: 't2', code: 'custom_sticker', label: 'Кастомна наклейка', isCustom: true, brand: 'vom' },
   ];
 
   const createForm = (): OrderItemFormGroup =>

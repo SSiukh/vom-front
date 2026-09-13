@@ -1,44 +1,85 @@
-import { HttpRequest, type HttpHandlerFn, type HttpEvent } from '@angular/common/http';
+import { HttpContext, HttpRequest, type HttpEvent, type HttpHandlerFn } from '@angular/common/http';
 import { TestBed } from '@angular/core/testing';
-import { of, type Observable } from 'rxjs';
+import { firstValueFrom, of, type Observable } from 'rxjs';
+import type { TokenPairResponse } from '../auth/auth.models';
 import { AuthService } from '../auth/auth.service';
+import { IS_CONNECTION_PROBE } from '../connection/connection-probe.token';
 import { authTokenInterceptor } from './auth-token.interceptor';
 
-describe('authTokenInterceptor', () => {
-  const buildAuthServiceStub = (accessToken: string | null) =>
-    ({ accessToken: () => accessToken }) as unknown as AuthService;
+interface AuthServiceStubOptions {
+  accessToken: string | null;
+  needsRefresh?: boolean;
+  refreshTokens?: () => Observable<TokenPairResponse>;
+}
 
-  it('attaches the Authorization header when an access token is present', () => {
+describe('authTokenInterceptor', () => {
+  const buildAuthServiceStub = ({ accessToken, needsRefresh = false, refreshTokens }: AuthServiceStubOptions) =>
+    ({
+      accessToken: () => accessToken,
+      accessTokenNeedsRefresh: () => needsRefresh,
+      refreshTokens: refreshTokens ?? (() => of({ accessToken: 'fresh-token', refreshToken: 'r2' })),
+    }) as unknown as AuthService;
+
+  const configure = (options: AuthServiceStubOptions) =>
     TestBed.configureTestingModule({
-      providers: [{ provide: AuthService, useValue: buildAuthServiceStub('a-token') }],
+      providers: [{ provide: AuthService, useValue: buildAuthServiceStub(options) }],
     });
 
-    const req = new HttpRequest('GET', '/orders');
-    let capturedRequest!: HttpRequest<unknown>;
+  const run = async (req: HttpRequest<unknown>) => {
+    let capturedRequest: HttpRequest<unknown> | undefined;
     const next: HttpHandlerFn = (r) => {
       capturedRequest = r;
-      return of({} as HttpEvent<unknown>) as Observable<HttpEvent<unknown>>;
+      return of({} as HttpEvent<unknown>);
     };
+    await firstValueFrom(TestBed.runInInjectionContext(() => authTokenInterceptor(req, next)));
+    return capturedRequest;
+  };
 
-    TestBed.runInInjectionContext(() => authTokenInterceptor(req, next));
+  it('attaches the Authorization header when an access token is present', async () => {
+    configure({ accessToken: 'a-token' });
 
-    expect(capturedRequest.headers.get('Authorization')).toBe('Bearer a-token');
+    const captured = await run(new HttpRequest('GET', '/orders'));
+
+    expect(captured?.headers.get('Authorization')).toBe('Bearer a-token');
   });
 
-  it('leaves the request untouched when there is no access token', () => {
-    TestBed.configureTestingModule({
-      providers: [{ provide: AuthService, useValue: buildAuthServiceStub(null) }],
-    });
+  it('leaves the request untouched when there is no access token', async () => {
+    configure({ accessToken: null });
 
-    const req = new HttpRequest('GET', '/orders');
-    let capturedRequest!: HttpRequest<unknown>;
-    const next: HttpHandlerFn = (r) => {
-      capturedRequest = r;
-      return of({} as HttpEvent<unknown>) as Observable<HttpEvent<unknown>>;
-    };
+    const captured = await run(new HttpRequest('GET', '/orders'));
 
-    TestBed.runInInjectionContext(() => authTokenInterceptor(req, next));
+    expect(captured?.headers.has('Authorization')).toBe(false);
+  });
 
-    expect(capturedRequest.headers.has('Authorization')).toBe(false);
+  it('refreshes an expiring access token before sending, and sends the fresh one', async () => {
+    const refreshTokens = vi.fn(() => of({ accessToken: 'fresh-token', refreshToken: 'r2' }));
+    configure({ accessToken: 'old-token', needsRefresh: true, refreshTokens });
+
+    const captured = await run(new HttpRequest('GET', '/orders'));
+
+    expect(refreshTokens).toHaveBeenCalledOnce();
+    expect(captured?.headers.get('Authorization')).toBe('Bearer fresh-token');
+  });
+
+  it('never refreshes proactively for the token-issuing endpoints themselves', async () => {
+    const refreshTokens = vi.fn();
+    configure({ accessToken: 'old-token', needsRefresh: true, refreshTokens });
+
+    const captured = await run(new HttpRequest('POST', '/auth/refresh', { refreshToken: 'r' }));
+
+    expect(refreshTokens).not.toHaveBeenCalled();
+    expect(captured?.headers.get('Authorization')).toBe('Bearer old-token');
+  });
+
+  it('passes connection probes through untouched, without a token or a refresh', async () => {
+    const refreshTokens = vi.fn();
+    configure({ accessToken: 'old-token', needsRefresh: true, refreshTokens });
+
+    const captured = await run(
+      new HttpRequest('GET', '/ping', { context: new HttpContext().set(IS_CONNECTION_PROBE, true) }),
+    );
+
+    expect(refreshTokens).not.toHaveBeenCalled();
+    expect(captured?.headers.has('Authorization')).toBe(false);
   });
 });

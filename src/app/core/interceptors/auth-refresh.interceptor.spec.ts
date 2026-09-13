@@ -1,14 +1,14 @@
-import { HttpErrorResponse, HttpRequest, type HttpEvent, type HttpHandlerFn } from '@angular/common/http';
+import { HttpContext, HttpErrorResponse, HttpRequest, type HttpEvent, type HttpHandlerFn } from '@angular/common/http';
 import { TestBed } from '@angular/core/testing';
 import { firstValueFrom, of, throwError, type Observable } from 'rxjs';
 import type { TokenPairResponse } from '../auth/auth.models';
 import { AuthService } from '../auth/auth.service';
+import { IS_CONNECTION_PROBE } from '../connection/connection-probe.token';
 import { authRefreshInterceptor } from './auth-refresh.interceptor';
 
 interface AuthServiceStubOverrides {
   isAuthenticated?: () => boolean;
   refreshTokens?: () => Observable<TokenPairResponse>;
-  handleSessionExpired?: () => void;
 }
 
 describe('authRefreshInterceptor', () => {
@@ -18,7 +18,6 @@ describe('authRefreshInterceptor', () => {
     ({
       isAuthenticated: () => true,
       refreshTokens: () => of({ accessToken: 'a2', refreshToken: 'r2' }),
-      handleSessionExpired: () => undefined,
       ...overrides,
     }) as unknown as AuthService;
 
@@ -64,6 +63,19 @@ describe('authRefreshInterceptor', () => {
     expect(refreshTokens).not.toHaveBeenCalled();
   });
 
+  it('never refreshes on a 401 from a connection probe, so a ping cannot wait on itself', async () => {
+    const refreshTokens = vi.fn();
+    configure(buildAuthServiceStub({ refreshTokens }));
+    const req = new HttpRequest('GET', '/ping', { context: new HttpContext().set(IS_CONNECTION_PROBE, true) });
+    const next: HttpHandlerFn = () =>
+      throwError(() => new HttpErrorResponse({ status: 401 })) as Observable<HttpEvent<unknown>>;
+
+    await expect(
+      firstValueFrom(TestBed.runInInjectionContext(() => authRefreshInterceptor(req, next))),
+    ).rejects.toBeInstanceOf(HttpErrorResponse);
+    expect(refreshTokens).not.toHaveBeenCalled();
+  });
+
   it('refreshes and retries the original request once on a 401', async () => {
     configure(buildAuthServiceStub());
     const req = new HttpRequest('GET', '/orders');
@@ -87,27 +99,25 @@ describe('authRefreshInterceptor', () => {
     expect(retriedRequest?.headers.get('Authorization')).toBe('Bearer a2');
   });
 
-  it('clears the session when the refresh call itself fails', async () => {
-    const handleSessionExpired = vi.fn();
-    configure(
-      buildAuthServiceStub({
-        refreshTokens: () => throwError(() => new HttpErrorResponse({ status: 401 })),
-        handleSessionExpired,
-      }),
-    );
+  it('propagates the refresh error without retrying the original request', async () => {
+    const refreshError = new HttpErrorResponse({ status: 401 });
+    configure(buildAuthServiceStub({ refreshTokens: () => throwError(() => refreshError) }));
     const req = new HttpRequest('GET', '/orders');
-    const next: HttpHandlerFn = () =>
-      throwError(() => new HttpErrorResponse({ status: 401 })) as Observable<HttpEvent<unknown>>;
+    let callCount = 0;
+    const next: HttpHandlerFn = () => {
+      callCount += 1;
+      return throwError(() => new HttpErrorResponse({ status: 401 })) as Observable<HttpEvent<unknown>>;
+    };
 
     await expect(
       firstValueFrom(TestBed.runInInjectionContext(() => authRefreshInterceptor(req, next))),
-    ).rejects.toBeInstanceOf(HttpErrorResponse);
-    expect(handleSessionExpired).toHaveBeenCalledOnce();
+    ).rejects.toBe(refreshError);
+    expect(callCount).toBe(1);
   });
 
-  it('does not clear the session when the refresh succeeds but the retried request still fails', async () => {
-    const handleSessionExpired = vi.fn();
-    configure(buildAuthServiceStub({ handleSessionExpired }));
+  it('retries only once when the refreshed request still fails with 401', async () => {
+    const refreshTokens = vi.fn(() => of({ accessToken: 'a2', refreshToken: 'r2' }));
+    configure(buildAuthServiceStub({ refreshTokens }));
     const req = new HttpRequest('GET', '/orders');
     let callCount = 0;
     const next: HttpHandlerFn = () => {
@@ -119,6 +129,6 @@ describe('authRefreshInterceptor', () => {
       firstValueFrom(TestBed.runInInjectionContext(() => authRefreshInterceptor(req, next))),
     ).rejects.toBeInstanceOf(HttpErrorResponse);
     expect(callCount).toBe(2);
-    expect(handleSessionExpired).not.toHaveBeenCalled();
+    expect(refreshTokens).toHaveBeenCalledOnce();
   });
 });

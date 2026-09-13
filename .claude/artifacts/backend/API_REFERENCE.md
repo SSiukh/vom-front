@@ -223,13 +223,17 @@ document, with Nova Poshta waybill creation/update/deletion kept in sync.
 | Method & path | Throttle | Body/Query | Response |
 |---|---|---|---|
 | `POST /orders` | 20/min | `CreateOrderDto` | `OrderResponseDto` |
-| `GET /orders` | default | `?page&pageSize&dateFrom&dateTo` | `ListOrdersResponseDto` |
+| `GET /orders` | default | `?page&pageSize&dateFrom&dateTo&productTypeId` | `ListOrdersResponseDto` |
 | `GET /orders/:id` | default | — | `OrderResponseDto` |
 | `PATCH /orders/:id` | 20/min | `UpdateOrderDto` (all fields optional) | `OrderResponseDto` |
 | `PATCH /orders/:id/sync-status` | 20/min | — | `OrderResponseDto` (manual Nova Poshta status pull, no polling) |
 | `PATCH /orders/sync-statuses` | 20/min | — | `BulkSyncStatusResponseDto {totalOrders, updatedCount, unmappedCount}` (syncs every order with a waybill, grouped by sender) |
 | `PATCH /orders/:id/status-flags` | default | `SetOrderStatusFlagsDto {isPacked?, isOutOfStock?}` | `OrderResponseDto` |
 | `DELETE /orders/:id` | 20/min | — | `204` |
+
+`productTypeId` (optional) filters to orders containing at least one line
+item of that product type — the same `items: { some: { productTypeId } }`
+mechanism as the CRM table's identical filter (§8).
 
 ```ts
 CreateOrderDto {
@@ -271,10 +275,11 @@ that could fail independently, unlike waybill create/update/delete.
 
 **`isPacked`/`isOutOfStock` are a separate, manual status axis — not
 Nova Poshta tracking.** `shipmentStatusId` is auto-synced from real NP
-tracking events (Доставлено/Відправлено/Отримано/Відмовлено) via
-`PATCH /orders/:id/sync-status`; `isPacked` ("Спаковано") and
-`isOutOfStock` ("Відсутній товар") are plain booleans (default `false`)
-with no dictionary/enum behind them and no connection to Nova Poshta —
+tracking events (Доставлено/Відправлено/Отримано/Відмовлено/
+Переадресовано) via `PATCH /orders/:id/sync-status`; `isPacked`
+("Спаковано") and `isOutOfStock` ("Відсутній товар") are plain booleans
+(default `false`) with no dictionary/enum behind them and no connection
+to Nova Poshta —
 the operator sets them directly via `PATCH /orders/:id/status-flags`
 (either/both, independently) once fulfillment work on the order actually
 starts, sometime after creation. The frontend owns the label/UI for these;
@@ -317,7 +322,7 @@ Plain CRUD, no external calls, no throttle beyond the app default.
 
 | Method & path | Body/Query | Response |
 |---|---|---|
-| `POST /expenses` | `CreateExpenseDto {typeId, name?, amount}` | `ExpenseResponseDto` |
+| `POST /expenses` | `CreateExpenseDto {typeId, name?, amount, brand?}` | `ExpenseResponseDto` |
 | `GET /expenses` | `?page&pageSize` | `ListExpensesResponseDto` |
 | `GET /expenses/:id` | — | `ExpenseResponseDto` |
 | `PATCH /expenses/:id` | partial `CreateExpenseDto` | `ExpenseResponseDto` |
@@ -328,6 +333,13 @@ Plain CRUD, no external calls, no throttle beyond the app default.
 `name` sent for any other type is silently dropped, not rejected; switching
 *away* from a `requiresName` type on update clears any previously-stored
 name.
+
+`brand?: 'vom' | 'm' | null` — which business group the expense belongs to;
+omitted or `null` means **shared** (split across both groups, not counted
+against either on the group-scoped Dashboard view). On `PATCH`, omitting
+`brand` leaves it untouched; sending an explicit `null` clears it back to
+shared. Expenses created before this field existed have no `brand` at all
+and are also treated as shared.
 
 ## 8. CRM table (`GET /crm/table`)
 
@@ -355,12 +367,17 @@ CrmRowResponseDto {
 ## 9. Dashboard (`GET /dashboard`)
 
 Read-only analytics. Query: `dateFrom?`, `dateTo?` (both optional — omit
-for all-time).
+for all-time), `brand?: 'vom' | 'm'` (optional — omit for the combined
+view across both groups).
 
 ```ts
 DashboardResponseDto {
-  totalRevenue: number; totalExpenses: number; profit: number; // revenue - expenses
+  totalRevenue: number; totalExpenses: number; profit: number; // realizedRevenue - totalExpenses
+  realizedRevenue: number; // sum of totalAmount for orders with shipmentStatus "received" — money actually in hand
+  pendingRevenue: number;  // sum for orders with no status yet, or "shipped"/"delivered"/"redirected" — deal still alive
+  lostRevenue: number;     // sum for orders with shipmentStatus "refused" — deal fell through
   orderCount: number;
+  sharedExpenses: number | null; // sum of brand:null expenses in the period; null unless `brand` is given
   revenueByDay: { date: string /* YYYY-MM-DD */; revenue: number }[];
   expensesByCategory: { expenseTypeId; label; amount }[];       // always includes every expense_type, even at 0
   shipmentStatusBreakdown: { shipmentStatusId; label; count }[]; // always includes every shipment_status, even at 0
@@ -373,6 +390,29 @@ time) — a deliberate, confirmed trade-off, not a bug: an order placed
 with `shipmentStatusId: null` (not yet synced) count toward
 `orderCount`/`totalRevenue` but are excluded from every status bucket.
 
+**`realizedRevenue`/`pendingRevenue`/`lostRevenue` always partition
+`totalRevenue`** — `totalRevenue === realizedRevenue + pendingRevenue +
+lostRevenue` holds for every response, including under a `brand` filter.
+Every order falls into exactly one bucket by its current
+`shipmentStatusId`'s dictionary `code`: `received` → `realizedRevenue`,
+`refused` → `lostRevenue`, anything else (no status yet, `shipped`,
+`delivered`, `redirected`, or any future/unrecognized code) →
+`pendingRevenue`. `profit` uses `realizedRevenue`, not the gross
+`totalRevenue` — it only counts money that has actually landed.
+
+**`brand` filter:** when given, every order-derived figure
+(`totalRevenue`, `realizedRevenue`/`pendingRevenue`/`lostRevenue`,
+`revenueByDay`, `orderCount`) is scoped to orders containing at least one
+line item whose product type belongs to that group, and the revenue
+figures count only the matching line items' subtotals — not the order's
+full `totalAmount` — for a mixed-group order. `expensesByCategory`/
+`totalExpenses` are scoped to expenses whose `brand` equals the chosen
+group (shared and the other group's expenses are excluded);
+`sharedExpenses` separately reports the shared (`brand: null` or unset)
+total for the same period, regardless of which group was requested.
+Omitting `brand` reproduces the exact pre-existing (ungrouped) response,
+with `sharedExpenses: null`.
+
 ## 10. Dictionaries (`/dictionaries/*`) — read-only
 
 Every route returns a flat array, no pagination, no auth beyond the
@@ -381,7 +421,7 @@ standard guard. These rarely change — fetch once per session and cache.
 | Path | Response item shape |
 |---|---|
 | `GET /dictionaries/shipment-types` | `{id, code, label, isDefault}` |
-| `GET /dictionaries/product-types` | `{id, code, label, isCustom}` |
+| `GET /dictionaries/product-types` | `{id, code, label, isCustom, brand}` — `brand`: `'vom'` \| `'m'`, the business group this product type belongs to |
 | `GET /dictionaries/payment-types` | `{id, code, label}` — codes: `full`, `cod`, `partial` |
 | `GET /dictionaries/expense-types` | `{id, code, label, requiresName}` |
 | `GET /dictionaries/delivery-types` | `{id, code, label}` — codes include `warehouse`, `postomat`, `address` (the last is accepted here for display but rejected by Orders — see §6) |

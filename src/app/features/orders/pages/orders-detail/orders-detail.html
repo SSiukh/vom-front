@@ -172,22 +172,6 @@
           <span class="detail-row-label">Доставка</span>
           <span class="detail-row-value">{{ deliveryTypeLabel() }}</span>
         </div>
-        <div class="detail-row">
-          <span class="detail-row-label">Населений пункт</span>
-          <span class="detail-row-value">{{ order.deliveryDetails.cityRef }}</span>
-        </div>
-        @if (order.deliveryDetails.warehouseRef) {
-          <div class="detail-row">
-            <span class="detail-row-label">Відділення</span>
-            <span class="detail-row-value">{{ order.deliveryDetails.warehouseRef }}</span>
-          </div>
-        }
-        @if (order.deliveryDetails.postomatRef) {
-          <div class="detail-row">
-            <span class="detail-row-label">Поштомат</span>
-            <span class="detail-row-value">{{ order.deliveryDetails.postomatRef }}</span>
-          </div>
-        }
       </div>
     </div>
   </div>

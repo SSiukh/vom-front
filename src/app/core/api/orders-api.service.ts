@@ -24,6 +24,7 @@ export class OrdersApiService {
     pageSize: number,
     dateFrom: string | null,
     dateTo: string | null,
+    productTypeId: string | null,
   ): Observable<PaginatedResponse<Order>> {
     let params = new HttpParams().set('page', page).set('pageSize', pageSize);
     if (dateFrom) {
@@ -31,6 +32,9 @@ export class OrdersApiService {
     }
     if (dateTo) {
       params = params.set('dateTo', dateTo);
+    }
+    if (productTypeId) {
+      params = params.set('productTypeId', productTypeId);
     }
     return this.http.get<PaginatedResponse<Order>>(this.baseUrl, { params });
   }

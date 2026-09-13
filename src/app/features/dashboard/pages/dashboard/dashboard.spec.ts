@@ -16,6 +16,10 @@ describe('Dashboard', () => {
     totalRevenue: 38640,
     totalExpenses: 24180,
     profit: 14460,
+    realizedRevenue: 38640,
+    pendingRevenue: 0,
+    lostRevenue: 0,
+    sharedExpenses: null,
     orderCount: 42,
     revenueByDay: [
       { date: '2026-08-01', revenue: 1200 },
@@ -38,6 +42,7 @@ describe('Dashboard', () => {
       { id: 's1', code: 'shipped', label: 'Відправлено' },
       { id: 's2', code: 'delivered', label: 'Доставлено' },
       { id: 's3', code: 'refused', label: 'Відмовлено' },
+      { id: 's4', code: 'redirected', label: 'Переадресовано' },
     ],
   };
 
@@ -87,14 +92,60 @@ describe('Dashboard', () => {
     flush();
 
     const hints = Array.from(el.querySelectorAll('.metric-card__hint')).map((h) => h.textContent?.trim());
-    expect(hints).toEqual(['маржа 37.4%', 'середній чек 920 ₴']);
+    expect(hints).toContain('маржа 37.4%');
+    expect(hints).toContain('середній чек 920 ₴');
   });
 
   it('hides the margin/average hints when their denominator is zero, instead of dividing by zero', () => {
     create();
-    flush({ totalRevenue: 0, orderCount: 0, profit: 0 });
+    flush({ realizedRevenue: 0, orderCount: 0, profit: 0 });
 
-    expect(el.querySelectorAll('.metric-card__hint').length).toBe(0);
+    const hints = Array.from(el.querySelectorAll('.metric-card__hint')).map((h) => h.textContent?.trim());
+    expect(hints.some((h) => h?.startsWith('маржа'))).toBe(false);
+    expect(hints.some((h) => h?.startsWith('середній чек'))).toBe(false);
+  });
+
+  it('bases profit margin on realizedRevenue, not the gross totalRevenue', () => {
+    create();
+    flush({ totalRevenue: 100000, realizedRevenue: 10000, profit: 5000 });
+
+    const hints = Array.from(el.querySelectorAll('.metric-card__hint')).map((h) => h.textContent?.trim());
+    expect(hints).toContain('маржа 50%');
+  });
+
+  it('always shows a hint that profit is computed from realized revenue', () => {
+    create();
+    flush();
+
+    expect(el.textContent).toContain('на основі реалізованого доходу');
+  });
+
+  it('shows realized/pending revenue hints under total revenue', () => {
+    create();
+    flush({ realizedRevenue: 12000, pendingRevenue: 6000 });
+
+    const hints = Array.from(el.querySelectorAll('.metric-card__hint')).map((h) => h.textContent?.trim());
+    expect(hints).toContain('реалізовано: 12000 ₴');
+    expect(hints).toContain('в очікуванні: 6000 ₴');
+  });
+
+  it('shows no lost-revenue hint when nothing was refused', () => {
+    create();
+    flush({ lostRevenue: 0 });
+
+    const hints = Array.from(el.querySelectorAll('.metric-card__hint')).map((h) => h.textContent?.trim());
+    expect(hints.some((h) => h?.startsWith('втрачено'))).toBe(false);
+  });
+
+  it('shows the lost-revenue hint with its negative styling when lostRevenue is greater than zero', () => {
+    create();
+    flush({ lostRevenue: 900 });
+
+    const hint = Array.from(el.querySelectorAll('.metric-card__hint')).find((h) =>
+      h.textContent?.trim().startsWith('втрачено'),
+    );
+    expect(hint?.textContent?.trim()).toBe('втрачено: 900 ₴');
+    expect(hint?.classList.contains('metric-card__hint--negative')).toBe(true);
   });
 
   it('resolves each shipment-status legend swatch color via the dictionary code, not the raw shipmentStatusId', () => {
@@ -106,8 +157,19 @@ describe('Dashboard', () => {
     const swatches = Array.from(shipmentLegend.querySelectorAll('.chart-legend__swatch')) as HTMLElement[];
 
     expect(swatches[0].style.background).toBe('rgb(232, 135, 30)');
-    expect(swatches[1].style.background).toBe('rgb(95, 174, 116)');
+    expect(swatches[1].style.background).toBe('rgb(110, 162, 221)');
     expect(swatches[2].style.background).toBe('rgb(224, 117, 93)');
+  });
+
+  it('resolves the "redirected" status to its own yellow swatch color', () => {
+    create();
+    flush({
+      shipmentStatusBreakdown: [{ shipmentStatusId: 's4', label: 'Переадресовано', count: 1 }],
+    });
+
+    const shipmentLegend = el.querySelectorAll('.chart-legend')[1];
+    const swatch = shipmentLegend.querySelector('.chart-legend__swatch') as HTMLElement;
+    expect(swatch.style.background).toBe('rgb(219, 184, 102)');
   });
 
   it('falls back to the default color for a shipmentStatusId with no matching dictionary entry, independently of a real neighboring status', () => {
@@ -122,7 +184,7 @@ describe('Dashboard', () => {
     const shipmentLegend = el.querySelectorAll('.chart-legend')[1];
     const swatches = Array.from(shipmentLegend.querySelectorAll('.chart-legend__swatch')) as HTMLElement[];
     expect(swatches[0].style.background).toBe('rgb(232, 135, 30)');
-    expect(swatches[1].style.background).toBe('rgb(95, 174, 116)');
+    expect(swatches[1].style.background).toBe('rgb(110, 162, 221)');
   });
 
   it('shows an empty-data message instead of a chart when a breakdown array is empty', () => {
@@ -158,6 +220,55 @@ describe('Dashboard', () => {
     toInput.value = '2026-08-22';
     toInput.dispatchEvent(new Event('change'));
     flush({}, `${baseUrl}?dateFrom=2026-08-01&dateTo=2026-08-22`);
+  });
+
+  it('refetches with brand=vom/m when the group filter chips are clicked, and drops it again on "Усі"', () => {
+    create();
+    flush();
+
+    const [allChip, vomChip, mChip] = Array.from(
+      el.querySelectorAll('.date-field .segmented-control__item'),
+    ) as HTMLButtonElement[];
+
+    vomChip.click();
+    flush({}, `${baseUrl}?brand=vom`);
+    expect(vomChip.classList.contains('segmented-control__item--active')).toBe(true);
+    expect(allChip.classList.contains('segmented-control__item--active')).toBe(false);
+
+    mChip.click();
+    flush({}, `${baseUrl}?brand=m`);
+    expect(mChip.classList.contains('segmented-control__item--active')).toBe(true);
+
+    allChip.click();
+    flush({}, baseUrl);
+    expect(allChip.classList.contains('segmented-control__item--active')).toBe(true);
+  });
+
+  it('shows the shared-expenses hint next to expenses and profit only when a group filter is active', () => {
+    create();
+    flush({ sharedExpenses: 830 });
+
+    const hints = Array.from(el.querySelectorAll('.metric-card__hint')).map((h) => h.textContent?.trim());
+    expect(hints).toContain('спільні витрати: 830 ₴');
+    expect(hints).toContain('без спільних витрат');
+  });
+
+  it('shows the shared-expenses hint even when sharedExpenses is exactly 0, not just when truthy', () => {
+    create();
+    flush({ sharedExpenses: 0 });
+
+    const hints = Array.from(el.querySelectorAll('.metric-card__hint')).map((h) => h.textContent?.trim());
+    expect(hints).toContain('спільні витрати: 0 ₴');
+    expect(hints).toContain('без спільних витрат');
+  });
+
+  it('shows no shared-expenses hint when sharedExpenses is null (no group filter applied)', () => {
+    create();
+    flush();
+
+    const hints = Array.from(el.querySelectorAll('.metric-card__hint')).map((h) => h.textContent?.trim());
+    expect(hints.some((h) => h?.includes('спільні витрати'))).toBe(false);
+    expect(hints).not.toContain('без спільних витрат');
   });
 
   it('shows an error message when the request fails', () => {

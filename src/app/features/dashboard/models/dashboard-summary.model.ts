@@ -19,6 +19,10 @@ export interface DashboardSummary {
   totalRevenue: number;
   totalExpenses: number;
   profit: number;
+  realizedRevenue: number;
+  pendingRevenue: number;
+  lostRevenue: number;
+  sharedExpenses: number | null;
   orderCount: number;
   revenueByDay: RevenueByDay[];
   expensesByCategory: ExpenseCategoryBreakdown[];

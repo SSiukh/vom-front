@@ -8,7 +8,10 @@ import { catchError, of, switchMap } from 'rxjs';
 import { DictionariesService } from '../../../../core/dictionaries/dictionaries.service';
 import { ExpensesApiService } from '../../../../core/api/expenses-api.service';
 import { FEATURE_ROUTES } from '../../../../core/routes.constants';
+import type { ProductBrand } from '../../../../shared/models/product-brand.model';
 import type { CreateExpensePayload } from '../../models/expense.model';
+
+type BrandFormValue = '' | ProductBrand;
 
 @Component({
   selector: 'app-expenses-form',
@@ -31,6 +34,7 @@ export class ExpensesForm {
     typeId: ['', Validators.required],
     name: [''],
     amount: [0, [Validators.required, Validators.min(0)]],
+    brand: ['' as BrandFormValue],
   });
 
   protected readonly loading = signal(false);
@@ -70,6 +74,7 @@ export class ExpensesForm {
             typeId: expense.typeId,
             name: expense.name ?? '',
             amount: expense.amount,
+            brand: expense.brand ?? '',
           });
         }
       });
@@ -99,6 +104,7 @@ export class ExpensesForm {
     const payload: CreateExpensePayload = {
       typeId: raw.typeId,
       amount: raw.amount,
+      brand: raw.brand === '' ? null : raw.brand,
       ...(this.requiresName() && raw.name ? { name: raw.name } : {}),
     };
 
@@ -130,7 +136,7 @@ export class ExpensesForm {
   }
 
   private resetForCreate(): void {
-    this.form.reset({ typeId: '', name: '', amount: 0 });
+    this.form.reset({ typeId: '', name: '', amount: 0, brand: '' });
     this.errorMessage.set(null);
     this.saving.set(false);
     this.loading.set(false);

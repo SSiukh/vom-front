@@ -120,7 +120,7 @@ describe('ExpensesForm', () => {
 
       const req = httpMock.expectOne(baseUrl);
       expect(req.request.method).toBe('POST');
-      expect(req.request.body).toEqual({ typeId: 't1', amount: 150 });
+      expect(req.request.body).toEqual({ typeId: 't1', amount: 150, brand: null });
 
       req.flush(responseExpense());
       expect(router.navigateByUrl).toHaveBeenCalledWith('/expenses');
@@ -135,8 +135,27 @@ describe('ExpensesForm', () => {
       (el.querySelector('.btn-primary') as HTMLButtonElement).click();
 
       const req = httpMock.expectOne(baseUrl);
-      expect(req.request.body).toEqual({ typeId: 't2', name: 'Ремонт принтера', amount: 2800 });
+      expect(req.request.body).toEqual({ typeId: 't2', name: 'Ремонт принтера', amount: 2800, brand: null });
       req.flush(responseExpense({ typeId: 't2', name: 'Ремонт принтера', amount: 2800 }));
+    });
+
+    it('defaults the group select to "Спільна" and includes the chosen brand in the payload', () => {
+      create(null);
+      selectType('t1');
+      setInputValue('amount', '150');
+
+      const brandSelect = el.querySelector('#brand') as HTMLSelectElement;
+      expect(brandSelect.value).toBe('');
+
+      brandSelect.value = 'vom';
+      brandSelect.dispatchEvent(new Event('change'));
+      fixture.detectChanges();
+
+      (el.querySelector('.btn-primary') as HTMLButtonElement).click();
+
+      const req = httpMock.expectOne(baseUrl);
+      expect(req.request.body).toEqual({ typeId: 't1', amount: 150, brand: 'vom' });
+      req.flush(responseExpense({ brand: 'vom' }));
     });
 
     it('shows a plain string error message from the backend', () => {
@@ -159,14 +178,23 @@ describe('ExpensesForm', () => {
   });
 
   describe('edit mode', () => {
-    it('fetches and pre-fills the existing expense', () => {
+    it('fetches and pre-fills the existing expense, including its group', () => {
       create('9');
-      httpMock.expectOne(`${baseUrl}/9`).flush(responseExpense());
+      httpMock.expectOne(`${baseUrl}/9`).flush(responseExpense({ brand: 'm' }));
       fixture.detectChanges();
 
       expect(el.querySelector('.page-title')?.textContent?.trim()).toBe('Редагувати витрату');
       expect((el.querySelector('#typeId') as HTMLSelectElement).value).toBe('t1');
       expect((el.querySelector('#amount') as HTMLInputElement).value).toBe('150');
+      expect((el.querySelector('#brand') as HTMLSelectElement).value).toBe('m');
+    });
+
+    it('pre-fills "Спільна" for an expense with no brand', () => {
+      create('9');
+      httpMock.expectOne(`${baseUrl}/9`).flush(responseExpense({ brand: null }));
+      fixture.detectChanges();
+
+      expect((el.querySelector('#brand') as HTMLSelectElement).value).toBe('');
     });
 
     it('PATCHes the updated payload and navigates to the list on success', () => {
@@ -179,9 +207,26 @@ describe('ExpensesForm', () => {
 
       const req = httpMock.expectOne(`${baseUrl}/9`);
       expect(req.request.method).toBe('PATCH');
-      expect(req.request.body).toEqual({ typeId: 't1', amount: 200 });
+      expect(req.request.body).toEqual({ typeId: 't1', amount: 200, brand: null });
       req.flush(responseExpense({ amount: 200 }));
       expect(router.navigateByUrl).toHaveBeenCalledWith('/expenses');
+    });
+
+    it('sends an explicit null to reset an expense back to "Спільна"', () => {
+      create('9');
+      httpMock.expectOne(`${baseUrl}/9`).flush(responseExpense({ brand: 'vom' }));
+      fixture.detectChanges();
+
+      const brandSelect = el.querySelector('#brand') as HTMLSelectElement;
+      brandSelect.value = '';
+      brandSelect.dispatchEvent(new Event('change'));
+      fixture.detectChanges();
+
+      (el.querySelector('.btn-primary') as HTMLButtonElement).click();
+
+      const req = httpMock.expectOne(`${baseUrl}/9`);
+      expect(req.request.body).toEqual({ typeId: 't1', amount: 150, brand: null });
+      req.flush(responseExpense({ brand: null }));
     });
 
     it('shows an error when the existing expense fails to load', () => {
@@ -211,7 +256,7 @@ describe('ExpensesForm', () => {
     el = fixture.nativeElement as HTMLElement;
 
     paramMap.next(convertToParamMap({ id: '9' }));
-    httpMock.expectOne(`${baseUrl}/9`).flush(responseExpense({ typeId: 't2', name: 'Ремонт принтера' }));
+    httpMock.expectOne(`${baseUrl}/9`).flush(responseExpense({ typeId: 't2', name: 'Ремонт принтера', brand: 'vom' }));
     fixture.detectChanges();
     expect(el.querySelector('#name')).not.toBeNull();
 
@@ -221,6 +266,7 @@ describe('ExpensesForm', () => {
     expect(el.querySelector('.page-title')?.textContent?.trim()).toBe('Нова витрата');
     expect((el.querySelector('#typeId') as HTMLSelectElement).value).toBe('');
     expect(el.querySelector('#name')).toBeNull();
+    expect((el.querySelector('#brand') as HTMLSelectElement).value).toBe('');
   });
 
   it('cancels the in-flight request for a stale id when navigation moves on before it resolves', () => {

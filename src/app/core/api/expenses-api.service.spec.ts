@@ -15,6 +15,7 @@ describe('ExpensesApiService', () => {
     typeId: 't1',
     name: null,
     amount: 150,
+    brand: null,
     createdAt: '',
     updatedAt: '',
   });
@@ -46,7 +47,7 @@ describe('ExpensesApiService', () => {
   });
 
   it('posts the create payload as JSON', () => {
-    const payload: CreateExpensePayload = { typeId: 't1', amount: 150 };
+    const payload: CreateExpensePayload = { typeId: 't1', amount: 150, brand: null };
     service.create(payload).subscribe();
     const req = httpMock.expectOne(baseUrl);
     expect(req.request.method).toBe('POST');

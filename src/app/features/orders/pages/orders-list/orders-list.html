@@ -38,6 +38,20 @@
       <input id="date-to" type="date" [value]="dateTo() ?? ''" (change)="onDateToChange($event)" />
     </div>
   </div>
+  <div class="date-field">
+    <label for="productTypeId">Тип товару</label>
+    <select
+      id="productTypeId"
+      class="text-input filter-select"
+      [value]="productTypeId() ?? ''"
+      (change)="onProductTypeChange($event)"
+    >
+      <option value="">Усі типи</option>
+      @for (type of dictionaries.productTypes(); track type.id) {
+        <option [value]="type.id">{{ type.label }}</option>
+      }
+    </select>
+  </div>
   @if (canSort()) {
     <div class="date-field">
       <span class="date-field__label">Сортування</span>
@@ -141,16 +155,18 @@
               }
             </td>
             <td class="col-flags">
-              @if (order.isPacked) {
-                <span class="status-badge status-badge--success" title="Спаковано" aria-label="Спаковано">
-                  <svg lucidePackageCheck [size]="12" [strokeWidth]="1.5"></svg>
-                </span>
-              }
-              @if (order.isOutOfStock) {
-                <span class="status-badge status-badge--danger" title="Відсутній товар" aria-label="Відсутній товар">
-                  <svg lucideCircleAlert [size]="12" [strokeWidth]="1.5"></svg>
-                </span>
-              }
+              <span class="order-flags">
+                @if (order.isPacked) {
+                  <span class="status-badge status-badge--success" title="Спаковано" aria-label="Спаковано">
+                    <svg lucidePackageCheck [size]="12" [strokeWidth]="1.5"></svg>
+                  </span>
+                }
+                @if (order.isOutOfStock) {
+                  <span class="status-badge status-badge--danger" title="Відсутній товар" aria-label="Відсутній товар">
+                    <svg lucideCircleAlert [size]="12" [strokeWidth]="1.5"></svg>
+                  </span>
+                }
+              </span>
             </td>
           </tr>
         }

@@ -64,15 +64,22 @@ describe('OrdersApiService', () => {
   });
 
   it('gets a paginated list with page/pageSize and no date params when unfiltered', () => {
-    service.list(1, 10, null, null).subscribe();
+    service.list(1, 10, null, null, null).subscribe();
     const req = httpMock.expectOne(`${baseUrl}?page=1&pageSize=10`);
     expect(req.request.method).toBe('GET');
     req.flush({ items: [], total: 0 });
   });
 
   it('includes dateFrom/dateTo when filtering', () => {
-    service.list(1, 10, '2026-01-01', '2026-01-31').subscribe();
+    service.list(1, 10, '2026-01-01', '2026-01-31', null).subscribe();
     const req = httpMock.expectOne(`${baseUrl}?page=1&pageSize=10&dateFrom=2026-01-01&dateTo=2026-01-31`);
+    expect(req.request.method).toBe('GET');
+    req.flush({ items: [], total: 0 });
+  });
+
+  it('includes productTypeId when filtering', () => {
+    service.list(1, 10, null, null, 't1').subscribe();
+    const req = httpMock.expectOne(`${baseUrl}?page=1&pageSize=10&productTypeId=t1`);
     expect(req.request.method).toBe('GET');
     req.flush({ items: [], total: 0 });
   });

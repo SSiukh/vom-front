@@ -13,6 +13,7 @@ describe('DashboardApiService', () => {
     totalRevenue: 38640,
     totalExpenses: 24180,
     profit: 14460,
+    sharedExpenses: null,
     orderCount: 42,
     revenueByDay: [{ date: '2026-08-01', revenue: 1200 }],
     expensesByCategory: [{ expenseTypeId: 't1', label: 'Доставка', amount: 5000 }],
@@ -32,15 +33,22 @@ describe('DashboardApiService', () => {
   });
 
   it('requests the summary with no query params when unfiltered', () => {
-    service.getSummary(null, null).subscribe();
+    service.getSummary(null, null, null).subscribe();
     const req = httpMock.expectOne(baseUrl);
     expect(req.request.method).toBe('GET');
     req.flush(summary());
   });
 
   it('includes dateFrom/dateTo when provided', () => {
-    service.getSummary('2026-08-01', '2026-08-22').subscribe();
+    service.getSummary('2026-08-01', '2026-08-22', null).subscribe();
     const req = httpMock.expectOne(`${baseUrl}?dateFrom=2026-08-01&dateTo=2026-08-22`);
+    expect(req.request.method).toBe('GET');
+    req.flush(summary());
+  });
+
+  it('includes brand when provided, alongside the date filters', () => {
+    service.getSummary('2026-08-01', '2026-08-22', 'vom').subscribe();
+    const req = httpMock.expectOne(`${baseUrl}?dateFrom=2026-08-01&dateTo=2026-08-22&brand=vom`);
     expect(req.request.method).toBe('GET');
     req.flush(summary());
   });

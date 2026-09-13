@@ -1187,6 +1187,422 @@ tested API this frontend will consume — see
       screenshots across Login, Products, Expenses, Orders (list +
       detail), Senders, 2FA, and Dashboard.
 
+## Done — survive Render cold starts after idle (2026-09-12)
+
+- [x] **Make the app resilient to the backend's free-tier spin-down.**
+      Diagnosed (measured, not assumed): `vom-back.onrender.com` sleeps
+      after ~15 min without traffic; the first request afterwards took
+      103s (`GET /ping`), the next one 0.38s. The 20s global request
+      timeout added earlier then kills that first request (usually
+      `GET /auth/2fa/status` from `twoFaConfiguredGuard`), and the guard
+      has no error path, so navigation dies silently. Access tokens (15m)
+      also expire during the same idle window, adding a 401 → refresh →
+      retry round trip; a refresh aborted client-side while the server
+      still rotates it would trip the backend's reuse detection and end
+      the session. Backend hosting fix (paid plan or external pinger on
+      `/ping`) is the user's call — this entry is the frontend half only:
+      1. `ServerConnectionService` + `PingApiService`: ping `GET /ping`
+         at startup and when the tab becomes visible after the server
+         may have gone to sleep; one shared in-flight ping; a
+         "Сервер прокидається…" notice if the ping takes >1.5s.
+      2. `serverWakeInterceptor`: when the server may be asleep, hold
+         every request until the ping answers (safe for POST/PATCH too,
+         nothing is sent twice); a GET that still fails with a timeout
+         or network error waits for the ping and is retried once;
+         non-GET requests are never retried. Refresh gets a long
+         timeout instead of the 20s default.
+      3. `twoFaConfiguredGuard` error path: an unreachable server shows
+         "Не вдалося зв'язатися з сервером" with a "Спробувати ще"
+         button instead of a blank page; a session that was cleared
+         during the attempt goes to `/login`.
+      4. Proactive refresh: decode the access token's `exp` and refresh
+         shortly before expiry, so the first request after idle doesn't
+         need a 401 round trip. Only a real `401` from `/auth/refresh`
+         ends the session — a network error or timeout no longer logs
+         the user out.
+      Built as planned. Details that came out of implementation/review:
+      the ping carries an `IS_CONNECTION_PROBE` context token that all
+      three auth/wake interceptors pass straight through (a probe must
+      never gate on, or refresh through, the ping it is itself serving
+      — otherwise a 401/refresh on `/ping` deadlocks); ping timeout
+      150s, refresh timeout 120s, fast ping failures retried twice 3s
+      apart; the clock-skew offset (`Date.now() - iat` of each freshly
+      issued token) keeps proactive refresh from looping on a client
+      whose clock runs ahead (resets on reload — accepted, at most one
+      extra refresh per reload); `handleSessionExpired()` removed,
+      session expiry now lives inside `AuthService.refreshTokens()`;
+      the banner keeps a persistent `role="status"` live region and the
+      failure alert reads "Не вдалося отримати дані з сервера" (also
+      true for 429/500, not only network failures); shared test helper
+      `core/auth/testing/build-test-jwt.ts`.
+      Reviewed twice — first pass: one should-fix (probe not exempt
+      from `authRefreshInterceptor`) + nits, all fixed; second pass
+      clean. 447/447 tests, clean typecheck/lint, build 523.15kB initial
+      (+14kB raw / +2kB gzip, same pre-existing budget warning).
+      Browser-verified with a mocked API: 25s ping (longer than the 20s
+      timeout) → requests held, banner at 3s, page at 25.9s; expired
+      token → refresh before the first request, no 401; unreachable
+      server → alert at ~13s, "Спробувати ще" recovers.
+      Known follow-up (pre-existing, out of scope): two open tabs don't
+      share rotated tokens (no `storage` listener), so both can refresh
+      with the same refresh token and trip the backend's reuse
+      detection, ending the session in both.
+
+## Done — share the session across browser tabs (2026-09-12)
+
+- [x] **Stop parallel tabs from killing each other's session.**
+      `AuthService` reads tokens from localStorage only at startup, and
+      the backend rotates refresh tokens with reuse detection
+      (`vom-back` `AuthService.refresh`: a non-matching token nulls
+      `refreshTokenHash` → 401 for everyone). So tab A refreshing
+      leaves tab B holding a dead refresh token; B's next refresh
+      trips reuse detection and ends the session in both tabs. Plan:
+      1. Listen to the `storage` event in `AuthService`: when another
+         tab writes a new token pair, adopt it in memory; when another
+         tab clears the session (logout / expired refresh), clear this
+         tab's in-memory session too and go to `/login`.
+      2. Serialize refreshes across tabs with the Web Locks API
+         (`navigator.locks`, secure contexts only — falls back to no
+         lock when unavailable). After acquiring the lock, re-read
+         localStorage: if another tab already rotated the token while
+         this one waited, adopt that pair instead of calling
+         `/auth/refresh` with a now-dead token.
+      3. A pair adopted from another tab keeps this tab's measured
+         clock offset (clock skew is per-machine), instead of
+         re-deriving it from a possibly old token's `iat`.
+      Built as planned (`core/auth/cross-tab-lock.ts`, `AuthService`
+      storage listener + `refreshUnlessRotatedElsewhere`), plus rules
+      that came out of three review passes:
+      - Inside the lock, an empty storage means the session ended
+        elsewhere: reset this tab in memory and go to `/login` without
+        calling the API and without writing storage (another tab may be
+        mid-sign-in). An adopted pair whose access token is itself
+        expiring is refreshed right away, with the adopted (newest)
+        refresh token, still under the lock.
+      - A `401` on refresh clears the session only if storage still
+        holds the token that was sent; if another tab stored a newer
+        pair meanwhile, that pair is adopted and returned instead.
+      - A sign-in in another tab moves this tab into the app only when
+        it was waiting for a 2FA code for the same user (2FA is then
+        guaranteed enabled). A tab on `/login` stays put: navigating it
+        would make the guard send it to 2FA setup, and every
+        `POST /auth/2fa/setup` regenerates the secret (vom-back
+        `two-fa.service.ts`), invalidating the QR the first tab shows.
+        A different user signing in elsewhere only resets the cached
+        2FA status.
+      - Spec harness: `vi.restoreAllMocks()` moved to the root
+        `afterEach` — the file-level `Router.prototype` spy was
+        accumulating calls across tests.
+      Accepted as-is: a tab waiting for a 2FA code while a *different*
+      user signs in elsewhere shows the setup view with an empty QR
+      (cosmetic, no setup call; needs two admins in one browser).
+      Residual risk the frontend can't close: cross-process
+      localStorage propagation isn't ordered against the lock grant,
+      and login/verify-login aren't under the lock — the complete fix
+      would be a short backend grace window for the previous refresh
+      token (user's call; vom-back is read-only here).
+      468/468 tests, clean typecheck/lint, build 525.08kB initial.
+      Browser-verified with two real tabs (shared localStorage, real
+      storage events + Web Locks) against a mock backend with rotation
+      and reuse detection. With sync disabled, the scenario reproduced
+      the bug: the concurrent refresh hit reuse detection and both tabs
+      landed on `/login`. With the fix: one startup refresh adopted by
+      the other tab, a later rotation used by the other tab with no
+      refresh, logout propagated, zero reuse detections.
+
+## Done — split dashboard stats by brand (VOM / M) (2026-09-12/13)
+
+- [x] **Filter the dashboard by brand: VOM = keychain + custom sticker,
+      M = sticker.** Checked against the real vom-back source:
+      `GET /dashboard` only takes `dateFrom`/`dateTo` and sums whole
+      orders (`totalAmount`) and all expenses; product type lives on
+      each order *item* (`items[].productTypeId`, orders may mix types);
+      `totalAmount` is exactly the sum of item `subtotal`s; expenses
+      only have an `ExpenseType` (raw_poster / keychain_blank / delivery
+      / other), no link to a product type. Frontend can't aggregate
+      itself (orders are paginated), so the split must be computed
+      server-side.
+      Decisions (user, via AskUserQuestion): expenses get an explicit
+      group chosen on entry — VOM / M / shared (`null`); a group's
+      profit = its revenue − its own expenses, shared expenses reported
+      separately, not allocated. A mixed order counts in *both* groups
+      for order count and shipment statuses; revenue is split exactly by
+      item subtotals.
+      Backend asked for (spec sent to the user): `ProductType.brand`
+      (`'vom' | 'm'`, seeded), exposed by `/dictionaries/product-types`;
+      `Expense.brand` (`'vom' | 'm' | null`) on create/update/response;
+      `GET /dashboard?brand=vom|m` with group-scoped revenue,
+      revenueByDay, orderCount, shipmentStatusBreakdown, own expenses,
+      expensesByCategory, profit, plus `sharedExpenses`.
+      Backend landed 2026-09-13; re-verified against the real
+      `vom-back` source before building against it (not just the
+      user's paraphrase): `DashboardQueryDto.brand`, the service's
+      `typeIds`/`orderWhere`/`expenseWhere` split and the `brand
+      ? aggregate(OR: [brand: null, brand: {isSet: false}]) : null`
+      shared-expenses query all matched exactly as described.
+      Built: `ProductBrand = 'vom' | 'm'` in `shared/models/`;
+      `ProductType.brand` added to the dictionary model;
+      `Expense.brand`/`CreateExpensePayload.brand` (required in the
+      payload type — the form always sends an explicit value, never
+      omits it, so create and update behave the same way from the
+      frontend's side); `DashboardSummary.sharedExpenses`;
+      `DashboardApiService.getSummary()` gained a `brand` param.
+      Dashboard: «Усі/VOM/M» segmented-control chips next to the date
+      filters; a "спільні витрати: N ₴" hint under "Загальні витрати"
+      and a "без спільних витрат" hint under "Прибуток", both only
+      when `sharedExpenses !== null`. Expenses form: a «Група» select
+      (Спільна/VOM/M) right after the type select, mapping the empty
+      option to `null`. Expenses list: a `.status-badge.badge-info`
+      group pill (VOM/M) next to the type in each card's meta row, new
+      `.entity-card__meta-group` wrapper so it doesn't disturb the
+      existing type/date `space-between` layout — no badge for a
+      shared expense.
+      Reviewed clean (structure, standards, backend-contract
+      conformance, security) — two coverage nits raised (the
+      shared-expenses hint test never exercised `sharedExpenses: 0`,
+      distinct from null/falsy; a stale API-service fixture missing
+      the new field), both fixed. 478/478 tests (was 468 — 10 new),
+      clean typecheck/lint, build 525.10kB initial (same pre-existing
+      budget warning). Browser-verified:
+      switching Усі → VOM → M refetches and re-renders correctly,
+      shared-expenses hints appear only in group mode, group badges
+      render on expense cards, the edit form pre-fills the right group
+      or "Спільна".
+      `API_REFERENCE.md` updated for `product-types`' new `brand`
+      field, `expenses`' `brand` field on create/update/response, and
+      `GET /dashboard`'s `brand` query param + `sharedExpenses`
+      response field.
+
+## Done — table fixes: flags divider, left alignment (2026-09-12)
+
+- [x] **Orders list "Мітки" cell divider is misaligned.** Cause:
+      `.col-flags { display: flex }` sat on the `<td>` itself, so the
+      cell stopped being a table cell (no row-height stretch, its
+      bottom border floats). Fixed: plain `<td class="col-flags">` with
+      the two status badges wrapped in an inner `<span class=
+      "order-flags">` carrying the flex layout instead.
+- [x] **Every table cell left-aligned** (senders, orders, CRM, and the
+      order detail items table): user wants numbers and action
+      buttons left-aligned too. Cause: global `.col-num` and
+      `.col-actions` set `text-align: right` (headers stayed left
+      because `.data-table th` is more specific). Fixed: `.col-num`
+      keeps only the mono font; the `.col-actions` rule is gone (the
+      class stays as the click-guard hook `closest('.col-actions')`,
+      confirmed unaffected). Card grids (Products/Expenses) were
+      already left via flex `justify-content`, not `text-align` — no
+      change needed there.
+      Reviewed clean (one process nit: this entry wasn't yet marked
+      done — fixed now). 468/468 tests, clean lint/build (525.04kB,
+      same pre-existing budget warning). Verified in a real browser:
+      every row's cells share one bottom edge, and computed
+      `text-align` on every `<td>` across orders/senders/CRM/order-
+      detail came back `start`.
+- [x] **Recipient city/warehouse/postomat rows removed from order
+  detail** (2026-09-13, user decision). Found alongside the table
+  fixes above: these rows showed raw NP refs (uuids) instead of names.
+  Confirmed on both ends: `DeliveryDetails` (Prisma `type`, embedded
+  in `Order`) only ever stores `cityRef`/`warehouseRef`/`streetRef`/
+  `postomatRef` — no name field, nothing to read; no NP API method
+  here resolves a bare ref back to a name (`searchCities` is
+  name→ref only; `getWarehouses`/`getPostomats` list a whole city,
+  not a single ref). Rather than build the backend name-snapshot fix,
+  the user decided the whole section was redundant next to "Доставка"
+  (the delivery-type label) and had all three rows removed —
+  `orders-detail.html` no longer renders "Населений пункт" /
+  "Відділення" / "Поштомат" at all. `cityRef`/`warehouseRef`/
+  `postomatRef` stay in the `Order` model (still needed elsewhere,
+  e.g. re-fetching warehouses on the edit page); no spec asserted on
+  the removed rows. tsc/tests (468/468)/lint/build all clean;
+  markup-only removal, not sent through a separate reviewer pass.
+
+## Done — product-type filter on Orders list (2026-09-13)
+
+- [x] **Add a "Тип товару" filter to the Orders list page — Наклейка /
+      Кастомна наклейка / Брелок.** Superseded direction: the user first
+      asked for VOM/M/Спільне brand chips, then simplified the ask to a
+      plain per-product-type filter, matching the one CRM's table
+      already has (`crm-table.html`'s `productTypeId` select + "Усі
+      типи"). No brand/group concept needed here at all — just the
+      existing `product_types` dictionary (3 items today: sticker,
+      custom_sticker, keychain).
+      Checked against the real vom-back source: `GET /orders`
+      (`ListOrdersQueryDto`/`OrdersService.findAll`) has zero product-
+      type filtering — only `page`/`pageSize`/`dateFrom`/`dateTo`. CRM
+      already solved exactly this for `GET /crm/table`
+      (`ListCrmQueryDto.productTypeId` → `crm.service.ts`:
+      `...(query.productTypeId && { items: { some: { productTypeId: query.productTypeId } } })`)
+      — the ask is to add the identical filter to Orders, not to invent
+      a new mechanism. The existing "Нові/Старі" sort chips on this
+      page are client-side only (`orders-list.ts`'s `displayedOrders`,
+      gated by `canSort() = total() <= pageSize`), which doesn't scale
+      to a real filter that must affect `total`/pagination the way
+      `dateFrom`/`dateTo` already do — this needs the same backend
+      query param CRM has, not a frontend-only reorder.
+      Spec to send the backend: `ListOrdersQueryDto` gains
+      `productTypeId?: string` (`@IsOptional() @IsMongoId()`, mirroring
+      `ListCrmQueryDto.productTypeId`); `OrdersService.findAll` adds
+      `...(productTypeId && { items: { some: { productTypeId } } })` to
+      its `where`, identical to `CrmService`'s own filter.
+      Backend landed 2026-09-13; re-verified against the real
+      `vom-back` source (`ListOrdersQueryDto.productTypeId`,
+      `OrdersService.findAll`'s `where` clause, controller wiring) —
+      matches the spec exactly. `API_REFERENCE.md`'s Orders section
+      was already updated by the backend team.
+      Built: `OrdersApiService.list()` gained a `productTypeId: string
+      | null` param; `orders-list.ts` a `productTypeId` signal +
+      `onProductTypeChange()`, wired into `hasActiveFilters()`/
+      `resetFilters()`, page resets to 1 on change; `orders-list.html`
+      got the "Тип товару" `<select>`, copied verbatim from
+      `crm-table.html` (`filter-select` class, "Усі типи" option,
+      `dictionaries.productTypes()`).
+
+## Done — shipment status colors + a 5th status (2026-09-13)
+
+- [x] **Restyle shipment-status colors and add "Переадресовано".**
+      Backend added a 5th status (seed code `redirected`, label
+      "Переадресовано") alongside the existing 4. New user-specified
+      palette: shipped=orange (unchanged), delivered=blue (was green),
+      received=green (was gray/muted), refused=red (unchanged),
+      redirected=yellow (new). Applies everywhere the shared
+      `shipmentStatusBadgeClass()` util is consumed — Orders list,
+      Orders detail, CRM table — plus the Dashboard's separate
+      Chart.js hex-color map (badge classes can't drive canvas
+      colors).
+      New CSS tokens in `styles.css` (delivered/redirected only —
+      shipped/received/refused reuse the existing info/success/danger
+      tokens, chosen to sit in the same warm-dark-palette family as
+      the existing success/error pair): `--color-delivered-text:
+      #6ea2dd` / `--color-delivered-bg: #192534`; `--color-redirected-
+      text: #dbb866` / `--color-redirected-bg: #2e2614`. Two new
+      `.status-badge--delivered`/`--redirected` classes, same
+      shape as the existing variants (no border, matching this
+      session's earlier borderless-pill redesign decision).
+      `shipmentStatusBadgeClass()` updated: `received` now reuses
+      `status-badge--success` (was `--muted`) instead of a dedicated
+      class, since green was freed up by delivered's move to blue.
+      Gave this previously-untested util its own spec file (pre-
+      existing gap, closed while touching it).
+      `dashboard.ts`'s `SHIPMENT_STATUS_COLORS` hex map updated to the
+      same 5 colors (delivered/received swapped, redirected added) so
+      the shipment-status donut chart matches the badges everywhere
+      else.
+
+## Done — Products/Expenses card-grid auto-fits, capped at 5 columns (2026-09-13)
+
+- [x] **Fix empty gaps in the card grid at wide viewports/zoom levels,
+      cap at 5 columns per row.** Root cause: `.card-grid` used
+      `grid-template-columns: repeat(auto-fill, minmax(220px, 1fr))`.
+      `auto-fill` reserves a grid track for every column that
+      *could* fit the container width, even ones with no card to put
+      in them — an incomplete last row (or any row with fewer cards
+      than fit) left those extra tracks empty instead of letting the
+      real cards stretch into the space, which is exactly the "порожнє
+      місце" the user saw when zooming. There was also no upper bound,
+      so a wide enough viewport could show 6, 7, 8+ columns (seen in
+      the user's own screenshot: 7 per row).
+      Fixed: switched to `auto-fit` (collapses empty tracks, so
+      existing cards fill the row instead of leaving blank space) and
+      capped the column count at 5 with the standard CSS-only
+      "N-column auto-fit" formula — the `minmax()` floor is
+      `max(220px, calc((100% - 4 * 16px) / 5))`: on a wide screen this
+      evaluates to the exact width 5 columns need to fill 100%, so the
+      grid algorithm can't fit a 6th column (it would be narrower than
+      the floor); on a narrow screen the `max()` falls back to the
+      original 220px floor, so mobile/narrow behavior is unchanged.
+      Shared `.card-grid` class, so this applies to both Products and
+      Expenses (the user only mentioned Products, but Expenses has the
+      exact same underlying bug and the same class — fixing the shared
+      rule once is correct, not scope creep).
+
+## Done — split dashboard revenue into realized/pending/lost (2026-09-13)
+
+- [x] **Split dashboard revenue by shipment-status outcome, and rebase
+      profit on realized revenue.** Currently `totalRevenue` sums
+      `totalAmount` for every order in the period with zero regard to
+      `shipmentStatusId` — an order that's still in transit, sitting
+      unclaimed at a branch, or outright refused counts exactly the
+      same as one the customer has actually received and paid for
+      (checked directly in `dashboard.service.ts`). User wants to see
+      what money is actually realized vs. still just potential.
+      Decided with the user (after checking the real NP status-code
+      groupings in `prisma/seed.ts` — "Доставлено" only means
+      *arrived at the branch*, not collected/paid; "Отримано" is the
+      only status that means the recipient actually took it, which
+      for cod/partial payment is also when the cash is actually
+      collected): three buckets, not two — a refused order is a lost
+      sale, not "still pending".
+      - **Реалізовано** (`realizedRevenue`) — status code `received`
+        only.
+      - **В очікуванні** (`pendingRevenue`) — no status yet (`null`),
+        `shipped`, `delivered`, `redirected`. Redirected is still a
+        live, moving order, not a loss.
+      - **Втрачено** (`lostRevenue`) — status code `refused` only.
+      Invariant: `totalRevenue === realizedRevenue + pendingRevenue +
+      lostRevenue` (partitions every order exactly once) — worth a
+      backend unit test.
+      `totalRevenue` itself stays unchanged (still the gross/all-
+      orders figure, useful on its own) — this is additive, not a
+      replacement, mirroring how `sharedExpenses` was added alongside
+      `totalExpenses` rather than redefining it. `profit` DOES change
+      meaning though (user's own suggestion, confirmed): `realizedRevenue
+      - totalExpenses` instead of `totalRevenue - totalExpenses`, so
+      the profit card stops looking better than reality.
+      Explicitly deferred for now (user's call, keeping scope tight):
+      payment-type nuance (a `full`-paid order's money already arrived
+      regardless of shipment status, unlike `cod`/`partial`) — noted
+      as a possible future refinement, not part of this pass.
+      Spec to send the backend: `DashboardResponseDto` gains
+      `realizedRevenue`/`pendingRevenue`/`lostRevenue: number`, and
+      `profit`'s formula changes. All three (like `totalRevenue`
+      already does) must respect the `brand` filter the same way —
+      reuse the existing `revenueOf(order)` helper (item-subtotal sum
+      when `brand` is given, else `order.totalAmount`) per bucket,
+      not the whole order total once `brand` narrows things down. No
+      new Prisma query needed: `shipmentStatuses` is already fetched
+      for `shipmentStatusBreakdown`; build a `Map<statusId, code>`
+      from it and re-use it to bucket each already-fetched order by
+      its `shipmentStatusId` (`null`/unmapped code → pending).
+      Backend landed 2026-09-13; re-verified against the real
+      `vom-back` source (`dashboard.service.ts`'s if/else-if/else
+      bucketing — every order hits exactly one branch via the shared
+      `revenueOf(order)` helper, so the `totalRevenue === realized +
+      pending + lost` invariant holds unconditionally; `profit:
+      realizedRevenue - totalExpenses`; the three new fields are
+      plain non-nullable `number`, unlike `sharedExpenses: number |
+      null`) — matches the spec exactly.
+      Built: `DashboardSummary` gained the three required `number`
+      fields. Under "Загальний дохід": two unconditional hints
+      ("реалізовано: N ₴", "в очікуванні: N ₴") plus a conditional
+      one ("втрачено: N ₴", shown only when `lostRevenue > 0`, styled
+      red via a new `.metric-card__hint--negative` reusing the same
+      `--color-error-text` token `.metric-value--negative` already
+      uses). Under "Прибуток": a new unconditional hint "на основі
+      реалізованого доходу" — since the card's meaning silently
+      changed, it stays legible without reading the code.
+      `profitMargin` was also rebased from `profit / totalRevenue` to
+      `profit / realizedRevenue` (zero-guard moved to match) — not
+      explicitly asked for in so many words, but the necessary
+      completion of "profit shouldn't look better than reality":
+      leaving margin on the old gross-revenue basis while profit
+      moved to realized-only would produce a number that means
+      neither the old nor the new thing (confirmed via a dedicated
+      regression test using deliberately divergent totalRevenue vs.
+      realizedRevenue). `averageOrderValue` was deliberately left on
+      `totalRevenue` — it's about the size of orders placed, not cash
+      actually collected, so no reason to rebase it.
+      Reviewed clean (one process nit: this entry wasn't yet flipped
+      to done — fixed now). 495/495 tests (was 490 — 5 new: the
+      margin-rebase regression test, always-visible-hint test,
+      realized/pending hint test, lost-revenue-hint presence/absence
+      tests, plus the zero-guard test corrected to override
+      `realizedRevenue` instead of the now-irrelevant `totalRevenue`),
+      clean typecheck/lint, build 525.45kB initial (unchanged — no
+      new dependencies). Browser-verified: all three hint lines under
+      "Загальний дохід" render with correct values and color, and
+      "маржа 60%" correctly reflects `profit/realizedRevenue`
+      (18000/30000), not the gross-basis 45% the old formula would
+      have shown.
+
 ## Suggested build order
 
 Foundations (scaffold + core auth/guards/interceptors/API layer + shell

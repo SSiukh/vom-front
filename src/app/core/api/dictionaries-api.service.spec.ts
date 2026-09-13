@@ -32,7 +32,7 @@ describe('DictionariesApiService', () => {
     service.getProductTypes().subscribe();
     const req = httpMock.expectOne(`${baseUrl}/product-types`);
     expect(req.request.method).toBe('GET');
-    req.flush([{ id: '1', code: 'sticker', label: 'Наклейка', isCustom: false }]);
+    req.flush([{ id: '1', code: 'sticker', label: 'Наклейка', isCustom: false, brand: 'm' }]);
   });
 
   it('gets /dictionaries/payment-types', () => {

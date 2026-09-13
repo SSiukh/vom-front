@@ -36,7 +36,12 @@
         (keydown.space)="onRowSpaceKey($event, expense)"
       >
         <div class="entity-card__meta-row">
-          <span>{{ typeLabel(expense) }}</span>
+          <span class="entity-card__meta-group">
+            <span>{{ typeLabel(expense) }}</span>
+            @if (brandLabel(expense); as brand) {
+              <span class="status-badge badge-info">{{ brand }}</span>
+            }
+          </span>
           <span>{{ expense.createdAt | date: 'dd.MM.yyyy' }}</span>
         </div>
         <div class="entity-card__title">{{ expense.name ?? '—' }}</div>
