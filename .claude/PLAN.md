@@ -1723,3 +1723,13 @@ are read-only views built last since they aggregate everything else).
       Implementation: native `<canvas>` (SVG -> Image -> drawImage -> toBlob),
       no new dependency; pure `layoutMockup` + `MockupRenderer` service with
       injectable canvas/image seams so it is unit-testable in jsdom.
+
+## Done — sticker page: copy mock-up + HEX colour input (2026-09-19)
+
+- [x] **"Копіювати макет"** copies the mock-up PNG to the clipboard
+      (`utils/copy-image.ts`, async Clipboard API; the PNG is encoded only
+      after the support check). Individual SVGs stay download-only.
+- [x] **HEX colour input** — `components/color-field` (ControlValueAccessor:
+      native picker + HEX text; 6 digits with/without `#` apply at once,
+      3-digit shorthand expands on change/blur, invalid text reverts).
+      Reviewed: no blockers; the two actionable nits fixed.

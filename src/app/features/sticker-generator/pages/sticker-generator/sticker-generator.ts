@@ -1,8 +1,9 @@
 import { Component, DestroyRef, ElementRef, computed, effect, inject, signal, viewChild } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
-import { LucideDownload, LucidePlus, LucideTrash2 } from '@lucide/angular';
+import { LucideCheck, LucideCopy, LucideDownload, LucidePlus, LucideTrash2 } from '@lucide/angular';
 import { catchError, from, map, of, startWith, switchMap, tap } from 'rxjs';
+import { ColorField } from '../../components/color-field/color-field';
 import { MAX_MOCKUP_STICKERS } from '../../data/mockup-config';
 import { DEFAULT_SIZE_PRESET_ID, SIZE_PRESETS } from '../../data/size-presets';
 import { STICKER_FONTS } from '../../data/sticker-fonts';
@@ -13,6 +14,7 @@ import type { IconChoice, StickerDocument } from '../../models/sticker.model';
 import { FontLibraryService } from '../../services/font-library.service';
 import { MockupRenderer } from '../../services/mockup-renderer.service';
 import { MIN_READABLE_CONTRAST, contrastRatio } from '../../utils/contrast';
+import { copyPngToClipboard } from '../../utils/copy-image';
 import { downloadFile } from '../../utils/download-file';
 import { buildFileName } from '../../utils/file-name';
 import { layoutSticker } from '../../utils/layout-sticker';
@@ -22,10 +24,11 @@ import { exportSvg } from '../../utils/svg-export';
 const MAX_TEXT_LENGTH = 40;
 const DEFAULT_TEXT = 'username';
 const MOCKUP_FILE_NAME = 'sticker-mockup.png';
+const COPIED_FEEDBACK_MS = 2000;
 
 @Component({
   selector: 'app-sticker-generator',
-  imports: [ReactiveFormsModule, LucideDownload, LucidePlus, LucideTrash2],
+  imports: [ReactiveFormsModule, ColorField, LucideCheck, LucideCopy, LucideDownload, LucidePlus, LucideTrash2],
   templateUrl: './sticker-generator.html',
   styleUrl: './sticker-generator.css',
 })
@@ -36,6 +39,7 @@ export class StickerGenerator {
   private readonly destroyRef = inject(DestroyRef);
   private readonly mockupCanvas = viewChild<ElementRef<HTMLCanvasElement>>('mockupCanvas');
   private nextMockupId = 1;
+  private copiedTimer: ReturnType<typeof setTimeout> | null = null;
 
   protected readonly fonts = STICKER_FONTS;
   protected readonly icons = STICKER_ICONS;
@@ -117,10 +121,12 @@ export class StickerGenerator {
   protected readonly mockupRendering = signal(false);
   protected readonly mockupError = signal<string | null>(null);
   protected readonly pngError = signal<string | null>(null);
+  protected readonly mockupCopied = signal(false);
   protected readonly canAddToMockup = computed(() => this.canDownload() && this.mockupStickers().length < MAX_MOCKUP_STICKERS);
   protected readonly canDownloadMockup = computed(() => this.mockupStickers().length > 0 && !this.mockupRendering() && !this.mockupError());
 
   constructor() {
+    this.destroyRef.onDestroy(() => this.clearCopiedTimer());
     effect((onCleanup) => {
       const canvas = this.mockupCanvas()?.nativeElement;
       const stickers = this.mockupStickers();
@@ -226,6 +232,30 @@ export class StickerGenerator {
       downloadFile(MOCKUP_FILE_NAME, await this.mockupRenderer.toPng(canvas), 'image/png');
     } catch {
       this.pngError.set('Не вдалося створити PNG');
+    }
+  }
+
+  protected async copyMockup(): Promise<void> {
+    const canvas = this.mockupCanvas()?.nativeElement;
+    if (!canvas || !this.canDownloadMockup()) {
+      return;
+    }
+    this.pngError.set(null);
+    try {
+      await copyPngToClipboard(() => this.mockupRenderer.toPng(canvas));
+    } catch {
+      this.pngError.set('Не вдалося скопіювати зображення');
+      return;
+    }
+    this.clearCopiedTimer();
+    this.mockupCopied.set(true);
+    this.copiedTimer = setTimeout(() => this.mockupCopied.set(false), COPIED_FEEDBACK_MS);
+  }
+
+  private clearCopiedTimer(): void {
+    if (this.copiedTimer !== null) {
+      clearTimeout(this.copiedTimer);
+      this.copiedTimer = null;
     }
   }
 

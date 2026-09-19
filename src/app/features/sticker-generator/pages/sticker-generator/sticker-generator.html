@@ -12,6 +12,15 @@
       <svg lucideDownload [size]="14" [strokeWidth]="1.5"></svg>
       Завантажити PNG макета
     </button>
+    <button type="button" class="btn-primary" [disabled]="!canDownloadMockup()" (click)="copyMockup()">
+      @if (mockupCopied()) {
+        <svg lucideCheck [size]="14" [strokeWidth]="1.5"></svg>
+        Скопійовано
+      } @else {
+        <svg lucideCopy [size]="14" [strokeWidth]="1.5"></svg>
+        Копіювати макет
+      }
+    </button>
   </div>
 </div>
 
@@ -58,14 +67,8 @@
     </div>
 
     <div class="sticker-colors">
-      <div class="field">
-        <label class="field-label" for="background">Колір фону</label>
-        <input id="background" type="color" class="sticker-color-input" formControlName="background" />
-      </div>
-      <div class="field">
-        <label class="field-label" for="artwork">Колір малюнка</label>
-        <input id="artwork" type="color" class="sticker-color-input" formControlName="artwork" />
-      </div>
+      <app-color-field label="Колір фону" inputId="background" formControlName="background" />
+      <app-color-field label="Колір малюнка" inputId="artwork" formControlName="artwork" />
     </div>
   </form>
 

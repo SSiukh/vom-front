@@ -63,6 +63,7 @@ describe('StickerGenerator', () => {
   const svg = () => el.querySelector('.sticker-preview__svg') as SVGSVGElement;
   const addButton = () => Array.from(el.querySelectorAll('button')).find((b) => b.textContent?.includes('Додати на фото')) as HTMLButtonElement;
   const pngButton = () => Array.from(el.querySelectorAll('.page-header button')).find((b) => b.textContent?.includes('PNG')) as HTMLButtonElement;
+  const copyButton = () => Array.from(el.querySelectorAll('.page-header button')).find((b) => /Копіювати|Скопійовано/.test(b.textContent ?? '')) as HTMLButtonElement;
   const mockupItems = () => Array.from(el.querySelectorAll('.mockup-card'));
   const canvas = () => el.querySelector('.mockup-canvas') as HTMLCanvasElement | null;
   const settle = async () => {
@@ -230,6 +231,18 @@ describe('StickerGenerator', () => {
 
       expect(el.querySelector('.sticker-hint')).toBeNull();
       expect(downloadButton().disabled).toBe(false);
+    });
+
+    it('takes a colour typed as hex text', async () => {
+      await create();
+      const hex = el.querySelector('[aria-label="Колір фону, HEX"]') as HTMLInputElement;
+
+      hex.value = '#E8871E';
+      hex.dispatchEvent(new Event('input'));
+      fixture.detectChanges();
+
+      expect((el.querySelector('#background') as HTMLInputElement).value).toBe('#e8871e');
+      expect(el.querySelector('.sticker-preview__svg rect')?.getAttribute('fill')).toBe('#e8871e');
     });
 
     it('warns when background and artwork colours are almost the same', async () => {
@@ -461,6 +474,92 @@ describe('StickerGenerator', () => {
 
       expect(el.querySelector('.mockup-panel .error-text')).toBeNull();
       expect(clickedAnchors[0]?.download).toBe('sticker-mockup.png');
+    });
+  });
+
+  describe('copying the mock-up', () => {
+    let clipboardWrite: ReturnType<typeof vi.fn>;
+    let clipboardItems: { data: Record<string, Promise<Blob>> }[];
+
+    beforeEach(() => {
+      clipboardItems = [];
+      clipboardWrite = vi.fn().mockResolvedValue(undefined);
+      class FakeClipboardItem {
+        constructor(public data: Record<string, Promise<Blob>>) {
+          clipboardItems.push(this);
+        }
+      }
+      vi.stubGlobal('ClipboardItem', FakeClipboardItem);
+      Object.defineProperty(navigator, 'clipboard', { value: { write: clipboardWrite }, configurable: true });
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+      vi.unstubAllGlobals();
+      Reflect.deleteProperty(navigator, 'clipboard');
+    });
+
+    it('is blocked until the mock-up has a sticker', async () => {
+      await create();
+
+      expect(copyButton().textContent).toContain('Копіювати макет');
+      expect(copyButton().disabled).toBe(true);
+    });
+
+    it('copies the rendered mock-up as a PNG to the clipboard instead of downloading it', async () => {
+      await create();
+      await addSticker();
+
+      copyButton().click();
+      await settle();
+
+      expect(toPng).toHaveBeenCalledWith(canvas());
+      expect(clipboardWrite).toHaveBeenCalledTimes(1);
+      expect(Object.keys(clipboardItems[0]?.data ?? {})).toEqual(['image/png']);
+      await expect(clipboardItems[0]?.data['image/png']).resolves.toBeInstanceOf(Blob);
+      expect(createObjectURL).not.toHaveBeenCalled();
+      expect(clickedAnchors).toHaveLength(0);
+    });
+
+    it('confirms with "Скопійовано" and goes back to the normal label after two seconds', async () => {
+      await create();
+      await addSticker();
+      vi.useFakeTimers();
+
+      copyButton().click();
+      await vi.advanceTimersByTimeAsync(0);
+      fixture.detectChanges();
+      expect(copyButton().textContent).toContain('Скопійовано');
+
+      await vi.advanceTimersByTimeAsync(1999);
+      fixture.detectChanges();
+      expect(copyButton().textContent).toContain('Скопійовано');
+
+      await vi.advanceTimersByTimeAsync(1);
+      fixture.detectChanges();
+      expect(copyButton().textContent).toContain('Копіювати макет');
+    });
+
+    it('shows an error and no confirmation when the clipboard refuses', async () => {
+      await create();
+      await addSticker();
+      clipboardWrite.mockRejectedValue(new Error('denied'));
+
+      copyButton().click();
+      await new Promise((resolve) => setTimeout(resolve));
+      await settle();
+
+      expect(el.querySelector('.mockup-panel .error-text')?.textContent?.trim()).toBe('Не вдалося скопіювати зображення');
+      expect(copyButton().textContent).toContain('Копіювати макет');
+    });
+
+    it('offers no copy action for the individual SVG stickers, only download and remove', async () => {
+      await create();
+      await addSticker();
+
+      const buttons = Array.from(mockupItems()[0]?.querySelectorAll('button') ?? []).map((b) => b.textContent?.trim() || 'remove');
+
+      expect(buttons).toEqual(['SVG', 'remove']);
     });
   });
 });

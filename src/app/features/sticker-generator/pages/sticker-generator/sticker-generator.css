@@ -19,18 +19,8 @@
 
 .sticker-colors {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 14px;
-}
-
-.sticker-color-input {
-  width: 100%;
-  height: 38px;
-  padding: 3px;
-  background: var(--color-bg-panel-nested);
-  border: 1px solid var(--color-border-inner);
-  border-radius: var(--radius-sm);
-  cursor: pointer;
 }
 
 .sticker-preview__svg {

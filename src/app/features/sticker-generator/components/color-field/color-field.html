@@ -1,0 +1,28 @@
+<div class="field">
+  <label class="field-label" [attr.for]="inputId()">{{ label() }}</label>
+  <div class="color-field__row">
+    <input
+      [id]="inputId()"
+      type="color"
+      class="color-field__picker"
+      [value]="value()"
+      [disabled]="disabled()"
+      (input)="pick($event)"
+      (blur)="touch()"
+    />
+    <input
+      type="text"
+      class="text-input color-field__hex"
+      spellcheck="false"
+      autocomplete="off"
+      maxlength="7"
+      [attr.aria-label]="label() + ', HEX'"
+      [attr.aria-invalid]="invalid()"
+      [value]="hexText()"
+      [disabled]="disabled()"
+      (input)="typeHex($event)"
+      (change)="finishHex($event)"
+      (blur)="finishHex($event)"
+    />
+  </div>
+</div>

@@ -1,0 +1,25 @@
+.color-field__row {
+  display: flex;
+  gap: 8px;
+}
+
+.color-field__picker {
+  flex: none;
+  width: 48px;
+  height: 38px;
+  padding: 3px;
+  background: var(--color-bg-panel-nested);
+  border: 1px solid var(--color-border-inner);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.color-field__hex {
+  flex: 1;
+  min-width: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.color-field__hex[aria-invalid='true'] {
+  border-color: var(--color-error-text);
+}
