@@ -7,6 +7,7 @@ import {
   LucidePanelLeftClose,
   LucidePanelLeftOpen,
   LucideShieldCheck,
+  LucideStickyNote,
   LucideTable2,
   LucideTag,
   LucideUsers,
@@ -30,6 +31,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'Таблиця', path: FEATURE_ROUTES.crm, icon: LucideTable2 },
   { label: 'Дашборд', path: FEATURE_ROUTES.dashboard, icon: LucideLayoutDashboard },
   { label: 'Відправники', path: FEATURE_ROUTES.senders, icon: LucideUsers },
+  { label: 'Наклейки', path: FEATURE_ROUTES.stickers, icon: LucideStickyNote },
   { label: '2FA', path: AUTH_ROUTES.twoFa, icon: LucideShieldCheck },
 ];
 

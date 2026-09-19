@@ -12,6 +12,16 @@ describe('OrdersList', () => {
   let httpMock: HttpTestingController;
   let router: Router;
   const baseUrl = `${environment.apiUrl}/orders`;
+  const sendersUrl = `${environment.apiUrl}/senders?page=1&pageSize=100`;
+
+  const sender = (id: string, fullName: string) => ({
+    id,
+    fullName,
+    phone: '+380501112233',
+    isActive: true,
+    createdAt: '',
+    updatedAt: '',
+  });
 
   const order = (overrides: Partial<Record<string, unknown>> = {}) => ({
     id: '1',
@@ -50,7 +60,7 @@ describe('OrdersList', () => {
     ],
   };
 
-  const create = () => {
+  const create = (sendersResponse: 'ok' | 'error' = 'ok') => {
     TestBed.configureTestingModule({
       imports: [OrdersList],
       providers: [
@@ -66,6 +76,13 @@ describe('OrdersList', () => {
     fixture = TestBed.createComponent(OrdersList);
     fixture.detectChanges();
     el = fixture.nativeElement as HTMLElement;
+    const sendersReq = httpMock.expectOne(sendersUrl);
+    if (sendersResponse === 'ok') {
+      sendersReq.flush({ items: [sender('s1', 'ФОП Волошин О.М.'), sender('s2', 'ФОП Коваль І.П.')], total: 2 });
+    } else {
+      sendersReq.flush('boom', { status: 500, statusText: 'Server Error' });
+    }
+    fixture.detectChanges();
   };
 
   const flushList = (items: unknown[], total: number, url = `${baseUrl}?page=1&pageSize=10`) => {
@@ -228,6 +245,104 @@ describe('OrdersList', () => {
     flushList([], 0, `${baseUrl}?page=1&pageSize=10&productTypeId=t2`);
 
     expect(el.querySelector('.filters-row__reset')).not.toBeNull();
+  });
+
+  it('lists the senders from GET /senders?pageSize=100 after an "Усі відправники" option', () => {
+    create();
+    flushList([], 0);
+
+    const options = Array.from(el.querySelectorAll('#senderId option')) as HTMLOptionElement[];
+    expect(options.map((o) => o.textContent?.trim())).toEqual([
+      'Усі відправники',
+      'ФОП Волошин О.М.',
+      'ФОП Коваль І.П.',
+    ]);
+    expect(options.map((o) => o.value)).toEqual(['', 's1', 's2']);
+  });
+
+  it('refetches with senderId when a sender is chosen, resetting to page 1', () => {
+    create();
+    flushList([], 0);
+
+    const select = el.querySelector('#senderId') as HTMLSelectElement;
+    select.value = 's2';
+    select.dispatchEvent(new Event('change'));
+    flushList([], 0, `${baseUrl}?page=1&pageSize=10&senderId=s2`);
+
+    expect(el.querySelector('.filters-row__reset')).not.toBeNull();
+  });
+
+  it('drops senderId from the request when "Усі відправники" is chosen again', () => {
+    create();
+    flushList([], 0);
+
+    const select = el.querySelector('#senderId') as HTMLSelectElement;
+    select.value = 's1';
+    select.dispatchEvent(new Event('change'));
+    flushList([], 0, `${baseUrl}?page=1&pageSize=10&senderId=s1`);
+
+    select.value = '';
+    select.dispatchEvent(new Event('change'));
+    flushList([], 0);
+  });
+
+  it('combines the sender filter with the date and product-type filters', () => {
+    create();
+    flushList([], 0);
+
+    const [fromInput] = Array.from(el.querySelectorAll('input[type="date"]')) as HTMLInputElement[];
+    fromInput.value = '2026-08-01';
+    fromInput.dispatchEvent(new Event('change'));
+    flushList([], 0, `${baseUrl}?page=1&pageSize=10&dateFrom=2026-08-01`);
+
+    const typeSelect = el.querySelector('#productTypeId') as HTMLSelectElement;
+    typeSelect.value = 't2';
+    typeSelect.dispatchEvent(new Event('change'));
+    flushList([], 0, `${baseUrl}?page=1&pageSize=10&dateFrom=2026-08-01&productTypeId=t2`);
+
+    const senderSelect = el.querySelector('#senderId') as HTMLSelectElement;
+    senderSelect.value = 's1';
+    senderSelect.dispatchEvent(new Event('change'));
+    flushList([], 0, `${baseUrl}?page=1&pageSize=10&dateFrom=2026-08-01&productTypeId=t2&senderId=s1`);
+  });
+
+  it('resets to page 1 when the sender changes while on a later page', () => {
+    create();
+    flushList([order()], 25);
+
+    const nextPage = Array.from(el.querySelectorAll('.pagination-box')).find((b) => b.textContent?.trim() === '2');
+    (nextPage as HTMLElement).click();
+    flushList([order()], 25, `${baseUrl}?page=2&pageSize=10`);
+
+    const select = el.querySelector('#senderId') as HTMLSelectElement;
+    select.value = 's1';
+    select.dispatchEvent(new Event('change'));
+    flushList([], 0, `${baseUrl}?page=1&pageSize=10&senderId=s1`);
+  });
+
+  it('clears the sender filter (and its select value) on reset', () => {
+    create();
+    flushList([], 0);
+
+    const select = el.querySelector('#senderId') as HTMLSelectElement;
+    select.value = 's1';
+    select.dispatchEvent(new Event('change'));
+    flushList([], 0, `${baseUrl}?page=1&pageSize=10&senderId=s1`);
+
+    (el.querySelector('.filters-row__reset') as HTMLButtonElement).click();
+    flushList([], 0);
+
+    expect(select.value).toBe('');
+  });
+
+  it('keeps the list working with only "Усі відправники" when the senders request fails', () => {
+    create('error');
+    flushList([order()], 1);
+
+    const options = Array.from(el.querySelectorAll('#senderId option')) as HTMLOptionElement[];
+    expect(options.map((o) => o.textContent?.trim())).toEqual(['Усі відправники']);
+    expect(el.querySelectorAll('tbody tr').length).toBe(1);
+    expect(el.querySelector('.error-text')).toBeNull();
   });
 
   it('clears the type filter (and its select value) on reset', () => {

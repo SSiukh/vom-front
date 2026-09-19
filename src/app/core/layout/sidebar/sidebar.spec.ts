@@ -16,9 +16,9 @@ describe('Sidebar', () => {
     el = fixture.nativeElement as HTMLElement;
   });
 
-  it('renders all 7 navigation links with their labels', () => {
+  it('renders all 8 navigation links with their labels', () => {
     const links = el.querySelectorAll('.nav-link');
-    expect(links.length).toBe(7);
+    expect(links.length).toBe(8);
 
     const labels = Array.from(links).map((link) => link.querySelector('span')?.textContent?.trim());
     expect(labels).toEqual([
@@ -28,6 +28,7 @@ describe('Sidebar', () => {
       'Таблиця',
       'Дашборд',
       'Відправники',
+      'Наклейки',
       '2FA',
     ]);
   });
@@ -43,6 +44,7 @@ describe('Sidebar', () => {
       '/crm',
       '/dashboard',
       '/senders',
+      '/stickers',
       '/2fa',
     ]);
   });

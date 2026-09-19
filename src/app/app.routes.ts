@@ -25,6 +25,10 @@ export const routes: Routes = [
         loadChildren: () => import('./features/senders/senders.routes').then((m) => m.SENDERS_ROUTES),
       },
       {
+        path: FEATURE_ROUTES.stickers.slice(1),
+        loadChildren: () => import('./features/sticker-generator/sticker-generator.routes').then((m) => m.STICKER_ROUTES),
+      },
+      {
         path: FEATURE_ROUTES.products.slice(1),
         loadChildren: () => import('./features/products/products.routes').then((m) => m.PRODUCTS_ROUTES),
       },

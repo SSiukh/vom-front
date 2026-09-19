@@ -1,0 +1,170 @@
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Наклейки</h1>
+    <div class="page-subtitle">Генератор SVG-наклейки з тексту та іконки</div>
+  </div>
+  <div class="sticker-actions">
+    <button type="button" class="btn-primary" [disabled]="!canDownload()" (click)="download()">
+      <svg lucideDownload [size]="14" [strokeWidth]="1.5"></svg>
+      Завантажити SVG
+    </button>
+    <button type="button" class="btn-primary" [disabled]="!canDownloadMockup()" (click)="downloadMockup()">
+      <svg lucideDownload [size]="14" [strokeWidth]="1.5"></svg>
+      Завантажити PNG макета
+    </button>
+  </div>
+</div>
+
+<div class="sticker-layout">
+  <form class="form-panel sticker-form" [formGroup]="form">
+    <div class="field">
+      <label class="field-label" for="text">Текст</label>
+      <input
+        id="text"
+        type="text"
+        class="text-input"
+        formControlName="text"
+        autocomplete="off"
+        [attr.maxlength]="maxTextLength"
+      />
+    </div>
+
+    <div class="field">
+      <label class="field-label" for="fontId">Шрифт</label>
+      <select id="fontId" class="text-input" formControlName="fontId">
+        @for (font of fonts; track font.id) {
+          <option [value]="font.id">{{ font.label }}</option>
+        }
+      </select>
+    </div>
+
+    <div class="field">
+      <label class="field-label" for="iconId">Іконка</label>
+      <select id="iconId" class="text-input" formControlName="iconId">
+        <option value="none">Без іконки</option>
+        @for (icon of icons; track icon.id) {
+          <option [value]="icon.id">{{ icon.label }}</option>
+        }
+      </select>
+    </div>
+
+    <div class="field">
+      <label class="field-label" for="presetId">Розмір</label>
+      <select id="presetId" class="text-input" formControlName="presetId">
+        @for (preset of presets; track preset.id) {
+          <option [value]="preset.id">{{ preset.width }} × {{ preset.height }}</option>
+        }
+      </select>
+    </div>
+
+    <div class="sticker-colors">
+      <div class="field">
+        <label class="field-label" for="background">Колір фону</label>
+        <input id="background" type="color" class="sticker-color-input" formControlName="background" />
+      </div>
+      <div class="field">
+        <label class="field-label" for="artwork">Колір малюнка</label>
+        <input id="artwork" type="color" class="sticker-color-input" formControlName="artwork" />
+      </div>
+    </div>
+  </form>
+
+  <div class="info-panel sticker-preview">
+    <span class="field-label">Попередній перегляд</span>
+    @if (stickerDocument(); as sticker) {
+      <svg
+        class="sticker-preview__svg"
+        role="img"
+        [attr.aria-label]="previewLabel()"
+        [attr.viewBox]="viewBox(sticker)"
+      >
+        <rect
+          [attr.width]="sticker.width"
+          [attr.height]="sticker.height"
+          [attr.rx]="sticker.cornerRadius"
+          [attr.fill]="sticker.background"
+        />
+        <g [attr.fill]="sticker.artwork">
+          @for (path of sticker.artPaths; track $index) {
+            <path [attr.d]="path" />
+          }
+        </g>
+      </svg>
+    } @else if (fontError()) {
+      <div class="error-text" role="alert">{{ fontError() }}</div>
+    } @else {
+      <div class="loading-text">Завантаження шрифту…</div>
+    }
+
+    @if (missingCharacters().length > 0) {
+      <div class="error-text" role="alert">
+        У цьому шрифті немає символів: {{ missingCharacters().join(' ') }}. Приберіть їх або оберіть інший шрифт.
+      </div>
+    }
+    @if (isEmpty() && !fontLoading()) {
+      <div class="sticker-hint" role="status">Введіть текст або оберіть іконку.</div>
+    }
+    @if (lowContrast()) {
+      <div class="sticker-warning" role="status">Кольори фону й малюнка майже не відрізняються — наклейку буде важко прочитати.</div>
+    }
+    <button type="button" class="btn-primary sticker-add" [disabled]="!canAddToMockup()" (click)="addToMockup()">
+      <svg lucidePlus [size]="14" [strokeWidth]="1.5"></svg>
+      Додати на фото
+    </button>
+  </div>
+</div>
+
+<div class="info-panel mockup-panel">
+  <span class="field-label">Макет на фото ({{ mockupStickers().length }} / {{ maxMockupStickers }})</span>
+  @if (mockupStickers().length === 0) {
+    <div class="mockup-hint" role="status">Налаштуйте наклейку й натисніть «Додати на фото» — до {{ maxMockupStickers }} наклейок.</div>
+  } @else {
+    @if (mockupError() || pngError()) {
+      <div class="error-text" role="alert">{{ mockupError() || pngError() }}</div>
+    } @else if (mockupRendering()) {
+      <div class="loading-text">Збираємо макет…</div>
+    }
+    <div class="mockup-layout">
+      <canvas #mockupCanvas class="mockup-canvas" role="img" aria-label="Макет наклейок на фото"></canvas>
+      <ul class="mockup-cards">
+        @for (sticker of mockupStickers(); track sticker.id) {
+          <li class="mockup-card">
+            <svg
+              class="mockup-card__preview"
+              role="img"
+              [attr.aria-label]="'Наклейка ' + sticker.label"
+              [attr.viewBox]="viewBox(sticker.document)"
+            >
+              <rect
+                [attr.width]="sticker.document.width"
+                [attr.height]="sticker.document.height"
+                [attr.rx]="sticker.document.cornerRadius"
+                [attr.fill]="sticker.document.background"
+              />
+              <g [attr.fill]="sticker.document.artwork">
+                @for (path of sticker.document.artPaths; track $index) {
+                  <path [attr.d]="path" />
+                }
+              </g>
+            </svg>
+            <div class="mockup-card__footer">
+              <span class="mockup-card__label">{{ sticker.label }} · {{ sticker.presetWidth }} × {{ sticker.presetHeight }}</span>
+              <button type="button" class="btn-ghost" (click)="downloadMockupSticker(sticker)">
+                <svg lucideDownload [size]="14" [strokeWidth]="1.5"></svg>
+                SVG
+              </button>
+              <button
+                type="button"
+                class="btn-outline-danger"
+                [attr.aria-label]="'Прибрати наклейку ' + sticker.label"
+                (click)="removeFromMockup(sticker.id)"
+              >
+                <svg lucideTrash2 [size]="14" [strokeWidth]="1.5"></svg>
+              </button>
+            </div>
+          </li>
+        }
+      </ul>
+    </div>
+  }
+</div>

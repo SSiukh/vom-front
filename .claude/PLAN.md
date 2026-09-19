@@ -1603,6 +1603,101 @@ tested API this frontend will consume — see
       (18000/30000), not the gross-basis 45% the old formula would
       have shown.
 
+## Done — sender filter on Orders list (2026-09-19)
+
+- [x] **Add a "Відправник" filter to the Orders list page.** Backend
+      landed and re-verified against the real `vom-back` source
+      (`ListOrdersQueryDto.senderId`: `@IsOptional() @IsMongoId()`;
+      `OrdersService.findAll` adds `...(senderId && { senderId })` to
+      the same `where` as the date/product-type filters, so they
+      combine with AND and `total` honours it; controller passes it
+      through; `GET /senders` caps `pageSize` at 100). An unknown-but-
+      valid id returns `200 { items: [], total: 0 }`; a non-Mongo id
+      returns 400 (unreachable from a dropdown).
+      Plan: `OrdersApiService.list()` had grown to 5 positional params
+      (page, pageSize, dateFrom, dateTo, productTypeId) and would be 6
+      with this — switch it to `list(page, pageSize, filters)` with an
+      `OrdersListFilters` object, exactly the pattern `CrmApiService`/
+      `CrmTableFilters` already use for its 4 filters (interface lives
+      in the api service file, like CRM's). `orders-list.ts` loads
+      senders once via `SendersApiService.list(1, 100)` (same
+      100-per-page fetch `orders-detail.ts` already does) and renders
+      a "Відправник" `<select>` ("Усі відправники" first, `items[].id`
+      as value, `fullName` as label), wired like the product-type
+      select: `[value]` bound to a `senderId` signal, page resets to 1
+      on change, included in `hasActiveFilters()`/`resetFilters()`;
+      `senderId` is omitted from the query entirely for "Усі
+      відправники". If the senders fetch fails the select just stays
+      at "Усі відправники" only — the list itself must not break.
+      Sender data for each row isn't needed (rows already carry
+      `senderId`, and the user asked for a filter, not a column).
+      Built as planned. `orders-list.spec.ts`'s `create()` now also
+      flushes the constructor's `GET /senders?page=1&pageSize=100`
+      (otherwise `httpMock.verify()` fails) and has an `'error'` mode
+      for the failure case.
+      Reviewed clean. Accepted as-is, per the reviewer: a sender
+      deactivated after the page loaded stays in the dropdown until
+      reload (benign — the filtered request just returns fewer/no
+      rows); >100 senders would silently truncate the dropdown, the
+      same cap `orders-detail.ts` already assumes for one business's
+      NP accounts. One optional nit taken: the filtered-empty-state
+      text said "За обраний період…" even for a sender/type-only
+      filter — now "За обраними фільтрами нічого не знайдено. Змініть
+      або скиньте фільтри." (also dropped the misleading "create your
+      first order" half). 504/504 tests (was 495 — 9 new), clean
+      typecheck/lint, build 525.45kB initial (unchanged). Browser-
+      verified with a mocked API: dropdown lists "Усі відправники" +
+      both senders; picking one sends `senderId=…` and narrows the
+      table; "Скинути" restores all rows, clears the select, and
+      sends no `senderId`.
+
+## Done — sticker generator tool (2026-09-19)
+
+- [x] **Text → SVG sticker tool (sidebar tab + page `/stickers`).**
+      Built and reviewed clean (reviewer fix loop done, 628 tests). Skill:
+      `.claude/skills/sticker-generator/SKILL.md`.
+      Assets checked 2026-09-19 (`.claude/artifacts/sticker-assets/`):
+      `Jua-Regular.ttf` (2.1 MB static TrueType, OFL, fsType 0, GPOS
+      kerning, capHeight 711/1000 — Latin/digits/Hangul only, **no
+      Cyrillic**) and `instagram.svg` / `tik-tok.svg` (paths only, one
+      colour, no strokes/transforms).
+      Confirmed with the user (AskUserQuestion): two colours (background
+      + artwork), no cut line, size = a select of presets 10×2, 13×2,
+      16×3, 18×4, 20×4, 22×5, 25×5 (proportions now, cm later; the
+      sample SVG's 1057×235 is exactly 18:4), single-line text, icon
+      none/Instagram/TikTok always on the left, fonts and icons supplied
+      by the user. Layout proportions (icon = 2× cap height, gap = 0.75×
+      icon, padding 16.6 % of height) were measured off the user's sample
+      SVG; the icon is centred on the text body (baseline → ink top,
+      capped at cap height, descenders ignored) so lowercase-only words
+      don't sit low.
+      Built: `features/sticker-generator/` (page with a Reactive Form and
+      `[attr.d]` preview — no `innerHTML`; pure `layout-sticker`,
+      `path-data`, `svg-export`, `contrast`, `file-name`, `download-file`,
+      `opentype-glyph-source`; `FontLibraryService` with native `fetch`,
+      caching and an injectable parser loader), `src/types/opentype.d.ts`,
+      `public/fonts/Jua/`, `FEATURE_ROUTES.stickers`, lazy route,
+      sidebar entry "Наклейки" (+ sidebar spec 7→8 links). Dependency:
+      `opentype.js` 2.0.0 (MIT, zero deps), imported via
+      `opentype.js/dist/opentype.mjs` because the package's `browser`
+      field points at an IIFE build (plain import made the production
+      build warn "not ESM").
+      Verification so far: 627/627 tests (was 504), clean typecheck/lint,
+      build with no new warning; `opentype` is its own lazy chunk
+      (≈240 kB raw) and the initial bundle grew only by the sidebar
+      icon + entry (525.45 → 529.22 kB, ≈3.3 kB of it the Lucide icon).
+      Mutation-checked the layout rules (found and fixed one tautological
+      test that imported the constant it verified). Real-browser check
+      (Playwright): the page loads `fonts/Jua/Jua-Regular.ttf` with plain
+      `fetch` and no `Authorization` header, renders Instagram/TikTok +
+      text, a Cyrillic string lists the missing letters and blocks
+      download, the downloaded `sticker-kolostrack-18x4.svg` (18.6 kB, 4
+      paths, no `<text>`/`NaN`) opens and renders correctly on its own.
+      Note for the reviewer: fonts are loaded with native `fetch`,
+      deliberately not `HttpClient` (interceptors would attach a token,
+      gate on the cold-start ping and apply a 20 s timeout to static
+      assets).
+
 ## Suggested build order
 
 Foundations (scaffold + core auth/guards/interceptors/API layer + shell
@@ -1611,3 +1706,20 @@ largest single feature) → Expenses → CRM table → Dashboard. Mirrors the
 backend's own build order, since the frontend's dependency chain follows
 the same shape (Orders needs Senders + Products ready first, CRM/Dashboard
 are read-only views built last since they aggregate everything else).
+
+## Done — sticker mock-up PNG on a photo (2026-09-19)
+
+- [x] **PNG mock-up: 1-5 stickers on one client-supplied photo.**
+      Decided with the user (AskUserQuestion): "Add to photo" button snapshots
+      the current sticker (max 5, each removable, each still downloadable as
+      its own SVG); layout = one vertical column centred horizontally and
+      vertically on the photo; every sticker the same width (0.6 x photo
+      width, height from its own preset ratio; user changed this from real
+      relative scale), gap = 4% of the width, shrink the block if it exceeds
+      the photo; no rotation, soft drop shadow; PNG of the whole mock-up,
+      capped at 2000 px wide (photo 1805x2390 portrait, so no upscaling).
+      Photo: `.claude/artifacts/sticker-assets/background.png` (6.3 MB) is
+      compressed to `public/mockup/background.jpg`; the original stays.
+      Implementation: native `<canvas>` (SVG -> Image -> drawImage -> toBlob),
+      no new dependency; pure `layoutMockup` + `MockupRenderer` service with
+      injectable canvas/image seams so it is unit-testable in jsdom.

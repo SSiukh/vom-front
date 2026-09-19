@@ -14,27 +14,31 @@ import { REQUEST_TIMEOUT_MS } from '../interceptors/request-timeout.interceptor'
 
 const SYNC_ALL_STATUSES_TIMEOUT_MS = 90_000;
 
+export interface OrdersListFilters {
+  dateFrom: string | null;
+  dateTo: string | null;
+  productTypeId: string | null;
+  senderId: string | null;
+}
+
 @Injectable({ providedIn: 'root' })
 export class OrdersApiService {
   private readonly http = inject(HttpClient);
   private readonly baseUrl = `${environment.apiUrl}/orders`;
 
-  list(
-    page: number,
-    pageSize: number,
-    dateFrom: string | null,
-    dateTo: string | null,
-    productTypeId: string | null,
-  ): Observable<PaginatedResponse<Order>> {
+  list(page: number, pageSize: number, filters: OrdersListFilters): Observable<PaginatedResponse<Order>> {
     let params = new HttpParams().set('page', page).set('pageSize', pageSize);
-    if (dateFrom) {
-      params = params.set('dateFrom', dateFrom);
+    if (filters.dateFrom) {
+      params = params.set('dateFrom', filters.dateFrom);
     }
-    if (dateTo) {
-      params = params.set('dateTo', dateTo);
+    if (filters.dateTo) {
+      params = params.set('dateTo', filters.dateTo);
     }
-    if (productTypeId) {
-      params = params.set('productTypeId', productTypeId);
+    if (filters.productTypeId) {
+      params = params.set('productTypeId', filters.productTypeId);
+    }
+    if (filters.senderId) {
+      params = params.set('senderId', filters.senderId);
     }
     return this.http.get<PaginatedResponse<Order>>(this.baseUrl, { params });
   }

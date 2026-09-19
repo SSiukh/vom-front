@@ -4,7 +4,7 @@ import { TestBed } from '@angular/core/testing';
 import { environment } from '../../../environments/environment';
 import type { CreateOrderPayload } from '../../features/orders/models/order.model';
 import { REQUEST_TIMEOUT_MS } from '../interceptors/request-timeout.interceptor';
-import { OrdersApiService } from './orders-api.service';
+import { OrdersApiService, type OrdersListFilters } from './orders-api.service';
 
 describe('OrdersApiService', () => {
   let service: OrdersApiService;
@@ -63,23 +63,48 @@ describe('OrdersApiService', () => {
     httpMock.verify();
   });
 
-  it('gets a paginated list with page/pageSize and no date params when unfiltered', () => {
-    service.list(1, 10, null, null, null).subscribe();
+  const noFilters = (): OrdersListFilters => ({ dateFrom: null, dateTo: null, productTypeId: null, senderId: null });
+
+  it('gets a paginated list with page/pageSize and no filter params when unfiltered', () => {
+    service.list(1, 10, noFilters()).subscribe();
     const req = httpMock.expectOne(`${baseUrl}?page=1&pageSize=10`);
     expect(req.request.method).toBe('GET');
     req.flush({ items: [], total: 0 });
   });
 
   it('includes dateFrom/dateTo when filtering', () => {
-    service.list(1, 10, '2026-01-01', '2026-01-31', null).subscribe();
+    service.list(1, 10, { ...noFilters(), dateFrom: '2026-01-01', dateTo: '2026-01-31' }).subscribe();
     const req = httpMock.expectOne(`${baseUrl}?page=1&pageSize=10&dateFrom=2026-01-01&dateTo=2026-01-31`);
     expect(req.request.method).toBe('GET');
     req.flush({ items: [], total: 0 });
   });
 
   it('includes productTypeId when filtering', () => {
-    service.list(1, 10, null, null, 't1').subscribe();
+    service.list(1, 10, { ...noFilters(), productTypeId: 't1' }).subscribe();
     const req = httpMock.expectOne(`${baseUrl}?page=1&pageSize=10&productTypeId=t1`);
+    expect(req.request.method).toBe('GET');
+    req.flush({ items: [], total: 0 });
+  });
+
+  it('includes senderId when filtering, and omits it entirely when null', () => {
+    service.list(1, 10, { ...noFilters(), senderId: 's1' }).subscribe();
+    const filtered = httpMock.expectOne(`${baseUrl}?page=1&pageSize=10&senderId=s1`);
+    expect(filtered.request.method).toBe('GET');
+    filtered.flush({ items: [], total: 0 });
+
+    service.list(1, 10, noFilters()).subscribe();
+    const unfiltered = httpMock.expectOne(`${baseUrl}?page=1&pageSize=10`);
+    expect(unfiltered.request.params.has('senderId')).toBe(false);
+    unfiltered.flush({ items: [], total: 0 });
+  });
+
+  it('combines every filter in one request', () => {
+    service
+      .list(2, 10, { dateFrom: '2026-01-01', dateTo: '2026-01-31', productTypeId: 't1', senderId: 's1' })
+      .subscribe();
+    const req = httpMock.expectOne(
+      `${baseUrl}?page=2&pageSize=10&dateFrom=2026-01-01&dateTo=2026-01-31&productTypeId=t1&senderId=s1`,
+    );
     expect(req.request.method).toBe('GET');
     req.flush({ items: [], total: 0 });
   });

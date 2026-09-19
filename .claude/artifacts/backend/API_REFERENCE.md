@@ -223,7 +223,7 @@ document, with Nova Poshta waybill creation/update/deletion kept in sync.
 | Method & path | Throttle | Body/Query | Response |
 |---|---|---|---|
 | `POST /orders` | 20/min | `CreateOrderDto` | `OrderResponseDto` |
-| `GET /orders` | default | `?page&pageSize&dateFrom&dateTo&productTypeId` | `ListOrdersResponseDto` |
+| `GET /orders` | default | `?page&pageSize&dateFrom&dateTo&productTypeId&senderId` | `ListOrdersResponseDto` |
 | `GET /orders/:id` | default | — | `OrderResponseDto` |
 | `PATCH /orders/:id` | 20/min | `UpdateOrderDto` (all fields optional) | `OrderResponseDto` |
 | `PATCH /orders/:id/sync-status` | 20/min | — | `OrderResponseDto` (manual Nova Poshta status pull, no polling) |
@@ -234,6 +234,12 @@ document, with Nova Poshta waybill creation/update/deletion kept in sync.
 `productTypeId` (optional) filters to orders containing at least one line
 item of that product type — the same `items: { some: { productTypeId } }`
 mechanism as the CRM table's identical filter (§8).
+
+`senderId` (optional, Mongo id from `GET /senders`) filters to that sender's
+orders; combinable with every other filter (AND). Malformed id → `400`;
+a well-formed id matching nothing → an empty list, not a 404. Note
+`GET /senders` hides deactivated senders, so a deactivated sender's old
+orders can't be reached through a dropdown built from it.
 
 ```ts
 CreateOrderDto {

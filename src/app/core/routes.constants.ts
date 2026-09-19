@@ -5,4 +5,5 @@ export const FEATURE_ROUTES = {
   crm: '/crm',
   dashboard: '/dashboard',
   senders: '/senders',
+  stickers: '/stickers',
 } as const;

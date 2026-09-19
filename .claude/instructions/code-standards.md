@@ -14,7 +14,10 @@ the single source, edit it in place rather than forking a copy elsewhere.
   `HttpClient.get<any>(...)`. Every component `@Input()`/form value has an
   explicit interface/type, not an inferred loose shape.
 - **HTTP only through `core/api/` services.** No component injects
-  `HttpClient` directly (see `angular-project-structure`).
+  `HttpClient` directly (see `angular-project-structure`). The one
+  exception: a feature service may use native `fetch` (with a timeout) for
+  same-origin static assets under `public/` (e.g. font files), which must
+  not go through the auth/wake/timeout interceptors.
 - **Functional guards and interceptors, not class-based.** Current Angular
   API, per the same skill.
 - **Reactive Forms for anything beyond one trivial field.** No

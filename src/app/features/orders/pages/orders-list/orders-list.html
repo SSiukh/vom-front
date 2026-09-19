@@ -52,6 +52,20 @@
       }
     </select>
   </div>
+  <div class="date-field">
+    <label for="senderId">Відправник</label>
+    <select
+      id="senderId"
+      class="text-input filter-select"
+      [value]="senderId() ?? ''"
+      (change)="onSenderChange($event)"
+    >
+      <option value="">Усі відправники</option>
+      @for (sender of senders(); track sender.id) {
+        <option [value]="sender.id">{{ sender.fullName }}</option>
+      }
+    </select>
+  </div>
   @if (canSort()) {
     <div class="date-field">
       <span class="date-field__label">Сортування</span>
@@ -94,7 +108,7 @@
     <div class="empty-state__title">Замовлень поки немає</div>
     <div class="empty-state__text">
       @if (hasActiveFilters()) {
-        За обраний період нічого не знайдено. Створіть перше замовлення або змініть фільтри.
+        За обраними фільтрами нічого не знайдено. Змініть або скиньте фільтри.
       } @else {
         Створіть перше замовлення, щоб побачити його тут.
       }

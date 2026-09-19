@@ -1,0 +1,123 @@
+.sticker-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.sticker-layout {
+  display: grid;
+  grid-template-columns: minmax(260px, 340px) minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+  margin-top: 14px;
+}
+
+.sticker-form {
+  margin-top: 0;
+  max-width: none;
+}
+
+.sticker-colors {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+.sticker-color-input {
+  width: 100%;
+  height: 38px;
+  padding: 3px;
+  background: var(--color-bg-panel-nested);
+  border: 1px solid var(--color-border-inner);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.sticker-preview__svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: var(--radius-sm);
+}
+
+.sticker-hint,
+.mockup-hint {
+  font-size: 12.5px;
+  color: var(--color-text-meta);
+}
+
+.sticker-add {
+  align-self: flex-start;
+}
+
+.sticker-warning {
+  font-size: 12.5px;
+  color: var(--color-warning-text);
+}
+
+.mockup-panel {
+  margin-top: 16px;
+}
+
+.mockup-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 420px) minmax(220px, 340px);
+  gap: 16px;
+  align-items: start;
+  margin-top: 10px;
+}
+
+.mockup-canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: var(--radius-sm);
+}
+
+.mockup-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.mockup-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  background: var(--color-bg-panel-nested);
+  border: 1px solid var(--color-border-inner);
+  border-radius: var(--radius-sm);
+}
+
+.mockup-card__preview {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: var(--radius-sm);
+}
+
+.mockup-card__footer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.mockup-card__label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+}
+
+@media (max-width: 800px) {
+  .sticker-layout,
+  .mockup-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
