@@ -1,13 +1,13 @@
 ---
 name: sticker-generator
-description: How the in-browser sticker generator of vom-front works and how to extend it — the user types one line of text, picks a font, an optional Instagram/TikTok icon, a size preset and two colours (background + artwork), and downloads an SVG with the glyphs outlined into paths. Covers the stack (opentype.js, deep ESM import), the pure text → layout → SVG pipeline, layout rules derived from the user's sample, adding fonts/icons/presets, testing, verified facts, and the traps. Also the deferred die-cut-contour option (clipper2-ts). Use when asked to add, extend, review or debug the sticker / наклейки / text-to-SVG tool or its page.
+description: How the in-browser sticker generator of vom-front works and how to extend it — the user types one line of text, picks a font, an optional Instagram/TikTok/Telegram icon, a size preset and two colours (background + artwork), and downloads an SVG with the glyphs outlined into paths. Covers the stack (opentype.js, deep ESM import), the pure text → layout → SVG pipeline, layout rules derived from the user's sample, adding fonts/icons/presets, testing, verified facts, and the traps. Also the deferred die-cut-contour option (clipper2-ts). Use when asked to add, extend, review or debug the sticker / наклейки / text-to-SVG tool or its page.
 metadata:
   source: research survey of 2026-09-19, the user's answers of the same day, the built feature under src/app/features/sticker-generator, and this repo's code standards
 ---
 
 ## What it is
 
-A frontend-only page at `/stickers` (sidebar "Наклейки"): no backend endpoint, nothing persisted. Input: one line of text, font, icon (none / Instagram / TikTok), size preset, background colour, artwork colour. Output: a downloadable `.svg` built from outlines only — `<svg>`, `<rect>` background, `<g id="art">` with the icon paths and **one compound glyph path**. No `<text>`, `<style>`, `<image>`, no cut path. The user's sample (1057×235 px = the 18:4 preset ratio, unitless) is the target shape; they work in proportions and the print shop scales.
+A frontend-only page at `/stickers` (sidebar "Наклейки"): no backend endpoint, nothing persisted. Input: one line of text, font, icon (none / Instagram / TikTok / Telegram), size preset, background colour, artwork colour. Output: a downloadable `.svg` built from outlines only — `<svg>`, `<rect>` background, `<g id="art">` with the icon paths and **one compound glyph path**. No `<text>`, `<style>`, `<image>`, no cut path. The user's sample (1057×235 px = the 18:4 preset ratio, unitless) is the target shape; they work in proportions and the print shop scales.
 
 ## Confirmed product decisions (user, 2026-09-19)
 

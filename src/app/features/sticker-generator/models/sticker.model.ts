@@ -1,4 +1,4 @@
-export type StickerIconId = 'instagram' | 'tiktok';
+export type StickerIconId = 'instagram' | 'tiktok' | 'telegram';
 
 export type IconChoice = 'none' | StickerIconId;
 

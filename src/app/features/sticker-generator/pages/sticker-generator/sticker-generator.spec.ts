@@ -124,7 +124,7 @@ describe('StickerGenerator', () => {
       const labels = (id: string) =>
         Array.from(el.querySelectorAll(`#${id} option`)).map((option) => option.textContent?.trim());
       expect(labels('fontId')).toEqual(['Jua']);
-      expect(labels('iconId')).toEqual(['Без іконки', 'Instagram', 'TikTok']);
+      expect(labels('iconId')).toEqual(['Без іконки', 'Instagram', 'TikTok', 'Telegram']);
       expect(labels('presetId')).toEqual(['10 × 2', '13 × 2', '16 × 3', '18 × 4', '20 × 4', '22 × 5', '25 × 5']);
     });
 
@@ -182,6 +182,9 @@ describe('StickerGenerator', () => {
       expect(paths()).toHaveLength(1);
 
       setSelect('iconId', 'tiktok');
+      expect(paths()).toHaveLength(2);
+
+      setSelect('iconId', 'telegram');
       expect(paths()).toHaveLength(2);
     });
 

@@ -40,8 +40,8 @@ describe('sticker data', () => {
   });
 
   describe('icons', () => {
-    it('provides Instagram and TikTok', () => {
-      expect(STICKER_ICONS.map((icon) => icon.id)).toEqual(['instagram', 'tiktok']);
+    it('provides Instagram, TikTok and Telegram', () => {
+      expect(STICKER_ICONS.map((icon) => icon.id)).toEqual(['instagram', 'tiktok', 'telegram']);
     });
 
     it('has a positive viewBox and at least one path per icon', () => {
@@ -61,12 +61,14 @@ describe('sticker data', () => {
     });
 
     it('matches the supplied artwork proportions', () => {
-      const [instagram, tiktok] = STICKER_ICONS;
+      const [instagram, tiktok, telegram] = STICKER_ICONS;
 
       expect([instagram?.viewBoxWidth, instagram?.viewBoxHeight]).toEqual([200, 200]);
       expect([tiktok?.viewBoxWidth, tiktok?.viewBoxHeight]).toEqual([175, 200]);
+      expect([telegram?.viewBoxWidth, telegram?.viewBoxHeight]).toEqual([200, 201]);
       expect(instagram?.paths).toHaveLength(3);
       expect(tiktok?.paths).toHaveLength(1);
+      expect(telegram?.paths).toHaveLength(1);
     });
   });
 
