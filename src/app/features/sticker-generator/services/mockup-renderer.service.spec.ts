@@ -13,7 +13,7 @@ const STICKER: MockupSticker = {
   presetWidth: 18,
   presetHeight: 4,
   fileName: 'sticker-kolo-18x4.svg',
-  document: { width: 1000, height: 222.222, cornerRadius: 0, background: '#000000', artwork: '#ffffff', artPaths: ['M0 0L10 0L10 10Z'] },
+  document: { width: 1000, height: 222.222, cornerRadius: 0, background: '#000000', layers: [{ d: 'M0 0L10 0L10 10Z', fill: '#ffffff' }], gradients: [] },
 };
 
 interface FakeContext {

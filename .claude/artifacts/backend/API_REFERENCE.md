@@ -390,11 +390,17 @@ DashboardResponseDto {
 }
 ```
 
-`revenueByDay` buckets by **UTC** calendar day (not shop-local Europe/Kyiv
-time) — a deliberate, confirmed trade-off, not a bug: an order placed
-00:00–03:00 Kyiv time lands on the previous UTC day on this chart. Orders
-with `shipmentStatusId: null` (not yet synced) count toward
-`orderCount`/`totalRevenue` but are excluded from every status bucket.
+**All dates are Kyiv time (`Europe/Kiev`).** `dateFrom`/`dateTo` (on
+`GET /dashboard`, `GET /orders` and `GET /crm/table`): a date-only value
+(`YYYY-MM-DD`, what a date input sends) means the whole Kyiv calendar day —
+`dateFrom` starts at that day's 00:00 Kyiv time, `dateTo` runs through that
+day's last millisecond (so `dateFrom=dateTo=2026-09-25` is exactly 25 Sept
+Kyiv time, inclusive). A full ISO timestamp is used as-is, as an absolute
+instant. `revenueByDay` buckets orders by their **Kyiv** calendar day
+(`date` is `YYYY-MM-DD` in Kyiv), so an order placed at 00:30 Kyiv counts
+toward that day, not the previous UTC day. Orders with `shipmentStatusId:
+null` (not yet synced) count toward `orderCount`/`totalRevenue` but are
+excluded from every status bucket.
 
 **`realizedRevenue`/`pendingRevenue`/`lostRevenue` always partition
 `totalRevenue`** — `totalRevenue === realizedRevenue + pendingRevenue +

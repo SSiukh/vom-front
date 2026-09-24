@@ -60,7 +60,7 @@ describe('StickerGenerator', () => {
   };
 
   const downloadButton = () => el.querySelector('.page-header .btn-primary') as HTMLButtonElement;
-  const svg = () => el.querySelector('.sticker-preview__svg') as SVGSVGElement;
+  const svg = () => el.querySelector('.sticker-preview__svg svg') as SVGSVGElement;
   const addButton = () => Array.from(el.querySelectorAll('button')).find((b) => b.textContent?.includes('Додати на фото')) as HTMLButtonElement;
   const pngButton = () => Array.from(el.querySelectorAll('.page-header button')).find((b) => b.textContent?.includes('PNG')) as HTMLButtonElement;
   const copyButton = () => Array.from(el.querySelectorAll('.page-header button')).find((b) => /Копіювати|Скопійовано/.test(b.textContent ?? '')) as HTMLButtonElement;
@@ -123,9 +123,17 @@ describe('StickerGenerator', () => {
 
       const labels = (id: string) =>
         Array.from(el.querySelectorAll(`#${id} option`)).map((option) => option.textContent?.trim());
-      expect(labels('fontId')).toEqual(['Jua']);
-      expect(labels('iconId')).toEqual(['Без іконки', 'Instagram', 'TikTok', 'Telegram']);
+      expect(labels('fontId')).toEqual(['Jua', 'Nunito (кирилиця)']);
+      expect(labels('iconId')).toEqual(['Без іконки', 'Instagram', 'TikTok', 'Telegram', 'Instagram (кольоровий)', 'TikTok (кольоровий)']);
       expect(labels('presetId')).toEqual(['10 × 2', '13 × 2', '16 × 3', '18 × 4', '20 × 4', '22 × 5', '25 × 5']);
+    });
+
+    it('offers the five content scales and starts on M', async () => {
+      await create();
+
+      const labels = Array.from(el.querySelectorAll('#contentScaleId option')).map((option) => option.textContent?.trim());
+      expect(labels).toEqual(['XS', 'S', 'M', 'L', 'XL']);
+      expect((el.querySelector('#contentScaleId') as HTMLSelectElement).value).toBe('m');
     });
 
     it('starts with Instagram, the 18 x 4 size and white artwork on a black background', async () => {
@@ -188,6 +196,56 @@ describe('StickerGenerator', () => {
       expect(paths()).toHaveLength(2);
     });
 
+    it('loads the other font when it is chosen and redraws with its glyphs', async () => {
+      await create();
+
+      setSelect('fontId', 'nunito');
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      expect(load).toHaveBeenLastCalledWith(STICKER_FONTS[1]);
+      expect(load).toHaveBeenCalledTimes(2);
+    });
+
+    it('shrinks the icon and text together when a smaller scale is chosen', async () => {
+      await create();
+      const width = (path: Element) => {
+        const numbers = (path.getAttribute('d') ?? '').match(/-?\d+(?:\.\d+)?/g)?.map(Number) ?? [];
+        return Math.max(...numbers.filter((_, index) => index % 2 === 0)) - Math.min(...numbers.filter((_, index) => index % 2 === 0));
+      };
+      const measured = () => [paths()[0], paths().at(-1)].map((path) => width(path as Element));
+      const before = measured();
+
+      setSelect('contentScaleId', 'xs');
+
+      const after = measured();
+      expect(after).toHaveLength(2);
+      for (const [index, value] of after.entries()) {
+        expect(value).toBeCloseTo((before[index] ?? 0) * 0.7, 0);
+      }
+    });
+
+    it('never lets a larger scale push the text outside the sticker', async () => {
+      await create();
+      setInput('text', 'a fairly long line of sticker text');
+
+      setSelect('contentScaleId', 'xl');
+
+      const numbers = (paths().at(-1)?.getAttribute('d') ?? '').match(/-?\d+(?:\.\d+)?/g)?.map(Number) ?? [];
+      const xs = numbers.filter((_, index) => index % 2 === 0);
+      expect(Math.min(...xs)).toBeGreaterThanOrEqual(0);
+      expect(Math.max(...xs)).toBeLessThanOrEqual(1000);
+    });
+
+    it('keeps the download available at every scale', async () => {
+      await create();
+
+      for (const id of ['xs', 's', 'm', 'l', 'xl']) {
+        setSelect('contentScaleId', id);
+        expect(downloadButton().disabled).toBe(false);
+      }
+    });
+
     it('changes the canvas when another size is chosen', async () => {
       await create();
 
@@ -203,7 +261,120 @@ describe('StickerGenerator', () => {
       setInput('artwork', '#ff8800');
 
       expect(svg().querySelector('rect')?.getAttribute('fill')).toBe('#112233');
-      expect(svg().querySelector('g')?.getAttribute('fill')).toBe('#ff8800');
+      const fills = Array.from(svg().querySelectorAll('path')).map((path) => path.getAttribute('fill'));
+      expect(new Set(fills)).toEqual(new Set(['#ff8800']));
+    });
+  });
+
+  describe('original-colour icons', () => {
+    const fills = () => paths().map((path) => path.getAttribute('fill'));
+
+    it('keeps the icon colours and paints the Instagram text with a gradient', async () => {
+      await create();
+
+      setSelect('iconId', 'instagram-color');
+
+      expect(paths()).toHaveLength(3);
+      const [ring, glow, text] = fills();
+      expect(ring).toMatch(/^url\(#instagram-color-ring-[a-z0-9]+\)$/);
+      expect(glow).toMatch(/^url\(#instagram-color-glow-[a-z0-9]+\)$/);
+      expect(text).toBe('url(#instagram-color-text)');
+      expect(svg().querySelectorAll('defs radialGradient')).toHaveLength(2);
+      expect(svg().querySelectorAll('defs linearGradient')).toHaveLength(1);
+    });
+
+    it('resolves every gradient reference to a gradient drawn in the preview', async () => {
+      await create();
+
+      setSelect('iconId', 'instagram-color');
+
+      const ids = Array.from(svg().querySelectorAll('defs [id]')).map((element) => element.id);
+      for (const fill of fills()) {
+        expect(ids).toContain(/^url\(#(.+)\)$/.exec(fill ?? '')?.[1]);
+      }
+    });
+
+    it('draws the TikTok icon in its own colours with black text', async () => {
+      await create();
+
+      setSelect('iconId', 'tiktok-color');
+
+      expect(fills()).toEqual(['#25f4ee', '#25f4ee', '#fe2c55', '#fe2c55', '#000000', '#000000']);
+      expect(svg().querySelector('defs')).toBeNull();
+    });
+
+    it('does not let the artwork colour change them, and hides that colour field', async () => {
+      await create();
+      setSelect('iconId', 'tiktok-color');
+      const before = fills();
+
+      expect(el.querySelector('#artwork')).toBeNull();
+      expect(el.querySelector('#background')).not.toBeNull();
+      expect(fills()).toEqual(before);
+    });
+
+    it('disables the artwork control while a colour icon is chosen and enables it again after', async () => {
+      await create();
+      const artwork = fixture.componentInstance['form'].controls.artwork;
+      expect(artwork.enabled).toBe(true);
+
+      setSelect('iconId', 'instagram-color');
+      expect(artwork.disabled).toBe(true);
+
+      setSelect('iconId', 'none');
+      expect(artwork.enabled).toBe(true);
+    });
+
+    it('brings the artwork colour field back for a single-colour icon', async () => {
+      await create();
+      setSelect('iconId', 'tiktok-color');
+
+      setSelect('iconId', 'telegram');
+
+      expect(el.querySelector('#artwork')).not.toBeNull();
+    });
+
+    it('still lets the background colour change', async () => {
+      await create();
+      setSelect('iconId', 'tiktok-color');
+
+      setInput('background', '#e8871e');
+
+      expect(svg().querySelector('rect')?.getAttribute('fill')).toBe('#e8871e');
+    });
+
+    it('warns when the fixed black TikTok text is on a black background, and not on white', async () => {
+      await create();
+      setSelect('iconId', 'tiktok-color');
+      expect(el.querySelector('.sticker-warning')).not.toBeNull();
+
+      setInput('background', '#ffffff');
+
+      expect(el.querySelector('.sticker-warning')).toBeNull();
+    });
+
+    it('measures the Instagram gradient text against its middle colour', async () => {
+      await create();
+      setSelect('iconId', 'instagram-color');
+      setInput('background', '#d82d7e');
+
+      expect(el.querySelector('.sticker-warning')).not.toBeNull();
+
+      setInput('background', '#000000');
+
+      expect(el.querySelector('.sticker-warning')).toBeNull();
+    });
+
+    it('keeps the download available and previews the gradients on a mock-up card', async () => {
+      await create();
+      setSelect('iconId', 'instagram-color');
+      expect(downloadButton().disabled).toBe(false);
+
+      await addSticker();
+
+      const card = mockupItems()[0] as HTMLElement;
+      expect(card.querySelectorAll('defs radialGradient')).toHaveLength(2);
+      expect(card.querySelectorAll('defs linearGradient')).toHaveLength(1);
     });
   });
 
@@ -341,11 +512,11 @@ describe('StickerGenerator', () => {
       await addSticker();
 
       const card = mockupItems()[0] as HTMLElement;
-      const preview = card.querySelector('.mockup-card__preview') as SVGSVGElement;
+      const preview = card.querySelector('.mockup-card__preview svg') as SVGSVGElement;
       expect(preview.getAttribute('viewBox')).toBe('0 0 1000 222.222');
       expect(preview.querySelector('rect')?.getAttribute('fill')).toBe('#e8871e');
-      expect(preview.querySelector('g')?.getAttribute('fill')).toBe('#000000');
-      expect(preview.querySelectorAll('path')).toHaveLength(4);
+      const fills = Array.from(preview.querySelectorAll('path')).map((path) => path.getAttribute('fill'));
+      expect(fills).toEqual(['#000000', '#000000', '#000000', '#000000']);
     });
 
     it('keeps the added sticker unchanged when the form changes afterwards', async () => {

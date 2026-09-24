@@ -1733,3 +1733,50 @@ are read-only views built last since they aggregate everything else).
       native picker + HEX text; 6 digits with/without `#` apply at once,
       3-digit shorthand expands on change/blur, invalid text reverts).
       Reviewed: no blockers; the two actionable nits fixed.
+
+## Done — sender warning on order creation step 1 (2026-09-25)
+
+- [x] **Order creation, step 1 ("Відправлення"): show a warning that the
+      shipment goes out from the active sender** (name from the already
+      loaded `activeSender`, no extra request). Shown as a large warning
+      card (`.sender-notice`: icon, title, name, phone) instead of the small
+      `warning-banner`. Hidden while there is no active sender (step 2
+      already shows the "no active sender" fallback and blocks submit).
+
+## Done — sticker generator: original-colour icons (2026-09-25)
+
+- [x] **Two new icons with their original colours (`instagram-color.svg`,
+      `tik-tok-color.svg`) selectable in the sticker generator.** They never
+      take the artwork colour: Instagram text is filled with a gradient
+      (orange → pink → purple, the icon's own colours), TikTok text is black.
+      The background colour stays selectable; the artwork-colour field is
+      hidden for these icons. Model change: layers with their own fill
+      (`#rrggbb` or `url(#gradient)`) + gradients (radial ones carried through
+      the icon's scale/translate as a matrix), exported as `<defs>` +
+      per-path `fill`. Decisions taken without the user (to confirm): text
+      gradient = linear, bottom-left → top-right across the text, stops
+      #FA8F21 / #D82D7E / #8C3AAA; contrast warning uses the fixed text colour
+      (black / mid gradient stop).
+      Reviewed: no blockers; the disabled-artwork-control finding fixed.
+
+## Done — Nunito font for Cyrillic stickers (2026-09-25)
+
+- [x] **Second sticker font: Nunito ExtraBold** (`public/fonts/Nunito/`,
+      static TTF instanced from Google Fonts, 125 kB, OFL.txt alongside;
+      glyf outlines + GPOS; full Ukrainian Cyrillic + Latin verified by
+      parsing the cmap). Chosen by the user from a researched shortlist
+      (Nunito ExtraBold > Nunito Black > Rubik Bold > Comfortaa Bold).
+      Jua stays the default first font.
+
+## Done — sticker content scale XS–XL (2026-09-25)
+
+- [x] **Sticker generator: scale modes XS / S / M / L / XL for the whole
+      composition (icon + text).** Factors of the padded fit size: 0.5, 0.65,
+      0.8, 0.9, 1 (XL = the previous behaviour, stays the default); the
+      composition stays centred. `contentScale` option of `layoutSticker`,
+      select "Масштаб вмісту" on the page. Factors are my choice, not the
+      user's — to confirm.
+      Reviewed clean (no blockers, no should-fix).
+      Revised on the user's feedback: XS 0.7 / S 0.85 / M 1 (default) / L 1.1 /
+      XL 1.2, with a clamp to an 8 % minimum edge padding so enlarged
+      content never leaves the sticker.

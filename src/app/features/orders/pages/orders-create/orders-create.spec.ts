@@ -93,6 +93,65 @@ describe('OrdersCreate', () => {
     expect((el.querySelector('#shipmentTypeId') as HTMLSelectElement).value).toBe('st-docs');
   });
 
+  it('warns on step 1 that the shipment goes out from the active sender', () => {
+    create();
+    flushActiveSender({ fullName: 'Петренко Петро' });
+    flushAddresses();
+
+    const notice = el.querySelector('.wizard-main .sender-notice');
+    expect(notice?.querySelector('.sender-notice__title')?.textContent).toBe('Відправка здійснюється від відправника');
+    expect(notice?.querySelector('.sender-notice__name')?.textContent).toBe('Петренко Петро');
+    expect(notice?.querySelector('.sender-notice__phone')?.textContent).toBe('+380501234567');
+    expect(el.querySelector('#shipmentTypeId')).not.toBeNull();
+  });
+
+  it('lets the user close the sender warning', () => {
+    create();
+    flushActiveSender();
+    flushAddresses();
+
+    const close = el.querySelector('.sender-notice__close') as HTMLButtonElement;
+    expect(close.getAttribute('aria-label')).toBe('Закрити попередження');
+    close.click();
+    fixture.detectChanges();
+
+    expect(el.querySelector('.sender-notice')).toBeNull();
+  });
+
+  it('keeps the sender warning closed after going to step 2 and back', () => {
+    create();
+    flushActiveSender();
+    flushAddresses();
+    (el.querySelector('.sender-notice__close') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    const component = fixture.debugElement.componentInstance as OrdersCreate;
+
+    component['step'].set(2);
+    fixture.detectChanges();
+    component['step'].set(1);
+    fixture.detectChanges();
+
+    expect(el.querySelector('.sender-notice')).toBeNull();
+  });
+
+  it('shows no sender warning on step 1 while there is no active sender', () => {
+    create();
+    flushNoActiveSender();
+
+    expect(el.querySelector('.sender-notice')).toBeNull();
+  });
+
+  it('does not repeat the sender warning on step 2, where the sender card is shown', () => {
+    create();
+    flushActiveSender();
+    flushAddresses();
+    fixture.debugElement.componentInstance['step'].set(2);
+    fixture.detectChanges();
+
+    expect(el.querySelector('.sender-notice')).toBeNull();
+    expect(el.querySelector('.sender-card')).not.toBeNull();
+  });
+
   it('starts with a single item row and keeps at least one row', () => {
     create();
     flushActiveSender();

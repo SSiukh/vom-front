@@ -1,0 +1,10 @@
+:host {
+  display: block;
+}
+
+.sticker-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: var(--radius-sm);
+}

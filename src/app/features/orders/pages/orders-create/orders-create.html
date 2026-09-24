@@ -12,7 +12,11 @@
 }
 
 <div class="wizard-steps">
-  <div class="wizard-step" [class.wizard-step--active]="step() === 1" [class.wizard-step--done]="step() === 2">
+  <div
+    class="wizard-step"
+    [class.wizard-step--active]="step() === 1"
+    [class.wizard-step--done]="step() === 2"
+  >
     <span class="wizard-step__badge">
       @if (step() === 2) {
         <svg lucideCheck [size]="13" [strokeWidth]="2"></svg>
@@ -45,6 +49,29 @@
   @if (step() === 1) {
     <div class="wizard-layout">
       <div class="wizard-main">
+        @if (activeSender(); as sender) {
+          @if (!senderNoticeDismissed()) {
+            <div class="sender-notice" role="status">
+              <span class="sender-notice__icon">
+                <svg lucideTriangleAlert [size]="20" [strokeWidth]="1.5"></svg>
+              </span>
+              <div class="sender-notice__body">
+                <span class="sender-notice__title">Відправка здійснюється від відправника</span>
+                <span class="sender-notice__name">{{ sender.fullName }}</span>
+                <span class="sender-notice__phone">{{ sender.phone }}</span>
+              </div>
+              <button
+                type="button"
+                class="sender-notice__close"
+                aria-label="Закрити попередження"
+                (click)="dismissSenderNotice()"
+              >
+                <svg lucideX [size]="16" [strokeWidth]="1.5"></svg>
+              </button>
+            </div>
+          }
+        }
+
         <div class="field">
           <label class="field-label" for="shipmentTypeId">Тип відправки</label>
           <select id="shipmentTypeId" class="text-input" formControlName="shipmentTypeId">
@@ -277,7 +304,9 @@
           <svg lucideChevronLeft [size]="14" [strokeWidth]="1.5"></svg>
           Назад
         </button>
-        <button type="submit" class="btn-primary" [disabled]="!isStep2Valid() || saving()">Створити</button>
+        <button type="submit" class="btn-primary" [disabled]="!isStep2Valid() || saving()">
+          Створити
+        </button>
       </div>
     </div>
   }

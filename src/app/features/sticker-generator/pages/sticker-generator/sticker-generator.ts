@@ -3,14 +3,16 @@ import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { LucideCheck, LucideCopy, LucideDownload, LucidePlus, LucideTrash2 } from '@lucide/angular';
 import { catchError, from, map, of, startWith, switchMap, tap } from 'rxjs';
+import { StickerSvg } from '../../components/sticker-svg/sticker-svg';
 import { ColorField } from '../../components/color-field/color-field';
 import { MAX_MOCKUP_STICKERS } from '../../data/mockup-config';
+import { CONTENT_SCALES, DEFAULT_CONTENT_SCALE_ID } from '../../data/content-scales';
 import { DEFAULT_SIZE_PRESET_ID, SIZE_PRESETS } from '../../data/size-presets';
 import { STICKER_FONTS } from '../../data/sticker-fonts';
 import { STICKER_ICONS } from '../../data/sticker-icons';
 import type { GlyphSource } from '../../models/glyph-source.model';
 import type { MockupSticker } from '../../models/mockup.model';
-import type { IconChoice, StickerDocument } from '../../models/sticker.model';
+import type { IconChoice, StickerDocument, StickerIcon } from '../../models/sticker.model';
 import { FontLibraryService } from '../../services/font-library.service';
 import { MockupRenderer } from '../../services/mockup-renderer.service';
 import { MIN_READABLE_CONTRAST, contrastRatio } from '../../utils/contrast';
@@ -18,7 +20,6 @@ import { copyPngToClipboard } from '../../utils/copy-image';
 import { downloadFile } from '../../utils/download-file';
 import { buildFileName } from '../../utils/file-name';
 import { layoutSticker } from '../../utils/layout-sticker';
-import { formatNumber } from '../../utils/path-data';
 import { exportSvg } from '../../utils/svg-export';
 
 const MAX_TEXT_LENGTH = 40;
@@ -28,7 +29,7 @@ const COPIED_FEEDBACK_MS = 2000;
 
 @Component({
   selector: 'app-sticker-generator',
-  imports: [ReactiveFormsModule, ColorField, LucideCheck, LucideCopy, LucideDownload, LucidePlus, LucideTrash2],
+  imports: [ReactiveFormsModule, ColorField, StickerSvg, LucideCheck, LucideCopy, LucideDownload, LucidePlus, LucideTrash2],
   templateUrl: './sticker-generator.html',
   styleUrl: './sticker-generator.css',
 })
@@ -44,6 +45,7 @@ export class StickerGenerator {
   protected readonly fonts = STICKER_FONTS;
   protected readonly icons = STICKER_ICONS;
   protected readonly presets = SIZE_PRESETS;
+  protected readonly contentScales = CONTENT_SCALES;
   protected readonly maxTextLength = MAX_TEXT_LENGTH;
   protected readonly maxMockupStickers = MAX_MOCKUP_STICKERS;
 
@@ -52,6 +54,7 @@ export class StickerGenerator {
     fontId: [STICKER_FONTS[0]?.id ?? ''],
     iconId: ['instagram' as IconChoice],
     presetId: [DEFAULT_SIZE_PRESET_ID],
+    contentScaleId: [DEFAULT_CONTENT_SCALE_ID],
     background: ['#000000'],
     artwork: ['#ffffff'],
   });
@@ -68,6 +71,12 @@ export class StickerGenerator {
     { requireSync: true },
   );
 
+  private readonly selectedIcon = computed<StickerIcon | null>(
+    () => STICKER_ICONS.find((candidate) => candidate.id === this.values().iconId) ?? null,
+  );
+
+  protected readonly fixedColors = computed(() => this.selectedIcon()?.kind === 'color');
+
   protected readonly layout = computed(() => {
     const glyphs = this.glyphs();
     if (!glyphs) {
@@ -78,8 +87,8 @@ export class StickerGenerator {
     if (!preset) {
       return null;
     }
-    const icon = STICKER_ICONS.find((candidate) => candidate.id === values.iconId) ?? null;
-    return layoutSticker({ text: values.text, glyphs, icon, preset });
+    const contentScale = CONTENT_SCALES.find((candidate) => candidate.id === values.contentScaleId)?.factor;
+    return layoutSticker({ text: values.text, glyphs, icon: this.selectedIcon(), preset, contentScale });
   });
 
   protected readonly stickerDocument = computed<StickerDocument | null>(() => {
@@ -93,16 +102,17 @@ export class StickerGenerator {
       height: layout.height,
       cornerRadius: 0,
       background: values.background,
-      artwork: values.artwork,
-      artPaths: layout.artPaths,
+      layers: layout.layers.map((layer) => ({ d: layer.d, fill: layer.fill ?? values.artwork })),
+      gradients: layout.gradients,
     };
   });
 
   protected readonly missingCharacters = computed(() => this.layout()?.missingCharacters ?? []);
-  protected readonly isEmpty = computed(() => this.layout()?.artPaths.length === 0);
+  protected readonly isEmpty = computed(() => this.layout()?.layers.length === 0);
   protected readonly lowContrast = computed(() => {
     const values = this.values();
-    return contrastRatio(values.background, values.artwork) < MIN_READABLE_CONTRAST;
+    const textColor = this.textColor(this.selectedIcon(), values.artwork);
+    return contrastRatio(values.background, textColor) < MIN_READABLE_CONTRAST;
   });
   protected readonly previewLabel = computed(() => {
     const text = this.values().text.trim();
@@ -126,6 +136,16 @@ export class StickerGenerator {
   protected readonly canDownloadMockup = computed(() => this.mockupStickers().length > 0 && !this.mockupRendering() && !this.mockupError());
 
   constructor() {
+    this.form.controls.iconId.valueChanges
+      .pipe(startWith(this.form.controls.iconId.value), takeUntilDestroyed(this.destroyRef))
+      .subscribe((iconId) => {
+        if (STICKER_ICONS.find((candidate) => candidate.id === iconId)?.kind === 'color') {
+          this.form.controls.artwork.disable({ emitEvent: false });
+        } else {
+          this.form.controls.artwork.enable({ emitEvent: false });
+        }
+      });
+
     this.destroyRef.onDestroy(() => this.clearCopiedTimer());
     effect((onCleanup) => {
       const canvas = this.mockupCanvas()?.nativeElement;
@@ -259,7 +279,10 @@ export class StickerGenerator {
     }
   }
 
-  protected viewBox(sticker: StickerDocument): string {
-    return `0 0 ${formatNumber(sticker.width)} ${formatNumber(sticker.height)}`;
+  private textColor(icon: StickerIcon | null, artwork: string): string {
+    if (icon?.kind !== 'color') {
+      return artwork;
+    }
+    return icon.textPaint.type === 'color' ? icon.textPaint.color : icon.textPaint.contrastColor;
   }
 }

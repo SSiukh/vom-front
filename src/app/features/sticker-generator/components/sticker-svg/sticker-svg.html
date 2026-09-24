@@ -1,0 +1,43 @@
+<svg class="sticker-svg" role="img" [attr.aria-label]="label()" [attr.viewBox]="viewBox()">
+  @if (document().gradients.length > 0) {
+    <defs>
+      @for (gradient of document().gradients; track gradient.id) {
+        @if (gradient.type === 'linear') {
+          <linearGradient
+            [attr.id]="gradient.id"
+            [attr.x1]="gradient.x1"
+            [attr.y1]="gradient.y1"
+            [attr.x2]="gradient.x2"
+            [attr.y2]="gradient.y2"
+          >
+            @for (stop of gradient.stops; track $index) {
+              <stop [attr.offset]="stop.offset" [attr.stop-color]="stop.color" [attr.stop-opacity]="stop.opacity" />
+            }
+          </linearGradient>
+        } @else {
+          <radialGradient
+            [attr.id]="gradient.id"
+            [attr.cx]="gradient.cx"
+            [attr.cy]="gradient.cy"
+            [attr.r]="gradient.r"
+            gradientUnits="userSpaceOnUse"
+            [attr.gradientTransform]="'matrix(' + gradient.matrix.join(' ') + ')'"
+          >
+            @for (stop of gradient.stops; track $index) {
+              <stop [attr.offset]="stop.offset" [attr.stop-color]="stop.color" [attr.stop-opacity]="stop.opacity" />
+            }
+          </radialGradient>
+        }
+      }
+    </defs>
+  }
+  <rect
+    [attr.width]="document().width"
+    [attr.height]="document().height"
+    [attr.rx]="document().cornerRadius"
+    [attr.fill]="document().background"
+  />
+  @for (layer of document().layers; track $index) {
+    <path [attr.d]="layer.d" [attr.fill]="layer.fill" />
+  }
+</svg>

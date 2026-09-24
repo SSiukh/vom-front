@@ -66,33 +66,27 @@
       </select>
     </div>
 
+    <div class="field">
+      <label class="field-label" for="contentScaleId">Масштаб вмісту</label>
+      <select id="contentScaleId" class="text-input" formControlName="contentScaleId">
+        @for (scale of contentScales; track scale.id) {
+          <option [value]="scale.id">{{ scale.label }}</option>
+        }
+      </select>
+    </div>
+
     <div class="sticker-colors">
       <app-color-field label="Колір фону" inputId="background" formControlName="background" />
-      <app-color-field label="Колір малюнка" inputId="artwork" formControlName="artwork" />
+      @if (!fixedColors()) {
+        <app-color-field label="Колір малюнка" inputId="artwork" formControlName="artwork" />
+      }
     </div>
   </form>
 
   <div class="info-panel sticker-preview">
     <span class="field-label">Попередній перегляд</span>
     @if (stickerDocument(); as sticker) {
-      <svg
-        class="sticker-preview__svg"
-        role="img"
-        [attr.aria-label]="previewLabel()"
-        [attr.viewBox]="viewBox(sticker)"
-      >
-        <rect
-          [attr.width]="sticker.width"
-          [attr.height]="sticker.height"
-          [attr.rx]="sticker.cornerRadius"
-          [attr.fill]="sticker.background"
-        />
-        <g [attr.fill]="sticker.artwork">
-          @for (path of sticker.artPaths; track $index) {
-            <path [attr.d]="path" />
-          }
-        </g>
-      </svg>
+      <app-sticker-svg class="sticker-preview__svg" [document]="sticker" [label]="previewLabel()" />
     } @else if (fontError()) {
       <div class="error-text" role="alert">{{ fontError() }}</div>
     } @else {
@@ -132,24 +126,11 @@
       <ul class="mockup-cards">
         @for (sticker of mockupStickers(); track sticker.id) {
           <li class="mockup-card">
-            <svg
+            <app-sticker-svg
               class="mockup-card__preview"
-              role="img"
-              [attr.aria-label]="'Наклейка ' + sticker.label"
-              [attr.viewBox]="viewBox(sticker.document)"
-            >
-              <rect
-                [attr.width]="sticker.document.width"
-                [attr.height]="sticker.document.height"
-                [attr.rx]="sticker.document.cornerRadius"
-                [attr.fill]="sticker.document.background"
-              />
-              <g [attr.fill]="sticker.document.artwork">
-                @for (path of sticker.document.artPaths; track $index) {
-                  <path [attr.d]="path" />
-                }
-              </g>
-            </svg>
+              [document]="sticker.document"
+              [label]="'Наклейка ' + sticker.label"
+            />
             <div class="mockup-card__footer">
               <span class="mockup-card__label">{{ sticker.label }} · {{ sticker.presetWidth }} × {{ sticker.presetHeight }}</span>
               <button type="button" class="btn-ghost" (click)="downloadMockupSticker(sticker)">

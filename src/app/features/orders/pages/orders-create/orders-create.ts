@@ -10,6 +10,8 @@ import {
   LucideChevronRight,
   LucideLock,
   LucidePlus,
+  LucideTriangleAlert,
+  LucideX,
 } from '@lucide/angular';
 import { NovaPoshtaApiService } from '../../../../core/api/nova-poshta-api.service';
 import { OrdersApiService } from '../../../../core/api/orders-api.service';
@@ -40,6 +42,8 @@ type DeliveryMethod = 'warehouse' | 'postomat';
     LucideCheck,
     LucideBuilding,
     LucideLock,
+    LucideTriangleAlert,
+    LucideX,
   ],
   templateUrl: './orders-create.html',
   styleUrl: './orders-create.css',
@@ -60,6 +64,7 @@ export class OrdersCreate {
   protected readonly itemProducts = signal<(Product | null)[]>([null]);
 
   protected readonly sendersLoading = signal(false);
+  protected readonly senderNoticeDismissed = signal(false);
   protected readonly activeSender = signal<Sender | null>(null);
   protected readonly senderAddresses = signal<SenderAddress[]>([]);
   protected readonly senderAddressesLoading = signal(false);
@@ -373,6 +378,10 @@ export class OrdersCreate {
     for (const control of Object.values(controls)) {
       control.updateValueAndValidity({ emitEvent: false });
     }
+  }
+
+  protected dismissSenderNotice(): void {
+    this.senderNoticeDismissed.set(true);
   }
 
   private loadActiveSender(): void {

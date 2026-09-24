@@ -115,7 +115,8 @@ describe('path-data', () => {
 
     it('can transform every supplied brand icon path', () => {
       for (const icon of STICKER_ICONS) {
-        for (const path of icon.paths) {
+        const paths = icon.kind === 'mono' ? icon.paths : icon.layers.map((layer) => layer.d);
+        for (const path of paths) {
           const transformed = transformPathData(path, 0.5, 10, 10);
 
           expect(transformed.startsWith('M')).toBe(true);

@@ -1,9 +1,17 @@
 import { CANVAS_WIDTH } from '../data/size-presets';
 import type { GlyphSource, PathCommand } from '../models/glyph-source.model';
-import type { SizePreset, StickerIcon, StickerLayout } from '../models/sticker.model';
+import type {
+  ColorStickerIcon,
+  SizePreset,
+  StickerGradient,
+  StickerIcon,
+  StickerLayer,
+  StickerLayout,
+} from '../models/sticker.model';
 import {
   commandsBounds,
   commandsToPathData,
+  formatNumber,
   transformCommands,
   transformPathData,
   type Bounds,
@@ -12,6 +20,7 @@ import {
 export const ICON_TO_CAP_RATIO = 2;
 export const GAP_TO_ICON_RATIO = 0.75;
 export const PADDING_TO_HEIGHT_RATIO = 0.166;
+export const MIN_PADDING_TO_HEIGHT_RATIO = 0.08;
 const SPACE_TO_EM_RATIO = 0.25;
 const FALLBACK_CAP_HEIGHT_RATIO = 0.7;
 
@@ -20,6 +29,7 @@ export interface LayoutOptions {
   glyphs: GlyphSource;
   icon: StickerIcon | null;
   preset: SizePreset;
+  contentScale?: number;
 }
 
 interface TextRun {
@@ -51,7 +61,7 @@ export function layoutSticker(options: LayoutOptions): StickerLayout {
       }
     : null;
   const content = mergeBounds(iconBounds, shiftedTextBounds);
-  const empty: StickerLayout = { width, height, artPaths: [], missingCharacters: run.missingCharacters };
+  const empty: StickerLayout = { width, height, layers: [], gradients: [], missingCharacters: run.missingCharacters };
   if (!content) {
     return empty;
   }
@@ -63,20 +73,63 @@ export function layoutSticker(options: LayoutOptions): StickerLayout {
   }
 
   const padding = height * PADDING_TO_HEIGHT_RATIO;
-  const scale = Math.min((width - 2 * padding) / contentWidth, (height - 2 * padding) / contentHeight);
+  const fitScale = Math.min((width - 2 * padding) / contentWidth, (height - 2 * padding) / contentHeight);
+  const minPadding = height * MIN_PADDING_TO_HEIGHT_RATIO;
+  const maxScale = Math.min((width - 2 * minPadding) / contentWidth, (height - 2 * minPadding) / contentHeight);
+  const scale = Math.min(fitScale * (options.contentScale ?? 1), maxScale);
   const tx = (width - contentWidth * scale) / 2 - content.minX * scale;
   const ty = (height - contentHeight * scale) / 2 - content.minY * scale;
 
-  const artPaths: string[] = [];
-  if (icon) {
+  const layers: StickerLayer[] = [];
+  const gradients: StickerGradient[] = [];
+  const iconTransform = { scale: iconScale * scale, dx: tx, dy: iconTop * scale + ty };
+  if (icon?.kind === 'mono') {
     for (const path of icon.paths) {
-      artPaths.push(transformPathData(path, iconScale * scale, tx, iconTop * scale + ty));
+      layers.push({ d: transformPathData(path, iconTransform.scale, iconTransform.dx, iconTransform.dy), fill: null });
+    }
+  }
+  if (icon?.kind === 'color') {
+    const ids = new Map<string, string>();
+    for (const gradient of icon.gradients) {
+      const [a, b, c, d, e, f] = gradient.matrix;
+      const k = iconTransform.scale;
+      const matrix = [k * a, k * b, k * c, k * d, k * e + iconTransform.dx, k * f + iconTransform.dy] as const;
+      const id = `${icon.id}-${gradient.key}-${hashOf(matrix.map(formatNumber).join(' '))}`;
+      ids.set(gradient.key, id);
+      gradients.push({ type: 'radial', id, cx: gradient.cx, cy: gradient.cy, r: gradient.r, matrix, stops: gradient.stops });
+    }
+    for (const layer of icon.layers) {
+      const d = transformPathData(layer.d, iconTransform.scale, iconTransform.dx, iconTransform.dy);
+      const fill = layer.paint.type === 'color' ? layer.paint.color : `url(#${ids.get(layer.paint.key) ?? ''})`;
+      layers.push({ d, fill });
     }
   }
   if (textBounds) {
-    artPaths.push(commandsToPathData(transformCommands(run.commands, scale, textOffsetX * scale + tx, ty)));
+    const d = commandsToPathData(transformCommands(run.commands, scale, textOffsetX * scale + tx, ty));
+    layers.push({ d, fill: textFill(icon, gradients) });
   }
-  return { width, height, artPaths, missingCharacters: run.missingCharacters };
+  return { width, height, layers, gradients, missingCharacters: run.missingCharacters };
+}
+
+function textFill(icon: StickerIcon | null, gradients: StickerGradient[]): string | null {
+  if (icon?.kind !== 'color') {
+    return null;
+  }
+  return icon.textPaint.type === 'color' ? icon.textPaint.color : addTextGradient(icon, icon.textPaint.stops, gradients);
+}
+
+function addTextGradient(icon: ColorStickerIcon, stops: StickerGradient['stops'], gradients: StickerGradient[]): string {
+  const id = `${icon.id}-text`;
+  gradients.push({ type: 'linear', id, x1: 0, y1: 1, x2: 1, y2: 0, stops });
+  return `url(#${id})`;
+}
+
+function hashOf(text: string): string {
+  let hash = 5381;
+  for (const char of text) {
+    hash = ((hash << 5) + hash + char.charCodeAt(0)) | 0;
+  }
+  return (hash >>> 0).toString(36);
 }
 
 function layoutText(text: string, glyphs: GlyphSource): TextRun {
