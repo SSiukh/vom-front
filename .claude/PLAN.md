@@ -1734,6 +1734,34 @@ are read-only views built last since they aggregate everything else).
       3-digit shorthand expands on change/blur, invalid text reverts).
       Reviewed: no blockers; the two actionable nits fixed.
 
+## Done — keychain mock-ups page, base interface (2026-09-20)
+
+- [x] **New sidebar tab "Брелки" + page `/keychains` (feature
+      `features/keychain-mockups`), base interface only.**
+      Requested by the user; more than a raster→SVG converter — the page
+      will build keychain (брелок) mock-ups, all on the frontend. Details
+      (keychain types, styles, tracing, mock-up rendering) come later; this
+      pass reserves the page and builds the UI shell only.
+      Layout: form on the left, previews on the right.
+      Left form: photo upload (usually black-and-white, later traced),
+      keychain-type select, optional logo select (reuses the sticker
+      generator's Instagram/TikTok/Telegram icons), text input, font select
+      (reuses the sticker fonts), and a reserved block for mock-up styles.
+      Right: preview area for several mock-ups (one per style) with reserved
+      download / copy actions, plus a reserved SVG-download block below the
+      previews.
+      Decisions taken without the user (to confirm): route `/keychains`,
+      label "Брелки", Lucide `KeyRound` icon, photo limit PNG/JPEG/WebP up to
+      10 MB, text limit 40 chars, single text field, keychain types and
+      styles left EMPTY (not invented), fonts/icons imported from the
+      sticker-generator feature (cross-feature import — a move to `shared/`
+      is an open structural question).
+      Not built yet (by design): tracing (potrace, `esm-potrace-wasm`,
+      GPL accepted — see `.claude/artifacts/trace-test/`), mock-up
+      rendering, real download/copy, styles.
+      Skill: `.claude/skills/keychain-mockups/SKILL.md` (update after the
+      user's clarifications).
+
 ## Done — sender warning on order creation step 1 (2026-09-25)
 
 - [x] **Order creation, step 1 ("Відправлення"): show a warning that the

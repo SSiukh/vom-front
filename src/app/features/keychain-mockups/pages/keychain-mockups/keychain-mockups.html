@@ -1,0 +1,115 @@
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Брелки</h1>
+    <div class="page-subtitle">Макети брелків із фото, логотипу й тексту</div>
+  </div>
+</div>
+
+<div class="keychain-layout">
+  <form class="form-panel keychain-form" [formGroup]="form">
+    <div class="field">
+      <label class="field-label" for="photo">Фото</label>
+      <input
+        id="photo"
+        type="file"
+        class="text-input"
+        [accept]="acceptedPhotoTypes"
+        (change)="selectPhoto($event)"
+      />
+      @if (photoError()) {
+        <div class="error-text" role="alert">{{ photoError() }}</div>
+      }
+      @if (photoUrl(); as url) {
+        <div class="keychain-photo">
+          <img class="keychain-photo__image" [src]="url" alt="Завантажене фото" />
+          <span class="keychain-photo__name">{{ photo()?.name }}</span>
+          <button type="button" class="btn-outline-danger" aria-label="Прибрати фото" (click)="removePhoto()">
+            <svg lucideTrash2 [size]="14" [strokeWidth]="1.5"></svg>
+          </button>
+        </div>
+      } @else {
+        <div class="keychain-hint">Зазвичай чорно-біле фото, яке піде на трасування.</div>
+      }
+    </div>
+
+    <div class="field">
+      <label class="field-label" for="keychainTypeId">Тип брелка</label>
+      <select id="keychainTypeId" class="text-input" formControlName="keychainTypeId">
+        @if (keychainTypes.length === 0) {
+          <option value="">Типи буде додано пізніше</option>
+        }
+        @for (type of keychainTypes; track type.id) {
+          <option [value]="type.id">{{ type.label }}</option>
+        }
+      </select>
+    </div>
+
+    <div class="field">
+      <label class="field-label" for="logoId">Логотип</label>
+      <select id="logoId" class="text-input" formControlName="logoId">
+        <option value="none">Без логотипу</option>
+        @for (logo of logos; track logo.id) {
+          <option [value]="logo.id">{{ logo.label }}</option>
+        }
+      </select>
+    </div>
+
+    <div class="field">
+      <label class="field-label" for="text">Текст</label>
+      <input
+        id="text"
+        type="text"
+        class="text-input"
+        formControlName="text"
+        autocomplete="off"
+        [attr.maxlength]="maxTextLength"
+      />
+    </div>
+
+    <div class="field">
+      <label class="field-label" for="fontId">Шрифт</label>
+      <select id="fontId" class="text-input" formControlName="fontId">
+        @for (font of fonts; track font.id) {
+          <option [value]="font.id">{{ font.label }}</option>
+        }
+      </select>
+    </div>
+
+    <div class="field">
+      <span class="field-label">Стилі макета</span>
+      <div class="keychain-reserved" role="status">Стилі макета буде додано пізніше.</div>
+    </div>
+  </form>
+
+  <div class="keychain-results">
+    <div class="info-panel keychain-previews">
+      <div class="keychain-previews__header">
+        <span class="field-label">Макети</span>
+        <div class="keychain-actions">
+          <button type="button" class="btn-primary" disabled>
+            <svg lucideDownload [size]="14" [strokeWidth]="1.5"></svg>
+            Завантажити
+          </button>
+          <button type="button" class="btn-primary" disabled>
+            <svg lucideCopy [size]="14" [strokeWidth]="1.5"></svg>
+            Копіювати
+          </button>
+        </div>
+      </div>
+      <div class="keychain-reserved keychain-reserved--tall" role="status">
+        Тут з'являться макети — по одному на кожен обраний стиль.
+      </div>
+    </div>
+
+    <div class="info-panel keychain-svg">
+      <div class="keychain-previews__header">
+        <span class="field-label">SVG</span>
+        <button type="button" class="btn-primary" disabled>
+          <svg lucideDownload [size]="14" [strokeWidth]="1.5"></svg>
+          Завантажити SVG
+        </button>
+      </div>
+      <div class="keychain-reserved" role="status">Тут з'явиться SVG після трасування фото.</div>
+    </div>
+  </div>
+</div>

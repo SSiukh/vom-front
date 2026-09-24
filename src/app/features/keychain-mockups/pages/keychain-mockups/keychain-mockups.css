@@ -1,0 +1,85 @@
+.keychain-layout {
+  display: grid;
+  grid-template-columns: minmax(260px, 340px) minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+  margin-top: 14px;
+}
+
+.keychain-form {
+  margin-top: 0;
+  max-width: none;
+}
+
+.keychain-results {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.keychain-previews__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.keychain-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.keychain-reserved {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 64px;
+  padding: 16px;
+  text-align: center;
+  font-size: 12.5px;
+  color: var(--color-text-meta);
+  background: var(--color-bg-panel-nested);
+  border: 1px dashed var(--color-border-inner);
+  border-radius: var(--radius-sm);
+}
+
+.keychain-reserved--tall {
+  min-height: 320px;
+}
+
+.keychain-hint {
+  font-size: 12.5px;
+  color: var(--color-text-meta);
+}
+
+.keychain-photo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.keychain-photo__image {
+  flex: none;
+  width: 48px;
+  height: 48px;
+  object-fit: cover;
+  border-radius: var(--radius-sm);
+  background: #ffffff;
+}
+
+.keychain-photo__name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+}
+
+@media (max-width: 800px) {
+  .keychain-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

@@ -6,4 +6,5 @@ export const FEATURE_ROUTES = {
   dashboard: '/dashboard',
   senders: '/senders',
   stickers: '/stickers',
+  keychains: '/keychains',
 } as const;
