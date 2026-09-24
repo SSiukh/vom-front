@@ -1780,3 +1780,18 @@ are read-only views built last since they aggregate everything else).
       Revised on the user's feedback: XS 0.7 / S 0.85 / M 1 (default) / L 1.1 /
       XL 1.2, with a clamp to an 8 % minimum edge padding so enlarged
       content never leaves the sticker.
+
+## Done — order search on Orders and CRM pages (2026-09-25)
+
+- [x] **Search by waybill number / recipient name on `/orders` and `/crm`.**
+      Backend contract verified in `vom-back` (`ListOrdersQueryDto`,
+      `ListCrmQueryDto`, `buildOrderSearchFilter`): optional `search`,
+      `@IsNotEmpty` + `@MaxLength(100)` (empty → 400, >100 → 400); words are
+      AND-ed against waybill, last/first/middle name, case-insensitive.
+      Frontend: new shared `SearchInput` (debounced 350 ms, `clear()`),
+      `search` added to `OrdersListFilters` / `CrmTableFilters` and sent only
+      when non-empty (trimmed); a change resets to page 1; Orders' "Скинути"
+      also clears it. Placeholder lists what can be searched.
+      Reviewed: no blockers; two should-fix fixed (reset now cancels a pending
+      debounce; list loads cancel the previous in-flight request via
+      unsubscribe so late answers cannot overwrite newer ones).

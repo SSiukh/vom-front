@@ -95,8 +95,17 @@ describe('OrdersList', () => {
   });
 
   afterEach(() => {
+    vi.useRealTimers();
     httpMock.verify();
   });
+
+  const searchField = () => el.querySelector('app-search-input input') as HTMLInputElement;
+  const typeSearch = (value: string) => {
+    searchField().value = value;
+    searchField().dispatchEvent(new Event('input'));
+    vi.advanceTimersByTime(350);
+    fixture.detectChanges();
+  };
 
   it('fetches page 1 unfiltered on init and renders a row per order', () => {
     create();
@@ -232,6 +241,138 @@ describe('OrdersList', () => {
     expect(resetButton).not.toBeNull();
     resetButton.click();
     flushList([], 0);
+    expect(el.querySelector('.filters-row__reset')).toBeNull();
+  });
+
+  it('has a search field whose placeholder lists what can be searched', () => {
+    create();
+    flushList([], 0);
+
+    expect(searchField().getAttribute('placeholder')).toBe("Пошук: № накладної, прізвище, ім'я, по батькові");
+    expect(searchField().getAttribute('maxlength')).toBe('100');
+  });
+
+  it('refetches with search after the typing pause, resetting to page 1', () => {
+    vi.useFakeTimers();
+    create();
+    flushList([order()], 25);
+    const nextPage = Array.from(el.querySelectorAll('.pagination-box')).find((b) => b.textContent?.trim() === '2');
+    (nextPage as HTMLElement).click();
+    flushList([order()], 25, `${baseUrl}?page=2&pageSize=10`);
+
+    searchField().value = 'Іваненко Іван';
+    searchField().dispatchEvent(new Event('input'));
+    vi.advanceTimersByTime(349);
+    httpMock.expectNone(() => true);
+    vi.advanceTimersByTime(1);
+
+    const request = httpMock.expectOne((candidate) => candidate.params.get('search') === 'Іваненко Іван');
+    expect(request.request.params.get('page')).toBe('1');
+    request.flush({ items: [], total: 0 });
+  });
+
+  it('trims the search text before sending it', () => {
+    vi.useFakeTimers();
+    create();
+    flushList([], 0);
+
+    typeSearch('  20450182773641  ');
+
+    flushList([], 0, `${baseUrl}?page=1&pageSize=10&search=20450182773641`);
+  });
+
+  it('does not refetch when the search text is only spaces or unchanged', () => {
+    vi.useFakeTimers();
+    create();
+    flushList([], 0);
+
+    typeSearch('   ');
+
+    httpMock.expectNone(() => true);
+  });
+
+  it('drops search from the request when the field is emptied again', () => {
+    vi.useFakeTimers();
+    create();
+    flushList([], 0);
+    typeSearch('ivan');
+    flushList([], 0, `${baseUrl}?page=1&pageSize=10&search=ivan`);
+
+    typeSearch('');
+
+    flushList([], 0);
+  });
+
+  it('combines search with the other filters', () => {
+    vi.useFakeTimers();
+    create();
+    flushList([], 0);
+    const from = el.querySelector('#date-from') as HTMLInputElement;
+    from.value = '2026-08-01';
+    from.dispatchEvent(new Event('change'));
+    flushList([], 0, `${baseUrl}?page=1&pageSize=10&dateFrom=2026-08-01`);
+
+    typeSearch('ivan');
+
+    flushList([], 0, `${baseUrl}?page=1&pageSize=10&dateFrom=2026-08-01&search=ivan`);
+  });
+
+  it('shows the reset button when only a search is active and clears the search field with it', () => {
+    vi.useFakeTimers();
+    create();
+    flushList([], 0);
+    expect(el.querySelector('.filters-row__reset')).toBeNull();
+    typeSearch('ivan');
+    flushList([], 0, `${baseUrl}?page=1&pageSize=10&search=ivan`);
+
+    (el.querySelector('.filters-row__reset') as HTMLButtonElement).click();
+
+    flushList([], 0);
+    expect(searchField().value).toBe('');
+    expect(el.querySelector('.filters-row__reset')).toBeNull();
+  });
+
+  it('mentions the search in the empty state when nothing matches', () => {
+    vi.useFakeTimers();
+    create();
+    flushList([], 0);
+    typeSearch('nobody');
+    flushList([], 0, `${baseUrl}?page=1&pageSize=10&search=nobody`);
+
+    expect(el.querySelector('.empty-state__text')?.textContent).toContain('пошуком нічого не знайдено');
+    expect(el.querySelector('.empty-state__title')?.textContent?.trim()).toBe('Нічого не знайдено');
+  });
+
+  it('cancels the previous list request when a newer one starts, so a late answer cannot overwrite it', () => {
+    vi.useFakeTimers();
+    create();
+    flushList([], 0);
+    typeSearch('iv');
+    const stale = httpMock.expectOne(`${baseUrl}?page=1&pageSize=10&search=iv`);
+
+    typeSearch('ivan');
+
+    expect(stale.cancelled).toBe(true);
+    flushList([order()], 1, `${baseUrl}?page=1&pageSize=10&search=ivan`);
+    expect(el.querySelectorAll('tbody tr').length).toBe(1);
+  });
+
+  it('does not let a pending search come back after the reset button was pressed', () => {
+    vi.useFakeTimers();
+    create();
+    flushList([], 0);
+    typeSearch('ivan');
+    flushList([], 0, `${baseUrl}?page=1&pageSize=10&search=ivan`);
+    searchField().value = 'ivanov';
+    searchField().dispatchEvent(new Event('input'));
+    vi.advanceTimersByTime(200);
+
+    (el.querySelector('.filters-row__reset') as HTMLButtonElement).click();
+    flushList([], 0);
+    vi.advanceTimersByTime(1000);
+
+    httpMock.expectNone(() => true);
+    expect(searchField().value).toBe('');
     expect(el.querySelector('.filters-row__reset')).toBeNull();
   });
 

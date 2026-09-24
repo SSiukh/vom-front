@@ -2,6 +2,7 @@ import { DatePipe } from '@angular/common';
 import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Router } from '@angular/router';
+import type { Subscription } from 'rxjs';
 import { LucideListChecks } from '@lucide/angular';
 import { CrmApiService } from '../../../../core/api/crm-api.service';
 import { DictionariesService } from '../../../../core/dictionaries/dictionaries.service';
@@ -9,6 +10,7 @@ import { FEATURE_ROUTES } from '../../../../core/routes.constants';
 import { DateFieldTriggerDirective } from '../../../../shared/directives/date-field-trigger.directive';
 import { CopyableText } from '../../../../shared/ui/copyable-text/copyable-text';
 import { Pagination } from '../../../../shared/ui/pagination/pagination';
+import { SearchInput } from '../../../../shared/ui/search-input/search-input';
 import { shipmentStatusBadgeClass } from '../../../../shared/utils/shipment-status-badge.util';
 import type { CrmRow } from '../../models/crm-row.model';
 
@@ -18,7 +20,7 @@ type SortOrder = 'asc' | 'desc';
 
 @Component({
   selector: 'app-crm-table',
-  imports: [DatePipe, Pagination, DateFieldTriggerDirective, CopyableText, LucideListChecks],
+  imports: [DatePipe, Pagination, DateFieldTriggerDirective, CopyableText, SearchInput, LucideListChecks],
   templateUrl: './crm-table.html',
   styleUrl: './crm-table.css',
 })
@@ -27,6 +29,7 @@ export class CrmTable {
   protected readonly dictionaries = inject(DictionariesService);
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
+  private loadSubscription: Subscription | null = null;
 
   protected readonly rows = signal<CrmRow[]>([]);
   protected readonly total = signal(0);
@@ -40,6 +43,7 @@ export class CrmTable {
   protected readonly dateTo = signal<string | null>(null);
   protected readonly productTypeId = signal<string | null>(null);
   protected readonly shipmentStatusId = signal<string | null>(null);
+  protected readonly search = signal<string | null>(null);
   protected readonly sortOrder = signal<SortOrder>('desc');
 
   protected readonly paymentTypeLabelById = computed(() => {
@@ -94,6 +98,16 @@ export class CrmTable {
   onShipmentStatusChange(event: Event): void {
     const value = (event.target as HTMLSelectElement).value;
     this.shipmentStatusId.set(value || null);
+    this.page.set(1);
+    this.load();
+  }
+
+  onSearchChange(term: string): void {
+    const next = term.trim() || null;
+    if (next === this.search()) {
+      return;
+    }
+    this.search.set(next);
     this.page.set(1);
     this.load();
   }
@@ -157,13 +171,15 @@ export class CrmTable {
   private load(): void {
     this.loading.set(true);
     this.error.set(null);
-    this.crmApi
+    this.loadSubscription?.unsubscribe();
+    this.loadSubscription = this.crmApi
       .list(this.page(), this.pageSize, {
         dateFrom: this.dateFrom(),
         dateTo: this.dateTo(),
         productTypeId: this.productTypeId(),
         shipmentStatusId: this.shipmentStatusId(),
         sortOrder: this.sortOrder(),
+        search: this.search(),
       })
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({

@@ -10,6 +10,7 @@ export interface CrmTableFilters {
   productTypeId: string | null;
   shipmentStatusId: string | null;
   sortOrder: 'asc' | 'desc';
+  search: string | null;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -30,6 +31,9 @@ export class CrmApiService {
     }
     if (filters.shipmentStatusId) {
       params = params.set('shipmentStatusId', filters.shipmentStatusId);
+    }
+    if (filters.search) {
+      params = params.set('search', filters.search);
     }
     return this.http.get<CrmTableResponse>(`${this.baseUrl}/table`, { params });
   }

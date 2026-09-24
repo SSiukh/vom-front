@@ -68,8 +68,17 @@ describe('CrmTable', () => {
   });
 
   afterEach(() => {
+    vi.useRealTimers();
     httpMock.verify();
   });
+
+  const searchField = () => el.querySelector('app-search-input input') as HTMLInputElement;
+  const typeSearch = (value: string) => {
+    searchField().value = value;
+    searchField().dispatchEvent(new Event('input'));
+    vi.advanceTimersByTime(350);
+    fixture.detectChanges();
+  };
 
   it('fetches page 1 with the default sort on init and renders a row per result', () => {
     create();
@@ -211,5 +220,89 @@ describe('CrmTable', () => {
     fixture.detectChanges();
 
     expect(el.querySelector('.error-text')?.textContent?.trim()).toBe('Не вдалося завантажити зведену таблицю');
+  });
+
+  it('has a search field whose placeholder lists what can be searched', () => {
+    create();
+    flushList([], 0, 0);
+
+    expect(searchField().getAttribute('placeholder')).toBe("Пошук: № накладної, прізвище, ім'я, по батькові");
+    expect(searchField().getAttribute('maxlength')).toBe('100');
+  });
+
+  it('refetches with search after the typing pause and keeps the sort', () => {
+    vi.useFakeTimers();
+    create();
+    flushList([], 0, 0);
+
+    searchField().value = 'Іваненко Іван';
+    searchField().dispatchEvent(new Event('input'));
+    vi.advanceTimersByTime(349);
+    httpMock.expectNone(() => true);
+    vi.advanceTimersByTime(1);
+
+    const request = httpMock.expectOne((candidate) => candidate.params.get('search') === 'Іваненко Іван');
+    expect(request.request.params.get('page')).toBe('1');
+    expect(request.request.params.get('sortOrder')).toBe('desc');
+    request.flush({ items: [], total: 0, totalAmountSum: 0 });
+  });
+
+  it('shows the totals from the filtered response', () => {
+    vi.useFakeTimers();
+    create();
+    flushList([row(), row({ id: '2' })], 2, 600);
+
+    typeSearch('20450182773641');
+
+    flushList([row()], 1, 300, `${baseUrl}?page=1&pageSize=10&sortOrder=desc&search=20450182773641`);
+    expect(el.querySelectorAll('tbody tr').length).toBe(1);
+  });
+
+  it('trims the text, and does not refetch for spaces only', () => {
+    vi.useFakeTimers();
+    create();
+    flushList([], 0, 0);
+
+    typeSearch('   ');
+    httpMock.expectNone(() => true);
+
+    typeSearch('  ivan ');
+    flushList([], 0, 0, `${baseUrl}?page=1&pageSize=10&sortOrder=desc&search=ivan`);
+  });
+
+  it('drops search from the request when the field is emptied again', () => {
+    vi.useFakeTimers();
+    create();
+    flushList([], 0, 0);
+    typeSearch('ivan');
+    flushList([], 0, 0, `${baseUrl}?page=1&pageSize=10&sortOrder=desc&search=ivan`);
+
+    typeSearch('');
+
+    flushList([], 0, 0);
+  });
+
+  it('mentions the search in the empty state when nothing matches', () => {
+    vi.useFakeTimers();
+    create();
+    flushList([], 0, 0);
+    typeSearch('nobody');
+    flushList([], 0, 0, `${baseUrl}?page=1&pageSize=10&sortOrder=desc&search=nobody`);
+
+    expect(el.querySelector('.empty-state__text')?.textContent).toContain('пошуком немає жодного замовлення');
+  });
+
+  it('cancels the previous table request when a newer one starts, so a late answer cannot overwrite it', () => {
+    vi.useFakeTimers();
+    create();
+    flushList([], 0, 0);
+    typeSearch('iv');
+    const stale = httpMock.expectOne(`${baseUrl}?page=1&pageSize=10&sortOrder=desc&search=iv`);
+
+    typeSearch('ivan');
+
+    expect(stale.cancelled).toBe(true);
+    flushList([row()], 1, 300, `${baseUrl}?page=1&pageSize=10&sortOrder=desc&search=ivan`);
+    expect(el.querySelectorAll('tbody tr').length).toBe(1);
   });
 });

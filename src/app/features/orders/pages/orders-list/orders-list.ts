@@ -1,8 +1,9 @@
 import { DatePipe } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
+import { Component, DestroyRef, computed, inject, signal, viewChild } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Router } from '@angular/router';
+import type { Subscription } from 'rxjs';
 import {
   LucideCalendar,
   LucideCircleAlert,
@@ -18,6 +19,7 @@ import { FEATURE_ROUTES } from '../../../../core/routes.constants';
 import { DateFieldTriggerDirective } from '../../../../shared/directives/date-field-trigger.directive';
 import { CopyableText } from '../../../../shared/ui/copyable-text/copyable-text';
 import { Pagination } from '../../../../shared/ui/pagination/pagination';
+import { SearchInput } from '../../../../shared/ui/search-input/search-input';
 import { shipmentStatusBadgeClass } from '../../../../shared/utils/shipment-status-badge.util';
 import type { Sender } from '../../../senders/models/sender.model';
 import type { BulkSyncStatusResult, Order } from '../../models/order.model';
@@ -34,6 +36,7 @@ type SortOrder = 'newest' | 'oldest';
     Pagination,
     DateFieldTriggerDirective,
     CopyableText,
+    SearchInput,
     LucidePlus,
     LucideCalendar,
     LucidePackageOpen,
@@ -50,6 +53,8 @@ export class OrdersList {
   protected readonly dictionaries = inject(DictionariesService);
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
+  private loadSubscription: Subscription | null = null;
+  private readonly searchInput = viewChild(SearchInput);
 
   protected readonly orders = signal<Order[]>([]);
   protected readonly total = signal(0);
@@ -61,6 +66,7 @@ export class OrdersList {
   protected readonly dateTo = signal<string | null>(null);
   protected readonly productTypeId = signal<string | null>(null);
   protected readonly senderId = signal<string | null>(null);
+  protected readonly search = signal<string | null>(null);
   protected readonly senders = signal<Sender[]>([]);
   protected readonly sortOrder = signal<SortOrder>('newest');
   protected readonly syncing = signal(false);
@@ -71,7 +77,8 @@ export class OrdersList {
       this.dateFrom() !== null ||
       this.dateTo() !== null ||
       this.productTypeId() !== null ||
-      this.senderId() !== null,
+      this.senderId() !== null ||
+      this.search() !== null,
   );
 
   protected readonly canSort = computed(() => this.total() <= this.pageSize);
@@ -122,6 +129,16 @@ export class OrdersList {
     this.load();
   }
 
+  onSearchChange(term: string): void {
+    const next = term.trim() || null;
+    if (next === this.search()) {
+      return;
+    }
+    this.search.set(next);
+    this.page.set(1);
+    this.load();
+  }
+
   setSortOrder(order: SortOrder): void {
     this.sortOrder.set(order);
   }
@@ -131,6 +148,8 @@ export class OrdersList {
     this.dateTo.set(null);
     this.productTypeId.set(null);
     this.senderId.set(null);
+    this.search.set(null);
+    this.searchInput()?.clear();
     this.sortOrder.set('newest');
     this.page.set(1);
     this.load();
@@ -231,12 +250,14 @@ export class OrdersList {
   private load(): void {
     this.loading.set(true);
     this.error.set(null);
-    this.ordersApi
+    this.loadSubscription?.unsubscribe();
+    this.loadSubscription = this.ordersApi
       .list(this.page(), this.pageSize, {
         dateFrom: this.dateFrom(),
         dateTo: this.dateTo(),
         productTypeId: this.productTypeId(),
         senderId: this.senderId(),
+        search: this.search(),
       })
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({

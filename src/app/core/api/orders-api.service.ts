@@ -19,6 +19,7 @@ export interface OrdersListFilters {
   dateTo: string | null;
   productTypeId: string | null;
   senderId: string | null;
+  search: string | null;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -39,6 +40,9 @@ export class OrdersApiService {
     }
     if (filters.senderId) {
       params = params.set('senderId', filters.senderId);
+    }
+    if (filters.search) {
+      params = params.set('search', filters.search);
     }
     return this.http.get<PaginatedResponse<Order>>(this.baseUrl, { params });
   }

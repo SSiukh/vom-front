@@ -63,7 +63,13 @@ describe('OrdersApiService', () => {
     httpMock.verify();
   });
 
-  const noFilters = (): OrdersListFilters => ({ dateFrom: null, dateTo: null, productTypeId: null, senderId: null });
+  const noFilters = (): OrdersListFilters => ({
+    dateFrom: null,
+    dateTo: null,
+    productTypeId: null,
+    senderId: null,
+    search: null,
+  });
 
   it('gets a paginated list with page/pageSize and no filter params when unfiltered', () => {
     service.list(1, 10, noFilters()).subscribe();
@@ -98,12 +104,26 @@ describe('OrdersApiService', () => {
     unfiltered.flush({ items: [], total: 0 });
   });
 
+  it('sends search only when it is not empty', () => {
+    service.list(1, 10, { ...noFilters(), search: 'Іваненко Іван' }).subscribe();
+    const withSearch = httpMock.expectOne(
+      `${baseUrl}?page=1&pageSize=10&search=%D0%86%D0%B2%D0%B0%D0%BD%D0%B5%D0%BD%D0%BA%D0%BE%20%D0%86%D0%B2%D0%B0%D0%BD`,
+    );
+    expect(withSearch.request.params.get('search')).toBe('Іваненко Іван');
+    withSearch.flush({ items: [], total: 0 });
+
+    service.list(1, 10, { ...noFilters(), search: '' }).subscribe();
+    const emptySearch = httpMock.expectOne(`${baseUrl}?page=1&pageSize=10`);
+    expect(emptySearch.request.params.has('search')).toBe(false);
+    emptySearch.flush({ items: [], total: 0 });
+  });
+
   it('combines every filter in one request', () => {
     service
-      .list(2, 10, { dateFrom: '2026-01-01', dateTo: '2026-01-31', productTypeId: 't1', senderId: 's1' })
+      .list(2, 10, { dateFrom: '2026-01-01', dateTo: '2026-01-31', productTypeId: 't1', senderId: 's1', search: 'ivan' })
       .subscribe();
     const req = httpMock.expectOne(
-      `${baseUrl}?page=2&pageSize=10&dateFrom=2026-01-01&dateTo=2026-01-31&productTypeId=t1&senderId=s1`,
+      `${baseUrl}?page=2&pageSize=10&dateFrom=2026-01-01&dateTo=2026-01-31&productTypeId=t1&senderId=s1&search=ivan`,
     );
     expect(req.request.method).toBe('GET');
     req.flush({ items: [], total: 0 });

@@ -6,6 +6,10 @@
 </div>
 
 <div class="filters-row">
+  <app-search-input
+    placeholder="Пошук: № накладної, прізвище, ім'я, по батькові"
+    (searchChange)="onSearchChange($event)"
+  />
   <div class="date-field">
     <label for="date-from">Від</label>
     <div class="date-field__input" appDateFieldTrigger>
@@ -71,7 +75,7 @@
       <svg lucideListChecks [size]="22" [strokeWidth]="1.5"></svg>
     </span>
     <div class="empty-state__title">Нічого не знайдено</div>
-    <div class="empty-state__text">За обраними фільтрами немає жодного замовлення.</div>
+    <div class="empty-state__text">За обраними фільтрами або пошуком немає жодного замовлення.</div>
   </div>
 } @else {
   <div class="data-table-wrapper">

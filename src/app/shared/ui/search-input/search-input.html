@@ -1,0 +1,12 @@
+<div class="search-field">
+  <svg lucideSearch [size]="13" [strokeWidth]="1.5"></svg>
+  <input
+    type="search"
+    autocomplete="off"
+    [attr.aria-label]="placeholder()"
+    [placeholder]="placeholder()"
+    [attr.maxlength]="maxLength()"
+    [value]="text()"
+    (input)="onInput($event)"
+  />
+</div>

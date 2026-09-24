@@ -223,7 +223,7 @@ document, with Nova Poshta waybill creation/update/deletion kept in sync.
 | Method & path | Throttle | Body/Query | Response |
 |---|---|---|---|
 | `POST /orders` | 20/min | `CreateOrderDto` | `OrderResponseDto` |
-| `GET /orders` | default | `?page&pageSize&dateFrom&dateTo&productTypeId&senderId` | `ListOrdersResponseDto` |
+| `GET /orders` | default | `?page&pageSize&dateFrom&dateTo&productTypeId&senderId&search` | `ListOrdersResponseDto` |
 | `GET /orders/:id` | default | — | `OrderResponseDto` |
 | `PATCH /orders/:id` | 20/min | `UpdateOrderDto` (all fields optional) | `OrderResponseDto` |
 | `PATCH /orders/:id/sync-status` | 20/min | — | `OrderResponseDto` (manual Nova Poshta status pull, no polling) |
@@ -240,6 +240,14 @@ orders; combinable with every other filter (AND). Malformed id → `400`;
 a well-formed id matching nothing → an empty list, not a 404. Note
 `GET /senders` hides deactivated senders, so a deactivated sender's old
 orders can't be reached through a dropdown built from it.
+
+`search` (optional, max 100 chars) — case-insensitive substring search over
+the waybill number (`npWaybillNumber`) and the recipient's last/first/middle
+name. It is split on whitespace and **every** word must match somewhere
+(waybill number or any name part), so `Іваненко Іван` finds that recipient
+regardless of field order; regex metacharacters are matched literally.
+Combinable with all other filters (AND). The identical `search` param exists
+on `GET /crm/table` (§8).
 
 ```ts
 CreateOrderDto {
@@ -354,8 +362,8 @@ Read-only, aggregated view over Orders — its own module/DTO shape, not
 
 Query (`ListCrmQueryDto`): `page`, `pageSize`, `dateFrom`, `dateTo`,
 `productTypeId` (orders containing at least one line item of that type),
-`shipmentStatusId`, `sortOrder` (`'asc'|'desc'`, by `createdAt`, default
-`desc`).
+`shipmentStatusId`, `search` (same semantics as on `GET /orders`),
+`sortOrder` (`'asc'|'desc'`, by `createdAt`, default `desc`).
 
 Response (`ListCrmResponseDto`): `{ items: CrmRowResponseDto[], total,
 totalAmountSum }` — `totalAmountSum` is the sum over the **entire filtered
