@@ -199,21 +199,65 @@ describe('OrderItemCard', () => {
     expect(el.querySelector('.item-card__hint')?.textContent).toContain('−4 шт (залишок 9)');
   });
 
-  it('filters product options client-side as the user types a search term', () => {
+  it('re-queries the backend for a matching product as the user types a search term, instead of filtering only the first fetched page', () => {
     create();
     fixture.componentInstance.form().controls.productTypeId.setValue('t1');
     fixture.detectChanges();
     httpMock.expectOne(`${baseUrl}?page=1&pageSize=100&typeId=t1`).flush({
-      items: [
-        { id: 'p1', typeId: 't1', name: 'Кіт', photoUrl: '', price: 100, promoPrice: null, stockQuantity: 5 },
-        { id: 'p2', typeId: 't1', name: 'Собака', photoUrl: '', price: 90, promoPrice: null, stockQuantity: 5 },
-      ],
-      total: 2,
+      items: [{ id: 'p1', typeId: 't1', name: 'Кіт', photoUrl: '', price: 100, promoPrice: null, stockQuantity: 5 }],
+      total: 1,
     });
     fixture.detectChanges();
 
-    fixture.componentInstance.onSearchTermChange('кіт');
+    fixture.componentInstance.onSearchTermChange('barracuda');
+    fixture.detectChanges();
+
+    httpMock.expectOne(`${baseUrl}?page=1&pageSize=100&typeId=t1&name=barracuda`).flush({
+      items: [{ id: 'p99', typeId: 't1', name: 'Барракуда', photoUrl: '', price: 40, promoPrice: null, stockQuantity: 1 }],
+      total: 1,
+    });
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance['productOptions']()).toEqual([{ value: 'p99', label: 'Барракуда' }]);
+  });
+
+  it('re-fetches the default (unfiltered) page when the search term is cleared', () => {
+    create();
+    fixture.componentInstance.form().controls.productTypeId.setValue('t1');
+    fixture.detectChanges();
+    httpMock.expectOne(`${baseUrl}?page=1&pageSize=100&typeId=t1`).flush({
+      items: [{ id: 'p1', typeId: 't1', name: 'Кіт', photoUrl: '', price: 100, promoPrice: null, stockQuantity: 5 }],
+      total: 1,
+    });
+    fixture.detectChanges();
+
+    fixture.componentInstance.onSearchTermChange('  ');
+    fixture.detectChanges();
+
+    httpMock.expectOne(`${baseUrl}?page=1&pageSize=100&typeId=t1`).flush({
+      items: [{ id: 'p1', typeId: 't1', name: 'Кіт', photoUrl: '', price: 100, promoPrice: null, stockQuantity: 5 }],
+      total: 1,
+    });
     expect(fixture.componentInstance['productOptions']()).toEqual([{ value: 'p1', label: 'Кіт' }]);
+  });
+
+  it('cancels a still-in-flight product fetch when a newer one is requested, so a slow stale response cannot overwrite a fresher one', () => {
+    create();
+    fixture.componentInstance.form().controls.productTypeId.setValue('t1');
+    fixture.detectChanges();
+    const initialRequest = httpMock.expectOne(`${baseUrl}?page=1&pageSize=100&typeId=t1`);
+
+    fixture.componentInstance.onSearchTermChange('barracuda');
+    fixture.detectChanges();
+
+    expect(initialRequest.cancelled).toBe(true);
+    httpMock.expectOne(`${baseUrl}?page=1&pageSize=100&typeId=t1&name=barracuda`).flush({
+      items: [{ id: 'p99', typeId: 't1', name: 'Барракуда', photoUrl: '', price: 40, promoPrice: null, stockQuantity: 1 }],
+      total: 1,
+    });
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance['productOptions']()).toEqual([{ value: 'p99', label: 'Барракуда' }]);
   });
 
   it('hydrates a pre-filled catalog item from initialProduct without wiping productId, fetching a fresh product list for search', () => {

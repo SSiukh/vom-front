@@ -1795,3 +1795,70 @@ are read-only views built last since they aggregate everything else).
       Reviewed: no blockers; two should-fix fixed (reset now cancels a pending
       debounce; list loads cancel the previous in-flight request via
       unsubscribe so late answers cannot overwrite newer ones).
+
+## Done — fix: order wizard's product search only searched the first 100 (2026-09-30)
+
+- [x] **Bug report from real usage:** on the order-creation wizard's item
+      picker (`OrderItemCard`), searching for a product often couldn't find
+      it even though it existed in the catalog. Root cause: `loadProducts()`
+      fetched page 1 of up to 100 products for the chosen type (the
+      backend's own `pageSize` cap) exactly once, when the type was picked,
+      and `onSearchTermChange` then only filtered that already-fetched
+      `allProducts` array client-side — it never queried the server again.
+      Any product not among the 100 most-recently-created of its type
+      (the backend's default `createdAt desc` order when no search term is
+      sent) was permanently invisible to search, no matter what was typed.
+      Confirmed live against `vom-back`'s real `ListProductsQueryDto`/
+      `ProductsService.findAll` that the backend already supports a
+      case-insensitive `name` substring filter (`contains`, `mode:
+      'insensitive'`) — the frontend's own `ProductsApiService.list()` even
+      already accepted a `name` param, just never passed one from this
+      specific picker.
+      **Fix:** `onSearchTermChange` now calls the same `loadProducts()`
+      helper with the typed term as the `name` filter, issuing a real
+      request per (debounced, 300ms via `SearchableSelect`) keystroke — the
+      same live-server-search idea already used by this wizard's own city
+      `SearchableSelect`, though not byte-for-byte the same shape (city
+      search short-circuits to a local clear on an empty term with no HTTP
+      call at all; products still re-fetches the plain unfiltered page on
+      an empty term, matching this component's own pre-existing initial-
+      load behavior instead). An empty/cleared term re-fetches that same
+      unfiltered page-1 default list as before.
+      **Reviewed, one should-fix found and fixed:** the first version of
+      this fix called `loadProducts()` independently from three places
+      (initial load, type change, live search) with no cancellation, so a
+      type-change fetch still in flight when the user started typing could
+      land *after* the search response and silently overwrite it back to
+      the unfiltered list — a real, not just theoretical, regression this
+      diff would have introduced (search itself used to be purely client-
+      side before this fix, so it could never previously race a fetch).
+      Fixed by routing every `loadProducts()` call through one `Subject` +
+      `switchMap` pipeline (constructor-wired, `takeUntilDestroyed`) so a
+      newer request always cancels whichever one was still in flight —
+      the same `switchMap`-cancels-a-stale-fetch idiom already established
+      elsewhere in this codebase for route-param-driven loads
+      (`ProductsForm`/`ProductsDetail`/`orders-edit.ts`'s own top-level
+      `:id` fetch), applied here for the first time to an imperatively-
+      triggered (not route-driven) sequence of calls via an explicit
+      `Subject` instead of an input observable. (Note: `orders-edit.ts`'s
+      separate *per-item* product hydration — a different historical bug —
+      was fixed a different way, by re-resolving the target array index
+      from the item's `productId` at write time instead of trusting a
+      captured index; not a `switchMap` fix, and not the precedent being
+      cited here — corrected after an initial draft of this note
+      conflated the two.)
+      Added a dedicated test asserting the stale request's
+      `TestRequest.cancelled === true` when a newer one supersedes it,
+      matching this codebase's own established way of proving this
+      (`orders-detail.spec.ts`/`orders-list.spec.ts`'s own
+      `TestRequest.cancelled === true` cancellation tests).
+      Verified live via Playwright with a mocked catalog of 101 products of
+      one type: a product outside the first 100 was invisible to search
+      before the fix and is found correctly after it, via a real
+      `GET /products?...&name=...` request. Updated the one spec test that
+      had asserted the old (buggy) client-only-filter behavior, added
+      tests for the empty-term re-fetch and the cancellation race. 777/777
+      tests passing (this `main`-branch checkout's current full suite —
+      smaller than the `feat/keychain-mockup-generator` branch's count
+      since that branch's work is committed there, not on `main`), clean
+      typecheck/lint/build.

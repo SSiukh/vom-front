@@ -2,8 +2,10 @@ import { DestroyRef, Component, type OnInit, effect, inject, input, output, sign
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { LucideInfo, LucideTrash2 } from '@lucide/angular';
+import { Subject, catchError, of, switchMap } from 'rxjs';
 import { ProductsApiService } from '../../../../../core/api/products-api.service';
 import type { Product } from '../../../../products/models/product.model';
+import type { PaginatedResponse } from '../../../../../shared/models/paginated-response.model';
 import type { ProductType } from '../../../../../shared/models/dictionary-item.model';
 import { SearchableSelect, type SelectOption } from '../../../../../shared/ui/searchable-select/searchable-select';
 import { computeItemSubtotal } from '../order-item-subtotal.util';
@@ -45,6 +47,7 @@ export class OrderItemCard implements OnInit {
   protected readonly productOptions = signal<SelectOption[]>([]);
   private allProducts: Product[] = [];
   private userPickedProduct = false;
+  private readonly loadProductsRequest = new Subject<{ typeId: string; name: string | null }>();
 
   constructor() {
     effect(() => {
@@ -53,6 +56,23 @@ export class OrderItemCard implements OnInit {
         this.selectedProduct.set(seeded);
       }
     });
+
+    this.loadProductsRequest
+      .pipe(
+        switchMap(({ typeId, name }) => {
+          this.productsLoading.set(true);
+          return this.productsApi.list(1, PRODUCTS_FETCH_PAGE_SIZE, typeId, name).pipe(catchError(() => of(null)));
+        }),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe((response: PaginatedResponse<Product> | null) => {
+        this.productsLoading.set(false);
+        if (!response) {
+          return;
+        }
+        this.allProducts = response.items;
+        this.productOptions.set(response.items.map((p) => ({ value: p.id, label: p.name })));
+      });
   }
 
   protected isCustomType(): boolean {
@@ -85,11 +105,11 @@ export class OrderItemCard implements OnInit {
   }
 
   onSearchTermChange(term: string): void {
-    const normalized = term.trim().toLowerCase();
-    const filtered = normalized
-      ? this.allProducts.filter((p) => p.name.toLowerCase().includes(normalized))
-      : this.allProducts;
-    this.productOptions.set(filtered.map((p) => ({ value: p.id, label: p.name })));
+    const typeId = this.form().controls.productTypeId.value;
+    if (!typeId) {
+      return;
+    }
+    this.loadProducts(typeId, term.trim() || null);
   }
 
   onProductSelected(option: SelectOption): void {
@@ -145,20 +165,7 @@ export class OrderItemCard implements OnInit {
     controls.productId.updateValueAndValidity({ emitEvent: false });
   }
 
-  private loadProducts(typeId: string): void {
-    this.productsLoading.set(true);
-    this.productsApi
-      .list(1, PRODUCTS_FETCH_PAGE_SIZE, typeId, null)
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: (response) => {
-          this.productsLoading.set(false);
-          this.allProducts = response.items;
-          this.productOptions.set(response.items.map((p) => ({ value: p.id, label: p.name })));
-        },
-        error: () => {
-          this.productsLoading.set(false);
-        },
-      });
+  private loadProducts(typeId: string, name: string | null = null): void {
+    this.loadProductsRequest.next({ typeId, name });
   }
 }
