@@ -103,6 +103,12 @@ button:focus-visible {
   padding: 20px;
 }
 
+@media (max-width: 600px) {
+  .shell .content {
+    padding: 14px;
+  }
+}
+
 .field {
   display: flex;
   flex-direction: column;
@@ -331,6 +337,14 @@ fieldset.field legend {
   margin-bottom: 14px;
 }
 
+@media (max-width: 560px) {
+  .page-header {
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 10px;
+  }
+}
+
 .page-title {
   font-family: var(--font-heading);
   font-weight: 700;
@@ -370,11 +384,12 @@ fieldset.field legend {
   background: var(--color-bg-panel);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow);
-  overflow: hidden;
+  overflow-x: auto;
 }
 
 .data-table {
   width: 100%;
+  min-width: 640px;
   border-collapse: collapse;
 }
 
@@ -535,11 +550,13 @@ fieldset.field legend {
   display: flex;
   align-items: center;
   justify-content: center;
+  padding: 16px;
   z-index: 100;
 }
 
 .dialog-card {
   width: 400px;
+  max-width: 100%;
   border: 1px solid var(--color-border-outer);
   background: var(--color-bg-panel);
   border-radius: var(--radius-lg);
@@ -582,6 +599,13 @@ fieldset.field legend {
   font-size: 12px;
   color: var(--color-text-meta);
   margin-top: 14px;
+}
+
+@media (max-width: 560px) {
+  .pagination {
+    gap: 10px;
+    flex-wrap: wrap;
+  }
 }
 
 .pagination-pages {
@@ -690,6 +714,7 @@ fieldset.field legend {
   font-family: var(--font-body);
   font-size: 12px;
   width: 118px;
+  max-width: 100%;
 }
 
 .date-field__input input:focus {
@@ -813,6 +838,12 @@ fieldset.field legend {
   gap: 16px;
 }
 
+@media (max-width: 560px) {
+  .detail-card {
+    flex-direction: column;
+  }
+}
+
 .detail-fields {
   flex: 1;
   display: flex;
@@ -930,6 +961,13 @@ fieldset.field legend {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 14px;
+}
+
+@media (max-width: 560px) {
+  .form-grid-2,
+  .form-grid-3 {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 .field-hint {

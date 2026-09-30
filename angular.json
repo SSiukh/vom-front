@@ -19,6 +19,7 @@
           "options": {
             "browser": "src/main.ts",
             "tsConfig": "tsconfig.app.json",
+            "externalDependencies": ["node:fs"],
             "assets": [
               {
                 "glob": "**/*",
@@ -59,6 +60,11 @@
         },
         "serve": {
           "builder": "@angular/build:dev-server",
+          "options": {
+            "prebundle": {
+              "exclude": ["esm-potrace-wasm"]
+            }
+          },
           "configurations": {
             "production": {
               "buildTarget": "vom-front:build:production"

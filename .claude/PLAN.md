@@ -1824,6 +1824,310 @@ are read-only views built last since they aggregate everything else).
       debounce; list loads cancel the previous in-flight request via
       unsubscribe so late answers cannot overwrite newer ones).
 
+## Done — keychain mock-ups: real generator (2026-09-26)
+
+- [x] **`/keychains` — from UI shell to a working generator.**
+      Material in `.claude/artifacts/keychains-assets/` (13 keychain photos →
+      `public/keychains/*.jpg` 1512x2016, 36 brand marks →
+      `public/marks/*.svg`, `example-result.svg`, `result-example.png`).
+      Decisions with the user: photos/marks are served from the app itself
+      (Vercel static, Cloudinary not needed now); the uploaded photo never
+      leaves the browser; fonts = the two sticker fonts (Jua, Nunito);
+      the artwork can be a traced photo, a mark, or both, plus optional
+      text (default order photo → mark → text, centred; final layouts come
+      later); potrace (`esm-potrace-wasm`, GPL accepted) on the main thread
+      (measured ~20 ms for 1134x1060, no Worker needed yet).
+      Pipeline: photo → threshold + crop to ink + 2x-style upscale (pure JS)
+      → potrace → absolute `M L C Z` path → `layoutArtwork` into the type's
+      print area → canvas (base photo + artwork, `multiply` for dark ink) →
+      PNG download/copy; artwork SVG download (1 unit = 1 px of the full-size
+      3024x4032 photo, like the user's example).
+      Decisions taken without the user (to confirm): print areas were
+      measured by hand from the photos (approximate rectangles); default ink
+      = white on the three dark bases, near-black otherwise; layout ratios
+      (photo ≤ 62 %, mark ≤ 22 % of the area height when combined); mark
+      labels corrected (Kawasaki, Mustang), `kaya`/`rottor` kept as named.
+      Reviewed: no blockers; fixed even-odd marks (Benelli, Loncin), serialised
+      trace runs, exponent numbers in potrace output, defs/clipPath paths
+      ignored. Accepted for now: cross-feature imports from sticker-generator
+      (a move to `shared/` is a separate refactor), 13 MB of JPEGs.
+
+## Done — keychains: fixed ink, 90° rotation, scale XS–XL (2026-09-27)
+
+- [x] **Keychain page changes requested by the user.**
+      (1) No ink-colour control: the colour comes from the keychain type —
+      black metal: white; other metals: black; leather and eco-leather:
+      medium brown `#6f4a2b` (user's pick); the two black leather bases get
+      the brown drawn over the photo (`source-over`), the rest is
+      multiplied. (2) Text and mark can be laid out horizontally (as now) or
+      rotated 90° counter-clockwise along the keychain (user's pick over
+      "stack vs side by side"); in vertical mode the photo stays upright in
+      the top half and the rotated mark + text fill the bottom half.
+      (3) Scale XS/S/M/L/XL for the whole artwork (same factors as the
+      stickers, default M), clamped to the print area.
+
+## Done — keychain photo drop zone (2026-09-27)
+
+- [x] **Larger photo picker with drag-and-drop** on `/keychains`
+      (`.keychain-dropzone`; the same validation/tracing path as the file
+      dialog; highlight while dragging; keyboard accessible). Verified in a
+      real browser with a synthetic `DataTransfer` drop.
+
+## Done — keychains: rotation direction + exact centring (2026-09-27)
+
+- [x] **User feedback from a screenshot of the white tag.** (1) Rotation must
+      be −90° (clockwise, text reads top to bottom); my first version was
+      counter-clockwise. With the flip the mark goes on the left and the
+      text on the right. (2) The artwork sits low on the tag: the hand-drawn
+      print areas were approximate. Re-measure every keychain's real surface
+      (flood fill + row/column occupancy to ignore chain, ring and tab),
+      centre the print area on it, and check each of the 13 with an overlay.
+      Done: clockwise rotation (mark left, text right, text reads top to
+      bottom); all 13 print areas re-centred on the real surface and checked
+      by overlay and in the browser (horizontal and vertical, every type).
+
+## Done — keychains: flicker fix + larger scales, default L (2026-09-27)
+
+- [x] **(1) The mock-up "blinks" when the type changes.** Causes: the
+      "Збираємо макет…" line and the disabled buttons toggle on every render
+      (layout shift), and the canvas is re-sized (cleared) on every draw.
+      Fix: resize only when the photo size differs, show the busy state only
+      if a render takes longer than ~150 ms, and show it as an overlay so the
+      layout never jumps. (2) Keychain-specific scales, all larger than the
+      sticker ones: XS 0.8, S 1.0, M 1.15, L 1.3 (default), XL 1.5 (user:
+      "a bit bigger for all values, L as the standard").
+      Also: all 13 print areas enlarged (the artwork cannot outgrow its
+      area), default scale L; verified in the browser (no layout shift or
+      blank frames).
+
+## Done — keychains: text size control (2026-09-27)
+
+- [x] **Separate text size XS–XL** (user: "font size must also be changeable").
+      Multiplies only the text block (0.6 / 0.8 / 1 / 1.3 / 1.6, default M =
+      current size), clamped to the area edge so a bigger text never forces
+      the mark or the photo to shrink for width; works in both orientations.
+
+## Done — keychains: smaller text sizes + settings in separate cards (2026-09-27)
+
+- [x] Text size factors lowered to 0.4 / 0.55 / 0.7 (default M) / 0.85 / 1;
+      the left column is now four cards (Брелок, Зображення, Марка,
+      Текст) inside one form; verified in the browser.
+
+## Done — keychains: per-block scale and orientation (2026-09-27)
+
+- [x] **Scale and orientation set separately for the image, the mark and
+      the text** (user; the overall scale in the "Брелок" card is removed).
+      Layout model: every block has its own factor and its own rotation
+      (0 / −90°). Upright blocks stack top to bottom; rotated blocks stand
+      side by side in a rotated frame; when both kinds exist the upright
+      stack takes the top half and the rotated row the bottom half (as
+      before). Per-block factors clamp to the area width, the stack shrinks
+      uniformly if too tall; limits relax to the area edge whenever some
+      factor > 1. Defaults keep the current look: image and mark L (1.3),
+      text M (0.91 = 0.7 × 1.3).
+
+## Done — marks reorganised by brand into icon/text/combined (2026-09-27)
+
+- [x] **`public/marks/<id>/` per brand**, replacing the flat `public/marks/<id>.svg`.
+      Each brand folder holds whichever of `icon.svg` / `text.svg` /
+      `combined.svg` its source artwork actually supports — nothing
+      invented. Of the 36 marks: 19 already had icon+text combined in one
+      file — split by hand (path-by-path, verified with numbered-overlay
+      renders and a side-by-side icon/blue-text check) into all three files;
+      4 were icon-only and 13 text-only — kept as their one existing file,
+      no fabricated second part; 2 (Loncin, Zonsen) turned out to be a
+      single fused path (icon and letters merged into one contour) that
+      cannot be safely split without redrawing — kept as `combined.svg`
+      only.
+      Found and fixed one bug while splitting: the first generator baked
+      each group's offset as an SVG `transform="translate()"` attribute,
+      which browsers render correctly but `parseMarkSvg` (used by the app)
+      ignores — silently misplacing/cropping the traced-out group. Fixed by
+      baking the translation into the path `d` data itself; re-verified all
+      17 split marks through the real app pipeline (not just standalone
+      SVG) after the fix.
+      Data: `KeychainMark.variants: Partial<Record<'icon'|'text'|'combined', string>>`
+      replaces the single `url`; `MarkLibrary.load(mark, variant)` caches
+      per mark+variant; new `utils/mark-variants.ts`
+      (`availableVariants`/`defaultVariant`/`MARK_VARIANT_LABELS`). Page:
+      a "Вигляд марки" select appears only when a mark has more than one
+      variant, defaulting to combined > icon > text; switching marks keeps
+      the current variant if the new mark has it, otherwise falls back to
+      that mark's default.
+      17 icon-only/text-only marks the user could supply the missing part
+      for (not needed, purely optional): icon needed for Benelli, BSE,
+      Fendt, Forte, Forte (2), Kawasaki, Kaya, KTM, Mustang (2), Rottor,
+      Tekken, Touareg, Viper; text needed for BMW, Kovi, Opel, Yamaha (3).
+## Done — mobile-responsive layout pass (2026-09-28)
+
+- [x] **Mobile-responsive layout pass.** Optimized every existing page for
+      phone widths (baseline 375px), while keeping desktop/laptop layout
+      pixel-identical to before. Verified page by page against the local
+      dev server via Playwright, at 375px and at several intermediate
+      widths to confirm genuinely gradual (not binary) scaling.
+      **Sidebar:** below 500px it opens as a full-viewport fixed overlay
+      (`sidebar.css`, `@media (max-width: 499px)`) instead of pushing
+      content; `LayoutStateService` now defaults the sidebar to collapsed
+      on construction when `window.innerWidth < MOBILE_NAV_BREAKPOINT_PX`
+      (500, exported as a named constant) so phones land on a collapsed
+      rail rather than an open overlay on first paint. The CSS breakpoint
+      and the TS constant must both mean strictly "< 500" — a first
+      reviewer pass caught a boundary mismatch (`max-width: 500px` in CSS
+      vs `< 500` in TS) that made the sidebar render as a full overlay at
+      exactly 500px even though the signal said "expanded"; fixed by
+      changing the CSS to `max-width: 499px` and added a regression spec
+      (`'starts expanded exactly at the breakpoint'`, `innerWidth = 500`).
+      **Tables:** `.data-table-wrapper` switched from `overflow: hidden`
+      to `overflow-x: auto` with `.data-table { min-width: 640px }`, so
+      every existing table scrolls horizontally on narrow screens instead
+      of crushing columns or reflowing into cards, per the user's explicit
+      choice.
+      **Grids:** every two/three/four-column layout (orders
+      create/edit/detail wizards and info panels, dashboard metric/chart
+      grids, product/order item-card field grids, 2FA recovery-code grid,
+      global `.form-grid-2`/`.form-grid-3`) gets a progressive collapse
+      across breakpoints (800px/560px/480px/420px depending on the
+      layout's own content). **Key technical pattern, worth remembering
+      for any future responsive grid work in this codebase:** a bare
+      `1fr` track has an implicit min-width of `auto` (min-content), so a
+      wide descendant (a table, an unbroken string) forces the whole grid
+      to overflow instead of shrinking — the actual fix is
+      `minmax(0, 1fr)`, not `1fr`, in every mobile-collapse rule. Self-
+      diagnosed mid-pass (via `getComputedStyle` showing a track that had
+      silently grown instead of collapsing) and applied everywhere; a
+      first reviewer pass still caught one bare `1fr` left behind in
+      `styles.css`'s global `.form-grid-2`/`.form-grid-3` collapse
+      (affecting every single-column mobile form app-wide — Products,
+      Expenses, Senders, dictionaries) — fixed.
+      **Other fixes:** dialogs (`.dialog-overlay`/`.dialog-card`) get
+      mobile padding/`max-width: 100%`; `.page-header`/`.pagination` wrap
+      on narrow widths; the 2FA page (which sits outside the main
+      Shell/sidebar layout) got its own separate padding/width/stacking
+      fixes since it wasn't covered by the shell-wide changes.
+      Reviewed twice by `reviewer`. First pass found 3 should-fix items:
+      the bare-`1fr` leftover above; the 500px sidebar boundary mismatch
+      above; and a `.code-cell` (2FA code-entry boxes) `flex`/`max-width`
+      rule that had been added to the unscoped base selector instead of a
+      mobile-only media query, which grew all 6 code boxes wider on
+      desktop too, violating the "desktop unchanged" requirement — moved
+      into the existing `@media (max-width: 480px)` block. Also tightened
+      a small cluster of edits that had added mobile-only properties
+      (`gap`, `flex-wrap`) to unscoped base rules (`.page-header`,
+      `.pagination` in global `styles.css`) even though they were
+      currently visually inert on desktop, purely to remove any doubt
+      against the explicit "desktop stays exactly as-is" requirement.
+      Second pass confirmed all fixes correct, independently re-ran the
+      full regression suite rather than trusting the first pass's
+      numbers, and found one final formatting nit (missing space in
+      `minmax(0,1fr)`) — fixed. 1039/1039 tests passing, clean
+      typecheck/lint/build (only the pre-existing, unrelated initial-
+      bundle-size warning remains, ~541.9kB vs the 500kB warning
+      threshold — not caused by or touched in this pass).
+
+## Done — sticker generator merge + products/dashboard mobile tidy-up (2026-09-28)
+
+- [x] **Sticker generator — merge preview and mockup-on-photo into one
+      card.** The `/stickers` page had a preview card, then a separate
+      full-page-width "mockup on photo" block below it, with the three
+      main action buttons (SVG download, PNG download, copy mockup) all
+      sitting far away in the top page-header. Restructured into a
+      single `.info-panel` card holding both sections (preview on top,
+      mockup-on-photo below, separated by a border-top divider matching
+      the existing `.recovery-section` divider idiom already used in
+      `two-fa.css`), moved each action button to sit next to what it
+      actually acts on (SVG download next to the preview's own label,
+      PNG-download/copy-mockup next to the mockup section's own label),
+      and widened the mockup's photo/list grid (`minmax(0, 1fr)
+      minmax(240px, 360px)`, was a hard-capped `420px` photo column) now
+      that it only spans the card's own width rather than the full page.
+      Reused the page's existing `@media (max-width: 800px)` single-
+      column collapse as-is — already correct for the new merged
+      structure. Purely template/CSS/spec-selector work, no component
+      logic touched. Reviewed once — clean, no findings (confirmed the
+      divider spacing math, the widened grid can't regress at any
+      intermediate width since its first track is `minmax(0, 1fr)`, and
+      the relocated buttons' spec selectors can't collide with the
+      per-sticker-card "SVG" button text). 1039/1039 tests passing,
+      clean typecheck/lint/build.
+- [x] **Products filters + Dashboard metric cards — mobile tidy-up.**
+      User feedback from real usage of the mobile-responsive pass above:
+      Products' filter row looked scattered on phones (the stock-sort
+      segmented control — За замовчуванням/Зростання/Спадання — didn't
+      fit one line at 375px and wrapped with one button orphaned alone
+      on its own row), and Dashboard's 4 metric cards used an awkward
+      2-column middle tier between 480–800px that the user wanted
+      collapsed straight to one column instead.
+      **Products** (`products-list.css`, page-scoped, doesn't touch the
+      global `.filters-row`/`.segmented-control` classes or any other
+      page that shares them — Angular's view encapsulation scopes a
+      page's own `.css` file to only that page's own template elements):
+      at `max-width: 560px`, `.filters-row` switches to a stacked column
+      (`align-items: stretch`) so the search field and the sort control
+      each become full-width instead of floating at their own natural
+      size — the type-filter segmented control keeps its compact
+      `width: fit-content` unaffected, since that one already looked
+      fine and wasn't part of the complaint; the sort segmented control
+      (marked with a new `.sort-control` modifier class) stacks into
+      full-width buttons, one per row, instead of wrapping unevenly.
+      **Dashboard** (`dashboard.css`): `.metric-grid`'s separate
+      480px/800px two-tier collapse merged into one `max-width: 800px`
+      rule straight to `minmax(0, 1fr)` (single column) — matches the
+      user's explicit "зробити в стовпчик" ask; `.chart-grid`/
+      `.donut-row` and the filters above the cards were left untouched
+      (not part of the complaint, user confirmed "все інше наче ок").
+      Verified live via Playwright at several widths (375/430/560/700
+      for Products, 375/600/800/900 for Dashboard): no horizontal
+      overflow at any width, Products' filters now form a clean vertical
+      rhythm on phones with the desktop layout (>560px) pixel-identical
+      to before, Dashboard's cards stay single-column and fully legible
+      all the way up to 800px then correctly return to 4 columns above
+      it. 1039/1039 tests passing, clean typecheck/lint/build.
+      **Follow-up in the same batch:** user also flagged the search
+      field on the Products page sitting visually uneven against the
+      sort control next to it on desktop — root cause: the shared
+      `app-search-input` component (used by Orders/CRM) already has
+      `:host { align-self: flex-end }` specifically so a labelless
+      search box lines up with a labelled sibling like `.date-field`
+      (label above control) in the same `.filters-row`; Products uses
+      its own raw `.search-field` markup instead of that shared
+      component and was missing the same rule. Added
+      `align-self: flex-end` to `.search-field` in `products-list.css`,
+      matching the existing convention exactly rather than inventing a
+      new one. A second `reviewer` pass on just this follow-up then
+      caught a real gap in the fix by re-deriving the same box-model
+      math: the third element in the same row — the type-filter
+      `.segmented-control` (Усі/Брелок/Наклейка) — is exactly as short
+      as the search field and was left centering against the taller
+      `.date-field` too, un-fixed; confirmed live (bottom edge at y=155
+      vs. the other two at y=164, a real 9px mismatch, not just a
+      theoretical one). Fixed the same way, scoped to
+      `.filters-row > .segmented-control` (the `>` combinator
+      deliberately excludes the nested sort-control's own
+      `.segmented-control.sort-control`, which sits one level deeper
+      inside `.date-field` and needs no such fix). Both new rules get a
+      mobile-block counterpart resetting `align-self` back to
+      `flex-start` (type filter) since `align-self` governs the
+      opposite axis once `.filters-row` becomes a stacked column at
+      `max-width: 560px` — without the reset the pills would have
+      right-aligned themselves instead of stacking flush left like
+      every other stacked group. Also dropped the `align-self: stretch`
+      the first pass had added to the search field's own mobile block,
+      per the same review's finding that it was fully redundant next to
+      the already-present `width: 100%` there. Verified live — all
+      three filter groups (type filter, search field, sort control) now
+      share an exact bottom-edge pixel match on desktop (y=164 in a
+      1280px-wide check, matching how Orders/CRM already look), mobile
+      stacked layout re-confirmed unaffected at 375/430/560/700px (no
+      overflow, type filter stays left-aligned, not pushed right).
+      Reviewed three times total across this whole batch (twice on the
+      original mobile-tidy-up work, once more on this alignment
+      follow-up, which itself needed one fix-and-reverify round) — final
+      state clean. 1039/1039 tests passing, clean typecheck/lint/build
+      (ran the full `ng build`, not just lint/test, before closing this
+      out, per the second review's should-fix note that a full build
+      re-run is the project's actual standard, not optional for a
+      low-risk change).
+
 ## Done — fix: order wizard's product search only searched the first 100 (2026-09-30)
 
 - [x] **Bug report from real usage:** on the order-creation wizard's item

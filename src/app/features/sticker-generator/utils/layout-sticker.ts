@@ -32,7 +32,7 @@ export interface LayoutOptions {
   contentScale?: number;
 }
 
-interface TextRun {
+export interface TextRun {
   commands: PathCommand[];
   missingCharacters: string[];
 }
@@ -132,7 +132,7 @@ function hashOf(text: string): string {
   return (hash >>> 0).toString(36);
 }
 
-function layoutText(text: string, glyphs: GlyphSource): TextRun {
+export function layoutText(text: string, glyphs: GlyphSource): TextRun {
   const commands: PathCommand[] = [];
   const missing = new Set<string>();
   let cursor = 0;

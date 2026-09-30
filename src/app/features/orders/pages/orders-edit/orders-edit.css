@@ -6,6 +6,12 @@
   margin-top: 14px;
 }
 
+@media (max-width: 800px) {
+  .order-edit-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 .order-edit-main {
   display: flex;
   flex-direction: column;

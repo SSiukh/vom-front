@@ -70,3 +70,24 @@
   font-size: 11px;
   color: var(--color-text-faint);
 }
+
+@media (max-width: 560px) {
+  .item-card__fields {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 420px) {
+  .item-card__body {
+    flex-direction: column;
+  }
+
+  .item-card__photo {
+    align-self: flex-start;
+  }
+
+  .item-card__fields {
+    grid-template-columns: minmax(0, 1fr);
+    width: 100%;
+  }
+}
