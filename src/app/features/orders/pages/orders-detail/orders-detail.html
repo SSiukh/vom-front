@@ -19,7 +19,9 @@
           Замовлення №{{ order.id }}
         }
         @if (statusLabel(); as label) {
-          <span class="status-badge order-status-badge" [class]="statusBadgeClass()">{{ label }}</span>
+          <span class="status-badge order-status-badge" [class]="statusBadgeClass()">{{
+            label
+          }}</span>
         }
       </h1>
       <div class="page-subtitle">Створено {{ order.createdAt | date: 'dd.MM.yyyy, HH:mm' }}</div>
@@ -88,6 +90,16 @@
             />
             Відсутній товар
           </label>
+          <label class="checkbox-label">
+            <input
+              type="checkbox"
+              class="checkbox-input"
+              [checked]="order.isSettled"
+              [disabled]="updatingFlag() !== null"
+              (change)="toggleFlag('isSettled', $event)"
+            />
+            Розраховано
+          </label>
         </div>
       </div>
 
@@ -110,7 +122,11 @@
                 <tr>
                   <td>
                     @if (item.photoUrlSnapshot) {
-                      <img class="photo-thumb" [src]="item.photoUrlSnapshot" [alt]="item.nameSnapshot" />
+                      <img
+                        class="photo-thumb"
+                        [src]="item.photoUrlSnapshot"
+                        [alt]="item.nameSnapshot"
+                      />
                     }
                   </td>
                   <td>{{ productTypeLabel(item.productTypeId) }}</td>
@@ -161,7 +177,8 @@
         <div class="detail-row">
           <span class="detail-row-label">ПІБ</span>
           <span class="detail-row-value">
-            {{ order.recipient.lastName }} {{ order.recipient.firstName }} {{ order.recipient.middleName ?? '' }}
+            {{ order.recipient.lastName }} {{ order.recipient.firstName }}
+            {{ order.recipient.middleName ?? '' }}
           </span>
         </div>
         <div class="detail-row">

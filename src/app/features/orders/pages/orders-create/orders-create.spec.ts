@@ -68,7 +68,9 @@ describe('OrdersCreate', () => {
   };
 
   const flushActiveSender = (senderOverrides: Partial<Record<string, unknown>> = {}) => {
-    httpMock.expectOne(`${sendersUrl}?page=1&pageSize=100`).flush({ items: [sender(senderOverrides)], total: 1 });
+    httpMock
+      .expectOne(`${sendersUrl}?page=1&pageSize=100`)
+      .flush({ items: [sender(senderOverrides)], total: 1 });
     fixture.detectChanges();
   };
 
@@ -77,7 +79,9 @@ describe('OrdersCreate', () => {
     fixture.detectChanges();
   };
 
-  const flushAddresses = (addresses: unknown[] = [{ npAddressRef: 'addr-1', description: 'Склад №1' }]) => {
+  const flushAddresses = (
+    addresses: unknown[] = [{ npAddressRef: 'addr-1', description: 'Склад №1' }],
+  ) => {
     httpMock.expectOne(`${sendersUrl}/s1/addresses`).flush(addresses);
     fixture.detectChanges();
   };
@@ -100,10 +104,68 @@ describe('OrdersCreate', () => {
     flushAddresses();
 
     const notice = el.querySelector('.wizard-main .sender-notice');
-    expect(notice?.querySelector('.sender-notice__title')?.textContent).toBe('Відправка здійснюється від відправника');
+    expect(notice?.querySelector('.sender-notice__title')?.textContent).toBe(
+      'Відправка здійснюється від відправника',
+    );
     expect(notice?.querySelector('.sender-notice__name')?.textContent).toBe('Петренко Петро');
     expect(notice?.querySelector('.sender-notice__phone')?.textContent).toBe('+380501234567');
     expect(el.querySelector('#shipmentTypeId')).not.toBeNull();
+  });
+
+  it('lets the user pick another sender for this order only, leaving the active one as it was', () => {
+    create();
+    httpMock.expectOne(`${sendersUrl}?page=1&pageSize=100`).flush({
+      items: [
+        sender({ id: 's1', fullName: 'Активний' }),
+        sender({ id: 's2', fullName: 'Інший', isActive: false }),
+      ],
+      total: 2,
+    });
+    fixture.detectChanges();
+    flushAddresses();
+
+    (el.querySelector('.sender-notice__change') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    pickDropdown(fixture, 'orderSenderId', 's2');
+    httpMock
+      .expectOne(`${sendersUrl}/s2/addresses`)
+      .flush([{ npAddressRef: 'addr-2', description: 'Склад №2' }]);
+    fixture.detectChanges();
+
+    expect(el.querySelector('.sender-notice__name')?.textContent?.trim()).toBe('Інший');
+  });
+
+  it('returns to the active sender with "Повернути активного"', () => {
+    create();
+    httpMock.expectOne(`${sendersUrl}?page=1&pageSize=100`).flush({
+      items: [
+        sender({ id: 's1', fullName: 'Активний' }),
+        sender({ id: 's2', fullName: 'Інший', isActive: false }),
+      ],
+      total: 2,
+    });
+    fixture.detectChanges();
+    flushAddresses();
+    (el.querySelector('.sender-notice__change') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    pickDropdown(fixture, 'orderSenderId', 's2');
+    httpMock
+      .expectOne(`${sendersUrl}/s2/addresses`)
+      .flush([{ npAddressRef: 'addr-2', description: 'Склад №2' }]);
+    fixture.detectChanges();
+
+    (
+      el.querySelector('.sender-notice .sender-notice__change:last-of-type') as HTMLButtonElement
+    ).click();
+    flushAddresses();
+    fixture.detectChanges();
+
+    expect(el.querySelector('.sender-notice__name')?.textContent?.trim()).toBe('Активний');
+    expect(
+      Array.from(el.querySelectorAll('.sender-notice button')).some((button) =>
+        button.textContent?.includes('Повернути'),
+      ),
+    ).toBe(false);
   });
 
   it('lets the user close the sender warning', () => {
@@ -167,7 +229,11 @@ describe('OrdersCreate', () => {
     flushActiveSender();
     flushAddresses();
 
-    (el.querySelector('.wizard-main .btn-ghost') as HTMLButtonElement).click();
+    (
+      Array.from(el.querySelectorAll('.wizard-main button')).find((button) =>
+        button.textContent?.includes('Додати товар'),
+      ) as HTMLButtonElement
+    ).click();
     fixture.detectChanges();
 
     expect(el.querySelectorAll('app-order-item-card').length).toBe(2);
@@ -183,7 +249,8 @@ describe('OrdersCreate', () => {
     flushActiveSender();
     flushAddresses();
 
-    const nextButton = () => Array.from(el.querySelectorAll('button')).find((b) => b.textContent?.includes('Далі'))!;
+    const nextButton = () =>
+      Array.from(el.querySelectorAll('button')).find((b) => b.textContent?.includes('Далі'))!;
     expect(nextButton().disabled).toBe(true);
 
     pickDropdown(fixture, 'paymentTypeId', 'pt-full');
@@ -223,7 +290,9 @@ describe('OrdersCreate', () => {
     component['step'].set(2);
     fixture.detectChanges();
 
-    expect(el.querySelector('.empty-state--inline')?.textContent).toContain('Немає активного відправника');
+    expect(el.querySelector('.empty-state--inline')?.textContent).toContain(
+      'Немає активного відправника',
+    );
   });
 
   it('auto-fills the sender address once loaded, with no picker shown', () => {
@@ -298,7 +367,9 @@ describe('OrdersCreate', () => {
     component['step'].set(2);
     fixture.detectChanges();
 
-    const labels = Array.from(el.querySelectorAll('.delivery-method__option')).map((b) => b.textContent?.trim());
+    const labels = Array.from(el.querySelectorAll('.delivery-method__option')).map((b) =>
+      b.textContent?.trim(),
+    );
     expect(labels).toEqual(['Відділення', 'Поштомат']);
   });
 
@@ -337,8 +408,12 @@ describe('OrdersCreate', () => {
 
     component.onCitySelected({ value: 'city-1', label: 'Київ' });
 
-    httpMock.expectOne(`${novaPoshtaUrl}/warehouses?cityRef=city-1`).flush([{ ref: 'w1', description: 'Відділення 1' }]);
-    httpMock.expectOne(`${novaPoshtaUrl}/postomats?cityRef=city-1`).flush([{ ref: 'p1', description: 'Поштомат 1' }]);
+    httpMock
+      .expectOne(`${novaPoshtaUrl}/warehouses?cityRef=city-1`)
+      .flush([{ ref: 'w1', description: 'Відділення 1' }]);
+    httpMock
+      .expectOne(`${novaPoshtaUrl}/postomats?cityRef=city-1`)
+      .flush([{ ref: 'p1', description: 'Поштомат 1' }]);
     fixture.detectChanges();
 
     expect(component['warehouseOptions']()).toEqual([{ value: 'w1', label: 'Відділення 1' }]);
@@ -396,7 +471,9 @@ describe('OrdersCreate', () => {
     });
     component.selectDeliveryMethod('warehouse');
     component.onCitySelected({ value: 'city-1', label: 'Київ' });
-    httpMock.expectOne(`${novaPoshtaUrl}/warehouses?cityRef=city-1`).flush([{ ref: 'w1', description: 'Відділення 1' }]);
+    httpMock
+      .expectOne(`${novaPoshtaUrl}/warehouses?cityRef=city-1`)
+      .flush([{ ref: 'w1', description: 'Відділення 1' }]);
     httpMock.expectOne(`${novaPoshtaUrl}/postomats?cityRef=city-1`).flush([]);
     component.onWarehouseSelected({ value: 'w1', label: 'Відділення 1' });
     fixture.detectChanges();
@@ -428,7 +505,9 @@ describe('OrdersCreate', () => {
     });
     component.selectDeliveryMethod('warehouse');
     component.onCitySelected({ value: 'city-1', label: 'Київ' });
-    httpMock.expectOne(`${novaPoshtaUrl}/warehouses?cityRef=city-1`).flush([{ ref: 'w1', description: 'Відділення 1' }]);
+    httpMock
+      .expectOne(`${novaPoshtaUrl}/warehouses?cityRef=city-1`)
+      .flush([{ ref: 'w1', description: 'Відділення 1' }]);
     httpMock.expectOne(`${novaPoshtaUrl}/postomats?cityRef=city-1`).flush([]);
     component.onWarehouseSelected({ value: 'w1', label: 'Відділення 1' });
     fixture.detectChanges();
@@ -473,7 +552,9 @@ describe('OrdersCreate', () => {
     });
     component.selectDeliveryMethod('warehouse');
     component.onCitySelected({ value: 'city-1', label: 'Київ' });
-    httpMock.expectOne(`${novaPoshtaUrl}/warehouses?cityRef=city-1`).flush([{ ref: 'w1', description: 'Відділення 1' }]);
+    httpMock
+      .expectOne(`${novaPoshtaUrl}/warehouses?cityRef=city-1`)
+      .flush([{ ref: 'w1', description: 'Відділення 1' }]);
     httpMock.expectOne(`${novaPoshtaUrl}/postomats?cityRef=city-1`).flush([]);
     component.onWarehouseSelected({ value: 'w1', label: 'Відділення 1' });
     fixture.detectChanges();
@@ -481,9 +562,14 @@ describe('OrdersCreate', () => {
     component.submit();
     httpMock
       .expectOne(ordersUrl)
-      .flush({ message: 'Not enough stock for product "Кіт"' }, { status: 400, statusText: 'Bad Request' });
+      .flush(
+        { message: 'Not enough stock for product "Кіт"' },
+        { status: 400, statusText: 'Bad Request' },
+      );
     fixture.detectChanges();
 
-    expect(el.querySelector('.error-text')?.textContent?.trim()).toBe('Not enough stock for product "Кіт"');
+    expect(el.querySelector('.error-text')?.textContent?.trim()).toBe(
+      'Not enough stock for product "Кіт"',
+    );
   });
 });

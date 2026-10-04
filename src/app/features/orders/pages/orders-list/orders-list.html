@@ -25,11 +25,19 @@
   />
   <div class="date-field">
     <label for="date-from">Від</label>
-    <app-date-picker triggerId="date-from" [value]="dateFrom() ?? ''" (valueChange)="onDateFromChange($event)" />
+    <app-date-picker
+      triggerId="date-from"
+      [value]="dateFrom() ?? ''"
+      (valueChange)="onDateFromChange($event)"
+    />
   </div>
   <div class="date-field">
     <label for="date-to">До</label>
-    <app-date-picker triggerId="date-to" [value]="dateTo() ?? ''" (valueChange)="onDateToChange($event)" />
+    <app-date-picker
+      triggerId="date-to"
+      [value]="dateTo() ?? ''"
+      (valueChange)="onDateToChange($event)"
+    />
   </div>
   <div class="date-field">
     <label for="productTypeId">Тип товару</label>
@@ -88,7 +96,9 @@
     </div>
   }
   @if (hasActiveFilters()) {
-    <button type="button" class="btn-ghost filters-row__reset" (click)="resetFilters()">Скинути</button>
+    <button type="button" class="btn-ghost filters-row__reset" (click)="resetFilters()">
+      Скинути
+    </button>
   }
 </div>
 
@@ -103,7 +113,9 @@
     <span class="empty-state__icon">
       <svg lucidePackageOpen [size]="22" [strokeWidth]="1.5"></svg>
     </span>
-    <div class="empty-state__title">{{ hasActiveFilters() ? 'Нічого не знайдено' : 'Замовлень поки немає' }}</div>
+    <div class="empty-state__title">
+      {{ hasActiveFilters() ? 'Нічого не знайдено' : 'Замовлень поки немає' }}
+    </div>
     <div class="empty-state__text">
       @if (hasActiveFilters()) {
         За обраними фільтрами або пошуком нічого не знайдено. Змініть або скиньте фільтри.
@@ -169,13 +181,30 @@
             <td class="col-flags">
               <span class="order-flags">
                 @if (order.isPacked) {
-                  <span class="status-badge status-badge--success" title="Спаковано" aria-label="Спаковано">
+                  <span
+                    class="status-badge status-badge--success"
+                    title="Спаковано"
+                    aria-label="Спаковано"
+                  >
                     <svg lucidePackageCheck [size]="12" [strokeWidth]="1.5"></svg>
                   </span>
                 }
                 @if (order.isOutOfStock) {
-                  <span class="status-badge status-badge--danger" title="Відсутній товар" aria-label="Відсутній товар">
+                  <span
+                    class="status-badge status-badge--danger"
+                    title="Відсутній товар"
+                    aria-label="Відсутній товар"
+                  >
                     <svg lucideCircleAlert [size]="12" [strokeWidth]="1.5"></svg>
+                  </span>
+                }
+                @if (order.isSettled) {
+                  <span
+                    class="status-badge status-badge--success"
+                    title="Розраховано"
+                    aria-label="Розраховано"
+                  >
+                    <svg lucideWallet [size]="12" [strokeWidth]="1.5"></svg>
                   </span>
                 }
               </span>

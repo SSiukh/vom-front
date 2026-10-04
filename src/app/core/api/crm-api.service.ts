@@ -19,7 +19,10 @@ export class CrmApiService {
   private readonly baseUrl = `${environment.apiUrl}/crm`;
 
   list(page: number, pageSize: number, filters: CrmTableFilters): Observable<CrmTableResponse> {
-    let params = new HttpParams().set('page', page).set('pageSize', pageSize).set('sortOrder', filters.sortOrder);
+    let params = new HttpParams()
+      .set('page', page)
+      .set('pageSize', pageSize)
+      .set('sortOrder', filters.sortOrder);
     if (filters.dateFrom) {
       params = params.set('dateFrom', filters.dateFrom);
     }

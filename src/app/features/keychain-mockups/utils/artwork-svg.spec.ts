@@ -90,6 +90,19 @@ describe('exportArtworkSvg', () => {
     ).toThrow('There is no artwork to export');
   });
 
+  it('writes the ink opacity on the group only when the ink is translucent', () => {
+    const artwork = {
+      paths: ['M0 0L10 0L10 10Z'],
+      evenOddPaths: [],
+      bounds: { minX: 0, minY: 0, maxX: 10, maxY: 10 },
+    };
+
+    expect(exportArtworkSvg(artwork, '#9d906c', 0.8)).toContain(
+      '<g id="art" fill="#9d906c" fill-opacity="0.8">',
+    );
+    expect(exportArtworkSvg(artwork, '#000000')).not.toContain('fill-opacity');
+  });
+
   it('rejects an ink colour that is not #rrggbb', () => {
     expect(() => exportArtworkSvg(artwork, 'red')).toThrow(
       'The ink colour must be a #rrggbb value',

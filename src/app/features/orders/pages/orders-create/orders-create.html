@@ -49,7 +49,7 @@
   @if (step() === 1) {
     <div class="wizard-layout">
       <div class="wizard-main">
-        @if (activeSender(); as sender) {
+        @if (orderSender(); as sender) {
           @if (!senderNoticeDismissed()) {
             <div class="sender-notice" role="status">
               <span class="sender-notice__icon">
@@ -59,6 +59,32 @@
                 <span class="sender-notice__title">Відправка здійснюється від відправника</span>
                 <span class="sender-notice__name">{{ sender.fullName }}</span>
                 <span class="sender-notice__phone">{{ sender.phone }}</span>
+                <button
+                  type="button"
+                  class="btn-ghost sender-notice__change"
+                  (click)="toggleSenderPicker()"
+                >
+                  Змінити відправника
+                </button>
+                @if (chosenSender()) {
+                  <button
+                    type="button"
+                    class="btn-ghost sender-notice__change"
+                    (click)="resetSender()"
+                  >
+                    Повернути активного
+                  </button>
+                }
+                @if (senderPickerOpen()) {
+                  <div class="sender-picker">
+                    <app-dropdown
+                      triggerId="orderSenderId"
+                      [value]="sender.id"
+                      (valueChange)="chooseSender($event)"
+                      [options]="senderOptions()"
+                    />
+                  </div>
+                }
               </div>
               <button
                 type="button"
@@ -74,7 +100,11 @@
 
         <div class="field">
           <label class="field-label" for="shipmentTypeId">Тип відправки</label>
-          <app-dropdown triggerId="shipmentTypeId" formControlName="shipmentTypeId" [options]="shipmentTypeOptions()" />
+          <app-dropdown
+            triggerId="shipmentTypeId"
+            formControlName="shipmentTypeId"
+            [options]="shipmentTypeOptions()"
+          />
         </div>
 
         @for (itemForm of items.controls; track itemForm; let i = $index) {
@@ -103,7 +133,11 @@
 
         <div class="field">
           <label class="field-label" for="paymentTypeId">Тип оплати</label>
-          <app-dropdown triggerId="paymentTypeId" formControlName="paymentTypeId" [options]="paymentTypeOptions()" />
+          <app-dropdown
+            triggerId="paymentTypeId"
+            formControlName="paymentTypeId"
+            [options]="paymentTypeOptions()"
+          />
         </div>
 
         @if (paymentTypeCode() === 'partial') {
@@ -136,14 +170,14 @@
         <div class="sender-card">
           <div class="sender-card__header">
             <span class="field-label">Відправник</span>
-            @if (activeSender()) {
+            @if (activeSender() && !chosenSender()) {
               <span class="status-badge status-badge--success">Активний</span>
             }
           </div>
 
           @if (sendersLoading()) {
             <div class="loading-text">Завантаження…</div>
-          } @else if (activeSender(); as sender) {
+          } @else if (orderSender(); as sender) {
             <div class="sender-card__row">
               <span>ПІБ</span>
               <span>{{ sender.fullName }}</span>

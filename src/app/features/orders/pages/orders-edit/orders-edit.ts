@@ -14,13 +14,27 @@ import type { Product } from '../../../products/models/product.model';
 import type { Sender, SenderAddress } from '../../../senders/models/sender.model';
 import type { Order, UpdateOrderPayload } from '../../models/order.model';
 import { buildOrderItemPayload, createOrderItemFormGroup } from '../../order-item-form.util';
-import { OrderItemCard, type OrderItemFormGroup } from '../orders-create/order-item-card/order-item-card';
+import {
+  OrderItemCard,
+  type OrderItemFormGroup,
+} from '../orders-create/order-item-card/order-item-card';
 import { computeItemSubtotal } from '../orders-create/order-item-subtotal.util';
-import { Dropdown, dictionaryOptions, type DropdownOption } from '../../../../shared/ui/dropdown/dropdown';
+import {
+  Dropdown,
+  dictionaryOptions,
+  type DropdownOption,
+} from '../../../../shared/ui/dropdown/dropdown';
 
 @Component({
   selector: 'app-orders-edit',
-  imports: [ReactiveFormsModule, OrderItemCard, LucideChevronLeft, LucideLock, LucideTriangleAlert, Dropdown],
+  imports: [
+    ReactiveFormsModule,
+    OrderItemCard,
+    LucideChevronLeft,
+    LucideLock,
+    LucideTriangleAlert,
+    Dropdown,
+  ],
   templateUrl: './orders-edit.html',
   styleUrl: './orders-edit.css',
 })
@@ -30,8 +44,12 @@ export class OrdersEdit {
   private readonly sendersApi = inject(SendersApiService);
   private readonly productsApi = inject(ProductsApiService);
   protected readonly dictionaries = inject(DictionariesService);
-  protected readonly shipmentTypeOptions = computed<DropdownOption[]>(() => dictionaryOptions(this.dictionaries.shipmentTypes()));
-  protected readonly paymentTypeOptions = computed<DropdownOption[]>(() => dictionaryOptions(this.dictionaries.paymentTypes()));
+  protected readonly shipmentTypeOptions = computed<DropdownOption[]>(() =>
+    dictionaryOptions(this.dictionaries.shipmentTypes()),
+  );
+  protected readonly paymentTypeOptions = computed<DropdownOption[]>(() =>
+    dictionaryOptions(this.dictionaries.paymentTypes()),
+  );
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
@@ -60,9 +78,11 @@ export class OrdersEdit {
   }
 
   constructor() {
-    this.form.controls.paymentTypeId.valueChanges.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((id) => {
-      this.onPaymentTypeChange(id);
-    });
+    this.form.controls.paymentTypeId.valueChanges
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((id) => {
+        this.onPaymentTypeChange(id);
+      });
 
     this.route.paramMap
       .pipe(
@@ -100,7 +120,10 @@ export class OrdersEdit {
   }
 
   orderTotal(): number {
-    return this.items.controls.reduce((sum, group, index) => sum + this.itemSubtotal(group, index), 0);
+    return this.items.controls.reduce(
+      (sum, group, index) => sum + this.itemSubtotal(group, index),
+      0,
+    );
   }
 
   itemSubtotal(group: OrderItemFormGroup, index: number): number {
@@ -151,7 +174,9 @@ export class OrdersEdit {
       ...(this.paymentTypeCode() === 'partial' && raw.partialAmount !== null
         ? { partialAmount: raw.partialAmount }
         : {}),
-      items: this.items.controls.map((group) => buildOrderItemPayload(group, this.dictionaries.productTypes())),
+      items: this.items.controls.map((group) =>
+        buildOrderItemPayload(group, this.dictionaries.productTypes()),
+      ),
     };
 
     this.ordersApi
@@ -214,7 +239,9 @@ export class OrdersEdit {
         },
         error: () => {
           this.itemProducts.update((products) =>
-            this.items.controls.map((group, i) => (group.controls.productId.value === productId ? null : (products[i] ?? null))),
+            this.items.controls.map((group, i) =>
+              group.controls.productId.value === productId ? null : (products[i] ?? null),
+            ),
           );
         },
       });

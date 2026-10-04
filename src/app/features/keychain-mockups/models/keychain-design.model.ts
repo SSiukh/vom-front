@@ -15,6 +15,8 @@ export interface DesignSlot {
   accepts: readonly SlotAccept[];
   rect: DesignRect;
   rotated: boolean;
+  metal?: boolean;
+  scaleFactor?: number;
 }
 
 export interface KeychainDesign {
@@ -24,5 +26,6 @@ export interface KeychainDesign {
   container: DesignRect;
   photo: DesignRect | null;
   photoRotated: boolean;
+  fit: 'contain' | 'stretch';
   slots: readonly DesignSlot[];
 }

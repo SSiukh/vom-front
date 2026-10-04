@@ -19,7 +19,9 @@ describe('OrdersDetail', () => {
     shipmentTypes: () => [{ id: 'st1', code: 'documents', label: 'Документи' }],
     paymentTypes: () => [{ id: 'pt1', code: 'cod', label: 'Післяплата' }],
     deliveryTypes: () => [{ id: 'dt1', code: 'warehouse', label: 'Відділення' }],
-    productTypes: () => [{ id: 'prt1', code: 'sticker', label: 'Наклейка', isCustom: false, brand: 'm' }],
+    productTypes: () => [
+      { id: 'prt1', code: 'sticker', label: 'Наклейка', isCustom: false, brand: 'm' },
+    ],
     shipmentStatuses: () => [
       { id: 'ss-shipped', code: 'shipped', label: 'Відправлено' },
       { id: 'ss-delivered', code: 'delivered', label: 'Доставлено' },
@@ -49,14 +51,27 @@ describe('OrdersDetail', () => {
     ],
     senderId: 's1',
     senderAddressRef: 'addr-1',
-    recipient: { phone: '+380501234567', lastName: 'Петренко', firstName: 'Петро', middleName: null },
+    recipient: {
+      phone: '+380501234567',
+      lastName: 'Петренко',
+      firstName: 'Петро',
+      middleName: null,
+    },
     deliveryTypeId: 'dt1',
-    deliveryDetails: { cityRef: 'city-1', warehouseRef: 'w1', streetRef: null, house: null, apartment: null, postomatRef: null },
+    deliveryDetails: {
+      cityRef: 'city-1',
+      warehouseRef: 'w1',
+      streetRef: null,
+      house: null,
+      apartment: null,
+      postomatRef: null,
+    },
     npWaybillNumber: '20450182773641',
     npWaybillRef: 'ref-1',
     shipmentStatusId: null,
     isPacked: false,
     isOutOfStock: false,
+    isSettled: false,
     createdAt: '2026-08-22T09:14:00.000Z',
     updatedAt: '2026-08-22T09:14:00.000Z',
     ...overrides,
@@ -97,7 +112,9 @@ describe('OrdersDetail', () => {
 
   const flushSenderLookups = () => {
     httpMock.expectOne(`${sendersUrl}?page=1&pageSize=100`).flush({ items: [sender()], total: 1 });
-    httpMock.expectOne(`${sendersUrl}/s1/addresses`).flush([{ npAddressRef: 'addr-1', description: 'Склад №1' }]);
+    httpMock
+      .expectOne(`${sendersUrl}/s1/addresses`)
+      .flush([{ npAddressRef: 'addr-1', description: 'Склад №1' }]);
     fixture.detectChanges();
   };
 
@@ -146,8 +163,8 @@ describe('OrdersDetail', () => {
     flushOrder();
     flushSenderLookups();
 
-    const senderPanel = Array.from(el.querySelectorAll('.info-panel')).find((p) =>
-      p.querySelector('.field-label')?.textContent?.trim() === 'Відправник',
+    const senderPanel = Array.from(el.querySelectorAll('.info-panel')).find(
+      (p) => p.querySelector('.field-label')?.textContent?.trim() === 'Відправник',
     );
     expect(senderPanel?.textContent).toContain('ФОП Волошин О.М.');
     expect(senderPanel?.textContent).toContain('+380671112233');
@@ -161,8 +178,8 @@ describe('OrdersDetail', () => {
     httpMock.expectOne(`${sendersUrl}/s1/addresses`).flush([]);
     fixture.detectChanges();
 
-    const senderPanel = Array.from(el.querySelectorAll('.info-panel')).find((p) =>
-      p.querySelector('.field-label')?.textContent?.trim() === 'Відправник',
+    const senderPanel = Array.from(el.querySelectorAll('.info-panel')).find(
+      (p) => p.querySelector('.field-label')?.textContent?.trim() === 'Відправник',
     );
     expect(senderPanel?.textContent).toContain('addr-1');
   });
@@ -196,9 +213,32 @@ describe('OrdersDetail', () => {
     flushOrder({ isPacked: true, isOutOfStock: false });
     flushSenderLookups();
 
-    const checkboxes = Array.from(el.querySelectorAll('.status-flags input[type="checkbox"]')) as HTMLInputElement[];
+    const checkboxes = Array.from(
+      el.querySelectorAll('.status-flags input[type="checkbox"]'),
+    ) as HTMLInputElement[];
     expect(checkboxes[0].checked).toBe(true);
     expect(checkboxes[1].checked).toBe(false);
+  });
+
+  it('toggles isSettled ("Розраховано") via PATCH /orders/:id/status-flags', () => {
+    create();
+    flushOrder({ isSettled: false });
+    flushSenderLookups();
+
+    const settledCheckbox = el.querySelectorAll(
+      '.status-flags input[type="checkbox"]',
+    )[2] as HTMLInputElement;
+    expect(settledCheckbox.closest('label')?.textContent?.trim()).toBe('Розраховано');
+    settledCheckbox.click();
+
+    const req = httpMock.expectOne(`${ordersUrl}/9/status-flags`);
+    expect(req.request.body).toEqual({ isSettled: true });
+    req.flush(order({ isSettled: true }));
+    fixture.detectChanges();
+
+    expect(
+      (el.querySelectorAll('.status-flags input[type="checkbox"]')[2] as HTMLInputElement).checked,
+    ).toBe(true);
   });
 
   it('toggles isPacked via PATCH /orders/:id/status-flags and reflects the server response', () => {
@@ -206,7 +246,9 @@ describe('OrdersDetail', () => {
     flushOrder({ isPacked: false });
     flushSenderLookups();
 
-    const [packedCheckbox] = Array.from(el.querySelectorAll('.status-flags input[type="checkbox"]')) as HTMLInputElement[];
+    const [packedCheckbox] = Array.from(
+      el.querySelectorAll('.status-flags input[type="checkbox"]'),
+    ) as HTMLInputElement[];
     packedCheckbox.click();
 
     const req = httpMock.expectOne(`${ordersUrl}/9/status-flags`);
@@ -215,7 +257,9 @@ describe('OrdersDetail', () => {
     req.flush(order({ isPacked: true }));
     fixture.detectChanges();
 
-    expect((el.querySelectorAll('.status-flags input[type="checkbox"]')[0] as HTMLInputElement).checked).toBe(true);
+    expect(
+      (el.querySelectorAll('.status-flags input[type="checkbox"]')[0] as HTMLInputElement).checked,
+    ).toBe(true);
   });
 
   it('toggles isOutOfStock independently from isPacked', () => {
@@ -223,7 +267,9 @@ describe('OrdersDetail', () => {
     flushOrder({ isPacked: true, isOutOfStock: false });
     flushSenderLookups();
 
-    const [, outOfStockCheckbox] = Array.from(el.querySelectorAll('.status-flags input[type="checkbox"]')) as HTMLInputElement[];
+    const [, outOfStockCheckbox] = Array.from(
+      el.querySelectorAll('.status-flags input[type="checkbox"]'),
+    ) as HTMLInputElement[];
     outOfStockCheckbox.click();
 
     const req = httpMock.expectOne(`${ordersUrl}/9/status-flags`);
@@ -236,15 +282,24 @@ describe('OrdersDetail', () => {
     flushOrder({ isPacked: false });
     flushSenderLookups();
 
-    const [packedCheckbox] = Array.from(el.querySelectorAll('.status-flags input[type="checkbox"]')) as HTMLInputElement[];
+    const [packedCheckbox] = Array.from(
+      el.querySelectorAll('.status-flags input[type="checkbox"]'),
+    ) as HTMLInputElement[];
     packedCheckbox.click();
-    httpMock.expectOne(`${ordersUrl}/9/status-flags`).flush('boom', { status: 500, statusText: 'Server Error' });
+    httpMock
+      .expectOne(`${ordersUrl}/9/status-flags`)
+      .flush('boom', { status: 500, statusText: 'Server Error' });
     fixture.detectChanges();
 
-    expect(el.querySelector('.status-flags')?.parentElement?.querySelector('.error-text')?.textContent?.trim()).toBe(
-      'Не вдалося оновити статус замовлення',
-    );
-    expect((el.querySelectorAll('.status-flags input[type="checkbox"]')[0] as HTMLInputElement).checked).toBe(false);
+    expect(
+      el
+        .querySelector('.status-flags')
+        ?.parentElement?.querySelector('.error-text')
+        ?.textContent?.trim(),
+    ).toBe('Не вдалося оновити статус замовлення');
+    expect(
+      (el.querySelectorAll('.status-flags input[type="checkbox"]')[0] as HTMLInputElement).checked,
+    ).toBe(false);
   });
 
   it('shows a rate-limit message when a status-flags update is throttled (429)', () => {
@@ -252,16 +307,21 @@ describe('OrdersDetail', () => {
     flushOrder({ isPacked: false });
     flushSenderLookups();
 
-    const [packedCheckbox] = Array.from(el.querySelectorAll('.status-flags input[type="checkbox"]')) as HTMLInputElement[];
+    const [packedCheckbox] = Array.from(
+      el.querySelectorAll('.status-flags input[type="checkbox"]'),
+    ) as HTMLInputElement[];
     packedCheckbox.click();
     httpMock
       .expectOne(`${ordersUrl}/9/status-flags`)
       .flush('err', { status: 429, statusText: 'Too Many Requests' });
     fixture.detectChanges();
 
-    expect(el.querySelector('.status-flags')?.parentElement?.querySelector('.error-text')?.textContent?.trim()).toBe(
-      'Забагато спроб — спробуйте пізніше',
-    );
+    expect(
+      el
+        .querySelector('.status-flags')
+        ?.parentElement?.querySelector('.error-text')
+        ?.textContent?.trim(),
+    ).toBe('Забагато спроб — спробуйте пізніше');
   });
 
   it('ignores a second toggle click while one is already in flight', () => {
@@ -284,7 +344,9 @@ describe('OrdersDetail', () => {
     httpMock.expectOne(`${ordersUrl}/9`).flush('boom', { status: 404, statusText: 'Not Found' });
     fixture.detectChanges();
 
-    expect(el.querySelector('.error-text')?.textContent?.trim()).toBe('Не вдалося завантажити дані замовлення');
+    expect(el.querySelector('.error-text')?.textContent?.trim()).toBe(
+      'Не вдалося завантажити дані замовлення',
+    );
   });
 
   it('navigates to the edit page on "Редагувати"', () => {
@@ -325,7 +387,18 @@ describe('OrdersDetail', () => {
     create();
     flushOrder({
       npWaybillNumber: null,
-      items: [{ productId: null, productTypeId: 'prt1', nameSnapshot: 'Кастом', photoUrlSnapshot: null, price: 50, isPromo: false, quantity: 1, subtotal: 50 }],
+      items: [
+        {
+          productId: null,
+          productTypeId: 'prt1',
+          nameSnapshot: 'Кастом',
+          photoUrlSnapshot: null,
+          price: 50,
+          isPromo: false,
+          quantity: 1,
+          subtotal: 50,
+        },
+      ],
     });
     flushSenderLookups();
 

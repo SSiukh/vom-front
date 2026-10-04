@@ -1,4 +1,14 @@
-import { DestroyRef, Component, type OnInit, computed, effect, inject, input, output, signal } from '@angular/core';
+import {
+  DestroyRef,
+  Component,
+  type OnInit,
+  computed,
+  effect,
+  inject,
+  input,
+  output,
+  signal,
+} from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { LucideInfo, LucideTrash2 } from '@lucide/angular';
@@ -7,8 +17,15 @@ import { ProductsApiService } from '../../../../../core/api/products-api.service
 import type { Product } from '../../../../products/models/product.model';
 import type { PaginatedResponse } from '../../../../../shared/models/paginated-response.model';
 import type { ProductType } from '../../../../../shared/models/dictionary-item.model';
-import { SearchableSelect, type SelectOption } from '../../../../../shared/ui/searchable-select/searchable-select';
-import { Dropdown, dictionaryOptions, type DropdownOption } from '../../../../../shared/ui/dropdown/dropdown';
+import {
+  SearchableSelect,
+  type SelectOption,
+} from '../../../../../shared/ui/searchable-select/searchable-select';
+import {
+  Dropdown,
+  dictionaryOptions,
+  type DropdownOption,
+} from '../../../../../shared/ui/dropdown/dropdown';
 import { computeItemSubtotal } from '../order-item-subtotal.util';
 
 export interface OrderItemFormControls {
@@ -66,7 +83,9 @@ export class OrderItemCard implements OnInit {
       .pipe(
         switchMap(({ typeId, name }) => {
           this.productsLoading.set(true);
-          return this.productsApi.list(1, PRODUCTS_FETCH_PAGE_SIZE, typeId, name).pipe(catchError(() => of(null)));
+          return this.productsApi
+            .list(1, PRODUCTS_FETCH_PAGE_SIZE, typeId, name)
+            .pipe(catchError(() => of(null)));
         }),
         takeUntilDestroyed(this.destroyRef),
       )
@@ -87,7 +106,13 @@ export class OrderItemCard implements OnInit {
 
   protected subtotal(): number {
     const { quantity, price, isPromo } = this.form().getRawValue();
-    return computeItemSubtotal(quantity, price, isPromo, this.isCustomType(), this.selectedProduct());
+    return computeItemSubtotal(
+      quantity,
+      price,
+      isPromo,
+      this.isCustomType(),
+      this.selectedProduct(),
+    );
   }
 
   ngOnInit(): void {

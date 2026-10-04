@@ -132,6 +132,9 @@ describe('KeychainMockups', () => {
       evenOddPaths: string[];
       ink: string;
       blend: string;
+      opacity: number;
+      metalPaths: string[];
+      metalEvenOddPaths: string[];
     };
   const svgPaths = () => lastRender()?.paths ?? [];
 
@@ -182,7 +185,7 @@ describe('KeychainMockups', () => {
           .filter(Boolean);
       expect(ids(cards[0])).toEqual(['keychainFamilyId', 'keychainTypeId']);
       expect(ids(cards[1])).toEqual(['photo', 'photoScaleId']);
-      expect(ids(cards[2])).toEqual(['markId', 'markScaleId']);
+      expect(ids(cards[2])).toEqual(['markId-main', 'markScaleId-main']);
       expect(ids(cards[3])).toEqual(['text', 'fontId', 'textScaleId']);
     });
 
@@ -223,15 +226,15 @@ describe('KeychainMockups', () => {
     it('offers every mark, or none, and the two sticker fonts', async () => {
       await create();
 
-      expect(options('markId')?.[0]).toBe('Без марки');
-      expect(options('markId')).toHaveLength(37);
+      expect(options('markId-main')?.[0]).toBe('Без марки');
+      expect(options('markId-main')).toHaveLength(37);
       expect(options('fontId')).toEqual(['Jua', 'Nunito (кирилиця)']);
     });
 
     it('starts without a mark, with empty text limited to 40 characters', async () => {
       await create();
 
-      expect(dropdownValue(fixture, 'markId')).toBe('none');
+      expect(dropdownValue(fixture, 'markId-main')).toBe('none');
       expect((el.querySelector('#text') as HTMLInputElement).value).toBe('');
       expect(el.querySelector('#text')?.getAttribute('maxlength')).toBe('40');
     });
@@ -254,7 +257,7 @@ describe('KeychainMockups', () => {
 
       for (const [id, start] of [
         ['photoScaleId', 'l'],
-        ['markScaleId', 'l'],
+        ['markScaleId-main', 'l'],
         ['textScaleId', 'm'],
       ]) {
         expect(options(id ?? '')).toEqual(['XS', 'S', 'M', 'L', 'XL']);
@@ -282,6 +285,9 @@ describe('KeychainMockups', () => {
         evenOddPaths: [],
         ink: '#000000',
         blend: 'multiply',
+        opacity: 1,
+        metalPaths: [],
+        metalEvenOddPaths: [],
       });
     });
 
@@ -296,7 +302,11 @@ describe('KeychainMockups', () => {
       expect([lastRender().ink, lastRender().blend]).toEqual(['#6f4a2b', 'multiply']);
 
       await chooseKeychainType('leather-black');
-      expect([lastRender().ink, lastRender().blend]).toEqual(['#6f4a2b', 'source-over']);
+      expect([lastRender().ink, lastRender().blend, lastRender().opacity]).toEqual([
+        '#9d906c',
+        'source-over',
+        0.8,
+      ]);
     });
 
     it('renders again when the text scale changes', async () => {
@@ -525,6 +535,21 @@ describe('KeychainMockups', () => {
     });
   });
 
+  describe('metal cap icon', () => {
+    it('draws the icon on the metal cap of a loop in black, not in the leather ink', async () => {
+      await create();
+      await chooseKeychainType('leather-black');
+      chooseDesign('loop-icon');
+      await settle();
+      await setSelect('markId-icon', 'bmw');
+      await flush();
+
+      expect(lastRender().metalPaths).toHaveLength(1);
+      expect(lastRender().paths).toHaveLength(0);
+      expect(lastRender().ink).toBe('#9d906c');
+    });
+  });
+
   describe('Gemini photo prompt', () => {
     const geminiButton = () => button('Зображення з Gemini');
 
@@ -690,7 +715,7 @@ describe('KeychainMockups', () => {
     it('loads the chosen mark and puts it on the keychain', async () => {
       await create();
 
-      await setSelect('markId', 'bmw');
+      await setSelect('markId-main', 'bmw');
       await flush();
 
       expect(loadMark).toHaveBeenCalledWith(
@@ -705,17 +730,17 @@ describe('KeychainMockups', () => {
       loadMark.mockImplementation(() => new Promise<VectorGraphic>(() => undefined));
       await create();
 
-      await setSelect('markId', 'bmw');
+      await setSelect('markId-main', 'bmw');
 
       expect(el.textContent).toContain('Завантаження марки…');
     });
 
     it('takes the mark off again when "Без марки" is chosen', async () => {
       await create();
-      await setSelect('markId', 'bmw');
+      await setSelect('markId-main', 'bmw');
       await flush();
 
-      await setSelect('markId', 'none');
+      await setSelect('markId-main', 'none');
       await flush();
 
       expect(lastRender().paths).toEqual([]);
@@ -725,7 +750,7 @@ describe('KeychainMockups', () => {
       loadMark.mockRejectedValue(new Error('404'));
       await create();
 
-      await setSelect('markId', 'bmw');
+      await setSelect('markId-main', 'bmw');
       await flush();
 
       expect(el.textContent).toContain('Не вдалося завантажити марку');
@@ -741,7 +766,7 @@ describe('KeychainMockups', () => {
       });
       await create();
 
-      await setSelect('markId', 'benelli');
+      await setSelect('markId-main', 'benelli');
       await flush();
 
       expect(lastRender().paths).toEqual([]);
@@ -752,7 +777,7 @@ describe('KeychainMockups', () => {
     it('stacks the photo above the mark', async () => {
       await create();
       await chooseFile(png());
-      await setSelect('markId', 'bmw');
+      await setSelect('markId-main', 'bmw');
       await flush();
 
       const paths = svgPaths();
@@ -761,75 +786,103 @@ describe('KeychainMockups', () => {
       expect(y(paths[0] ?? null)).toBeLessThan(y(paths[1] ?? null));
     });
 
-    it('offers no variant select for a mark that only has one variant', async () => {
+    it('offers no type select for a mark that only has one variant', async () => {
       await create();
 
-      await setSelect('markId', 'bmw');
+      await setSelect('markId-main', 'bmw');
       await flush();
 
-      expect(el.querySelector('#markVariantId')).toBeNull();
+      expect(el.querySelector('#markVariant-main')).toBeNull();
     });
 
     it('offers Іконка/Текст/Іконка + текст for a mark with all three, defaulting to Іконка + текст', async () => {
       await create();
 
-      await setSelect('markId', 'lifan');
+      await setSelect('markId-main', 'lifan');
       await flush();
 
-      expect(options('markVariantId')).toEqual(['Іконка', 'Текст', 'Іконка + текст']);
-      expect(dropdownValue(fixture, 'markVariantId')).toBe('combined');
+      expect(options('markVariant-main')).toEqual(['Іконка', 'Текст', 'Іконка + текст']);
+      expect(dropdownValue(fixture, 'markVariant-main')).toBe('combined');
     });
 
-    it('loads a different file when another variant is chosen for the same mark', async () => {
+    it('loads every variant of the chosen mark once, so switching the type does not reload it', async () => {
       await create();
-      await setSelect('markId', 'lifan');
+      await setSelect('markId-main', 'lifan');
       await flush();
+
+      expect(loadMark.mock.calls.map((call) => call[1]).sort()).toEqual([
+        'combined',
+        'icon',
+        'text',
+      ]);
       loadMark.mockClear();
-
-      await setSelect('markVariantId', 'icon');
+      await setSelect('markVariant-main', 'icon');
       await flush();
 
-      expect(loadMark).toHaveBeenCalledWith(expect.objectContaining({ id: 'lifan' }), 'icon');
+      expect(loadMark).not.toHaveBeenCalled();
+    });
+
+    it('lets each zone of a two-zone design have its own type of mark', async () => {
+      await create();
+      chooseDesign('metal-v-3');
+      await settle();
+      await setSelect('markId-main', 'lifan');
+      await setSelect('markId-small', 'lifan');
+      await flush();
+
+      expect(dropdownValue(fixture, 'markVariant-main')).toBe('combined');
+      expect(dropdownValue(fixture, 'markVariant-small')).toBe('combined');
+      expect(
+        Array.from(el.querySelectorAll('.keychain-card--mark .keychain-card__title')).map((title) =>
+          title.textContent?.trim(),
+        ),
+      ).toEqual(['Марка · Основна зона', 'Марка · Мала зона']);
+
+      await setSelect('markVariant-main', 'text');
+      await setSelect('markVariant-small', 'icon');
+      await flush();
+
+      expect(dropdownValue(fixture, 'markVariant-main')).toBe('text');
+      expect(dropdownValue(fixture, 'markVariant-small')).toBe('icon');
     });
 
     it('resets to the default variant when switching to a mark that lacks the current one', async () => {
       await create();
-      await setSelect('markId', 'lifan');
+      await setSelect('markId-main', 'lifan');
       await flush();
-      await setSelect('markVariantId', 'text');
+      await setSelect('markVariant-main', 'text');
       await flush();
 
-      await setSelect('markId', 'bmw');
+      await setSelect('markId-main', 'bmw');
       await flush();
 
       expect(loadMark).toHaveBeenLastCalledWith(expect.objectContaining({ id: 'bmw' }), 'icon');
+      expect(el.querySelector('#markVariant-main')).toBeNull();
     });
 
     it('keeps a variant that both marks share when switching between two combined marks', async () => {
       await create();
-      await setSelect('markId', 'lifan');
+      await setSelect('markId-main', 'lifan');
       await flush();
-      await setSelect('markVariantId', 'text');
-      await flush();
-      loadMark.mockClear();
-
-      await setSelect('markId', 'honda');
+      await setSelect('markVariant-main', 'text');
       await flush();
 
-      expect(dropdownValue(fixture, 'markVariantId')).toBe('text');
-      expect(loadMark).toHaveBeenCalledWith(expect.objectContaining({ id: 'honda' }), 'text');
+      await setSelect('markId-main', 'honda');
+      await flush();
+
+      expect(dropdownValue(fixture, 'markVariant-main')).toBe('text');
     });
 
-    it('hides the variant select again for a single-variant mark and shows it again for a multi-variant one', async () => {
+    it('hides the type select again for a single-variant mark and shows it again for a multi-variant one', async () => {
       await create();
-      await setSelect('markId', 'bmw');
+      await setSelect('markId-main', 'bmw');
       await flush();
-      expect(el.querySelector('#markVariantId')).toBeNull();
+      expect(el.querySelector('#markVariant-main')).toBeNull();
 
-      await setSelect('markId', 'lifan');
+      await setSelect('markId-main', 'lifan');
       await flush();
 
-      expect(el.querySelector('#markVariantId')).not.toBeNull();
+      expect(el.querySelector('#markVariant-main')).not.toBeNull();
     });
   });
 
@@ -889,7 +942,7 @@ describe('KeychainMockups', () => {
       await create();
       chooseDesign('metal-v-3');
       await settle();
-      await setSelect('markId', 'bmw');
+      await setSelect('markId-small', 'bmw');
       await flush();
       await setInput('text', 'AB');
       const markSize = () => {
@@ -987,17 +1040,35 @@ describe('KeychainMockups', () => {
       expect(cardTitles()).toEqual(['Брелок', 'Марка', 'Текст']);
     });
 
-    it('offers the zone select only where a design has two zones for the same element', async () => {
+    it('gives every mark zone its own mark card, labelled with the zone, and a text zone select for two text zones', async () => {
       await create();
-      expect(el.querySelector('#markZoneId')).toBeNull();
+      expect(el.querySelectorAll('.keychain-card--mark')).toHaveLength(1);
       expect(el.querySelector('#textZoneId')).toBeNull();
 
       chooseDesign('metal-v-3');
       await settle();
 
-      expect(options('markZoneId')).toEqual(['Основна зона', 'Мала зона']);
-      expect(dropdownValue(fixture, 'markZoneId')).toBe('small');
+      const titles = () =>
+        Array.from(el.querySelectorAll('.keychain-card--mark .keychain-card__title')).map((title) =>
+          title.textContent?.trim(),
+        );
+      expect(titles()).toEqual(['Марка · Основна зона', 'Марка · Мала зона']);
       expect(dropdownValue(fixture, 'textZoneId')).toBe('main');
+    });
+
+    it('draws a mark in each zone that has one, from its own card', async () => {
+      await create();
+      chooseDesign('metal-v-3');
+      await settle();
+      await setSelect('markId-main', 'bmw');
+      await flush();
+      const single = lastRender().paths.length;
+
+      await setSelect('markId-small', 'bmw');
+      await flush();
+
+      expect(single).toBe(1);
+      expect(lastRender().paths).toHaveLength(2);
     });
 
     it('keeps the mark when a text is added to the single zone of the design', async () => {
@@ -1005,7 +1076,7 @@ describe('KeychainMockups', () => {
       await chooseKeychainType('subleather-mint');
       chooseDesign('eco-v');
       await settle();
-      await setSelect('markId', 'bmw');
+      await setSelect('markId-main', 'bmw');
       await flush();
       const markOnly = lastRender().paths;
 
@@ -1042,12 +1113,12 @@ describe('KeychainMockups', () => {
       chooseDesign('metal-v-3');
       await settle();
       await chooseFile(png());
-      await setSelect('markId', 'lifan');
+      await setSelect('markId-small', 'lifan');
       await flush();
       await setInput('text', 'ABC');
       const before = lastRender().paths.map((path) => span(path, 0));
 
-      await setSelect('markScaleId', 'xs');
+      await setSelect('markScaleId-small', 'xs');
 
       const after = lastRender().paths.map((path) => span(path, 0));
       expect(after[1]).toBeLessThan(before[1] ?? 0);

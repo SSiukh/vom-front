@@ -2,7 +2,12 @@
   <div class="item-card__header">
     <span class="item-card__label">Товар {{ index() + 1 }}</span>
     @if (canRemove()) {
-      <button type="button" class="icon-action icon-action--danger" (click)="remove()" aria-label="Прибрати товар">
+      <button
+        type="button"
+        class="icon-action icon-action--danger"
+        (click)="remove()"
+        aria-label="Прибрати товар"
+      >
         <svg lucideTrash2 [size]="15" [strokeWidth]="1.5"></svg>
       </button>
     }
@@ -94,7 +99,8 @@
     @if (isCustomType()) {
       Кастомна наклейка не списується зі складу
     } @else if (selectedProduct(); as product) {
-      Списання зі складу: −{{ form().controls.quantity.value }} шт (залишок {{ product.stockQuantity }})
+      Списання зі складу: −{{ form().controls.quantity.value }} шт (залишок
+      {{ product.stockQuantity }})
     } @else {
       Оберіть товар, щоб побачити залишок на складі
     }

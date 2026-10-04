@@ -57,7 +57,9 @@ describe('CrmApiService', () => {
 
   it('sends search only when it is not empty', () => {
     service.list(1, 10, { ...baseFilters(), search: '20450' }).subscribe();
-    const withSearch = httpMock.expectOne(`${baseUrl}/table?page=1&pageSize=10&sortOrder=desc&search=20450`);
+    const withSearch = httpMock.expectOne(
+      `${baseUrl}/table?page=1&pageSize=10&sortOrder=desc&search=20450`,
+    );
     withSearch.flush({ items: [], total: 0, totalAmountSum: 0 });
 
     service.list(1, 10, { ...baseFilters(), search: '' }).subscribe();

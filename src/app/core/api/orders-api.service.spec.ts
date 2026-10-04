@@ -35,6 +35,7 @@ describe('OrdersApiService', () => {
     shipmentStatusId: null,
     isPacked: false,
     isOutOfStock: false,
+    isSettled: false,
     createdAt: '',
     updatedAt: '',
     ...overrides,
@@ -80,8 +81,12 @@ describe('OrdersApiService', () => {
   });
 
   it('includes dateFrom/dateTo when filtering', () => {
-    service.list(1, 10, { ...noFilters(), dateFrom: '2026-01-01', dateTo: '2026-01-31' }).subscribe();
-    const req = httpMock.expectOne(`${baseUrl}?page=1&pageSize=10&dateFrom=2026-01-01&dateTo=2026-01-31`);
+    service
+      .list(1, 10, { ...noFilters(), dateFrom: '2026-01-01', dateTo: '2026-01-31' })
+      .subscribe();
+    const req = httpMock.expectOne(
+      `${baseUrl}?page=1&pageSize=10&dateFrom=2026-01-01&dateTo=2026-01-31`,
+    );
     expect(req.request.method).toBe('GET');
     req.flush({ items: [], total: 0 });
   });

@@ -42,6 +42,7 @@ export interface Order {
   shipmentStatusId: string | null;
   isPacked: boolean;
   isOutOfStock: boolean;
+  isSettled: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -89,6 +90,7 @@ export interface UpdateOrderPayload {
 export interface SetOrderStatusFlagsPayload {
   isPacked?: boolean;
   isOutOfStock?: boolean;
+  isSettled?: boolean;
 }
 
 export interface BulkSyncStatusResult {

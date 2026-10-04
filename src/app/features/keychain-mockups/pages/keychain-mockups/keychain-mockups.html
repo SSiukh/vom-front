@@ -126,53 +126,10 @@
       </section>
     }
 
-    @if (markEnabled()) {
-      <section class="form-panel keychain-card keychain-card--mark">
-        <h2 class="keychain-card__title">Марка</h2>
-
-        <div class="field">
-          <label class="field-label" for="markId">Оберіть марку</label>
-          <app-dropdown triggerId="markId" formControlName="markId" [options]="markOptions" />
-          @if (markLoading()) {
-            <div class="loading-text" role="status">Завантаження марки…</div>
-          }
-          @if (markError()) {
-            <div class="error-text" role="alert">{{ markError() }}</div>
-          }
-        </div>
-
-        @if (markVariantOptions().length > 1) {
-          <div class="field">
-            <label class="field-label" for="markVariantId">Тип марки</label>
-            <app-dropdown
-              triggerId="markVariantId"
-              formControlName="markVariantId"
-              [options]="markVariantOptions()"
-            />
-          </div>
-        }
-
-        @if (markSlots().length > 1) {
-          <div class="field">
-            <label class="field-label" for="markZoneId">Вивести у зону</label>
-            <app-dropdown
-              triggerId="markZoneId"
-              [value]="resolvedMarkSlotId()"
-              (valueChange)="onMarkZoneChange($event)"
-              [options]="slotOptions(markSlots())"
-            />
-          </div>
-        }
-
-        <div class="field">
-          <label class="field-label" for="markScaleId">Розмір марки</label>
-          <app-dropdown
-            triggerId="markScaleId"
-            formControlName="markScaleId"
-            [options]="imageScaleOptions"
-          />
-        </div>
-      </section>
+    @for (card of markCards(); track card.key) {
+      @if (card.beforeText) {
+        <ng-container *ngTemplateOutlet="markCardTpl; context: { $implicit: card }" />
+      }
     }
 
     @if (textEnabled()) {
@@ -227,6 +184,11 @@
         }
       </section>
     }
+    @for (card of markCards(); track card.key) {
+      @if (!card.beforeText) {
+        <ng-container *ngTemplateOutlet="markCardTpl; context: { $implicit: card }" />
+      }
+    }
   </form>
 
   <div class="info-panel keychain-previews">
@@ -273,3 +235,45 @@
     </div>
   </div>
 </div>
+
+<ng-template #markCardTpl let-card>
+  <section class="form-panel keychain-card keychain-card--mark">
+    <h2 class="keychain-card__title">{{ card.title }}</h2>
+
+    <div class="field">
+      <label class="field-label" [attr.for]="'markId-' + card.key">Оберіть марку</label>
+      <app-dropdown
+        [triggerId]="'markId-' + card.key"
+        [formControl]="markCardOf(card.key).controls.markId"
+        [options]="markOptions"
+      />
+      @if (markLoading()) {
+        <div class="loading-text" role="status">Завантаження марки…</div>
+      }
+      @if (markError()) {
+        <div class="error-text" role="alert">{{ markError() }}</div>
+      }
+    </div>
+
+    @if (markVariantOptionsFor(card.key).length > 1) {
+      <div class="field">
+        <label class="field-label" [attr.for]="'markVariant-' + card.key">Тип марки</label>
+        <app-dropdown
+          [triggerId]="'markVariant-' + card.key"
+          [value]="variantFor(card.key) ?? ''"
+          (valueChange)="setMarkVariant(card.key, $event)"
+          [options]="markVariantOptionsFor(card.key)"
+        />
+      </div>
+    }
+
+    <div class="field">
+      <label class="field-label" [attr.for]="'markScaleId-' + card.key">Розмір марки</label>
+      <app-dropdown
+        [triggerId]="'markScaleId-' + card.key"
+        [formControl]="markCardOf(card.key).controls.scaleId"
+        [options]="imageScaleOptions"
+      />
+    </div>
+  </section>
+</ng-template>

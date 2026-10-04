@@ -10,12 +10,17 @@ import {
   LucidePackageOpen,
   LucidePlus,
   LucideRefreshCw,
+  LucideWallet,
 } from '@lucide/angular';
 import { NO_SHIPMENT_STATUS, OrdersApiService } from '../../../../core/api/orders-api.service';
 import { SendersApiService } from '../../../../core/api/senders-api.service';
 import { DictionariesService } from '../../../../core/dictionaries/dictionaries.service';
 import { FEATURE_ROUTES } from '../../../../core/routes.constants';
-import { Dropdown, dictionaryOptions, type DropdownOption } from '../../../../shared/ui/dropdown/dropdown';
+import {
+  Dropdown,
+  dictionaryOptions,
+  type DropdownOption,
+} from '../../../../shared/ui/dropdown/dropdown';
 import { CopyableText } from '../../../../shared/ui/copyable-text/copyable-text';
 import { DEFAULT_PAGE_SIZE, Pagination } from '../../../../shared/ui/pagination/pagination';
 import { SearchInput } from '../../../../shared/ui/search-input/search-input';
@@ -42,6 +47,7 @@ type SortOrder = 'newest' | 'oldest';
     LucidePackageCheck,
     LucideCircleAlert,
     LucideRefreshCw,
+    LucideWallet,
   ],
   templateUrl: './orders-list.html',
   styleUrl: './orders-list.css',
@@ -215,11 +221,16 @@ export class OrdersList {
     if (!order.shipmentStatusId) {
       return null;
     }
-    return this.dictionaries.shipmentStatuses().find((s) => s.id === order.shipmentStatusId)?.label ?? null;
+    return (
+      this.dictionaries.shipmentStatuses().find((s) => s.id === order.shipmentStatusId)?.label ??
+      null
+    );
   }
 
   statusBadgeClass(order: Order): string {
-    const code = this.dictionaries.shipmentStatuses().find((s) => s.id === order.shipmentStatusId)?.code;
+    const code = this.dictionaries
+      .shipmentStatuses()
+      .find((s) => s.id === order.shipmentStatusId)?.code;
     return shipmentStatusBadgeClass(code);
   }
 
@@ -251,7 +262,9 @@ export class OrdersList {
       return 'Немає замовлень з номером ЕН для синхронізації';
     }
     const base = `Оновлено ${result.updatedCount} із ${result.totalOrders} замовлень`;
-    return result.unmappedCount > 0 ? `${base}, ${result.unmappedCount} не вдалося визначити` : base;
+    return result.unmappedCount > 0
+      ? `${base}, ${result.unmappedCount} не вдалося визначити`
+      : base;
   }
 
   private resolveSyncErrorMessage(error: unknown): string {

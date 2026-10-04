@@ -15,7 +15,9 @@ export class PingApiService {
 
   ping(): Observable<PingResponse> {
     return this.http.get<PingResponse>(this.url, {
-      context: new HttpContext().set(IS_CONNECTION_PROBE, true).set(REQUEST_TIMEOUT_MS, PING_TIMEOUT_MS),
+      context: new HttpContext()
+        .set(IS_CONNECTION_PROBE, true)
+        .set(REQUEST_TIMEOUT_MS, PING_TIMEOUT_MS),
     });
   }
 }

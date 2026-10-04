@@ -52,9 +52,21 @@ describe('OrdersEdit', () => {
     ],
     senderId: 's1',
     senderAddressRef: 'addr-1',
-    recipient: { phone: '+380501234567', lastName: 'Петренко', firstName: 'Петро', middleName: null },
+    recipient: {
+      phone: '+380501234567',
+      lastName: 'Петренко',
+      firstName: 'Петро',
+      middleName: null,
+    },
     deliveryTypeId: 'dt1',
-    deliveryDetails: { cityRef: 'city-1', warehouseRef: 'w1', streetRef: null, house: null, apartment: null, postomatRef: null },
+    deliveryDetails: {
+      cityRef: 'city-1',
+      warehouseRef: 'w1',
+      streetRef: null,
+      house: null,
+      apartment: null,
+      postomatRef: null,
+    },
     npWaybillNumber: '20450182773641',
     npWaybillRef: 'ref-1',
     shipmentStatusId: null,
@@ -107,9 +119,13 @@ describe('OrdersEdit', () => {
     httpMock.expectOne(`${ordersUrl}/9`).flush(order(orderOverrides));
     fixture.detectChanges();
     httpMock.expectOne(`${productsUrl}/p1`).flush(product());
-    httpMock.expectOne(`${productsUrl}?page=1&pageSize=100&typeId=prt1`).flush({ items: [product()], total: 1 });
+    httpMock
+      .expectOne(`${productsUrl}?page=1&pageSize=100&typeId=prt1`)
+      .flush({ items: [product()], total: 1 });
     httpMock.expectOne(`${sendersUrl}?page=1&pageSize=100`).flush({ items: [sender()], total: 1 });
-    httpMock.expectOne(`${sendersUrl}/s1/addresses`).flush([{ npAddressRef: 'addr-1', description: 'Склад №1' }]);
+    httpMock
+      .expectOne(`${sendersUrl}/s1/addresses`)
+      .flush([{ npAddressRef: 'addr-1', description: 'Склад №1' }]);
     fixture.detectChanges();
   };
 
@@ -135,7 +151,9 @@ describe('OrdersEdit', () => {
     expect(lockedFields.length).toBeGreaterThan(0);
     expect(Array.from(lockedFields).some((f) => f.textContent?.includes('ФОП Волошин'))).toBe(true);
     expect(Array.from(lockedFields).some((f) => f.textContent?.includes('Склад №1'))).toBe(true);
-    expect(Array.from(lockedFields).some((f) => f.textContent?.includes('Петренко Петро'))).toBe(true);
+    expect(Array.from(lockedFields).some((f) => f.textContent?.includes('Петренко Петро'))).toBe(
+      true,
+    );
   });
 
   it('shows the partial-amount field only for the partial payment type', () => {
@@ -153,7 +171,9 @@ describe('OrdersEdit', () => {
     httpMock.expectOne(`${ordersUrl}/9`).flush('boom', { status: 404, statusText: 'Not Found' });
     fixture.detectChanges();
 
-    expect(el.querySelector('.error-text')?.textContent?.trim()).toBe('Не вдалося завантажити дані замовлення');
+    expect(el.querySelector('.error-text')?.textContent?.trim()).toBe(
+      'Не вдалося завантажити дані замовлення',
+    );
   });
 
   it('navigates back to the detail page on "Скасувати" and on breadcrumb click', () => {
@@ -180,7 +200,8 @@ describe('OrdersEdit', () => {
     create();
     flushAll();
 
-    const saveButton = () => Array.from(el.querySelectorAll('button')).find((b) => b.textContent?.trim() === 'Зберегти')!;
+    const saveButton = () =>
+      Array.from(el.querySelectorAll('button')).find((b) => b.textContent?.trim() === 'Зберегти')!;
     expect(saveButton().disabled).toBe(false);
     saveButton().click();
 
@@ -200,7 +221,11 @@ describe('OrdersEdit', () => {
     create();
     flushAll();
 
-    (Array.from(el.querySelectorAll('button')).find((b) => b.textContent?.trim() === 'Зберегти') as HTMLButtonElement).click();
+    (
+      Array.from(el.querySelectorAll('button')).find(
+        (b) => b.textContent?.trim() === 'Зберегти',
+      ) as HTMLButtonElement
+    ).click();
     httpMock.expectOne(`${ordersUrl}/9`).flush('boom', { status: 502, statusText: 'Bad Gateway' });
     fixture.detectChanges();
 
@@ -212,12 +237,21 @@ describe('OrdersEdit', () => {
     create();
     flushAll();
 
-    (Array.from(el.querySelectorAll('button')).find((b) => b.textContent?.trim() === 'Зберегти') as HTMLButtonElement).click();
+    (
+      Array.from(el.querySelectorAll('button')).find(
+        (b) => b.textContent?.trim() === 'Зберегти',
+      ) as HTMLButtonElement
+    ).click();
     httpMock
       .expectOne(`${ordersUrl}/9`)
-      .flush({ message: 'Not enough stock for product "Кіт"' }, { status: 400, statusText: 'Bad Request' });
+      .flush(
+        { message: 'Not enough stock for product "Кіт"' },
+        { status: 400, statusText: 'Bad Request' },
+      );
     fixture.detectChanges();
 
-    expect(el.querySelector('.error-text')?.textContent?.trim()).toBe('Not enough stock for product "Кіт"');
+    expect(el.querySelector('.error-text')?.textContent?.trim()).toBe(
+      'Not enough stock for product "Кіт"',
+    );
   });
 });
