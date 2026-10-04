@@ -5,6 +5,12 @@
   margin-top: 14px;
 }
 
+@media (max-width: 800px) {
+  .metric-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 .metric-card {
   gap: 4px;
 }
@@ -36,8 +42,14 @@
 
 .chart-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 14px;
+}
+
+@media (max-width: 800px) {
+  .chart-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 .chart-container {
@@ -58,6 +70,18 @@
   display: flex;
   align-items: center;
   gap: 20px;
+}
+
+@media (max-width: 480px) {
+  .donut-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .chart-legend {
+    width: 100%;
+  }
 }
 
 .donut-center {

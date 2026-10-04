@@ -6,7 +6,9 @@
   border-right: 1px solid var(--color-border-outer);
   transition: width 150ms ease;
   overflow: hidden;
-  height: 100%;
+  position: sticky;
+  top: 0;
+  height: 100vh;
 }
 
 .sidebar.collapsed {
@@ -91,4 +93,13 @@
 
 .sidebar.collapsed .nav-link.active {
   background: var(--color-nav-active-bg-collapsed);
+}
+
+@media (max-width: 499px) {
+  .sidebar:not(.collapsed) {
+    position: fixed;
+    inset: 0;
+    z-index: 200;
+    width: 100%;
+  }
 }

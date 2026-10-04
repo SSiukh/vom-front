@@ -21,6 +21,7 @@ import { downloadFile } from '../../utils/download-file';
 import { buildFileName } from '../../utils/file-name';
 import { layoutSticker } from '../../utils/layout-sticker';
 import { exportSvg } from '../../utils/svg-export';
+import { Dropdown, dictionaryOptions, type DropdownOption } from '../../../../shared/ui/dropdown/dropdown';
 
 const MAX_TEXT_LENGTH = 40;
 const DEFAULT_TEXT = 'username';
@@ -29,7 +30,7 @@ const COPIED_FEEDBACK_MS = 2000;
 
 @Component({
   selector: 'app-sticker-generator',
-  imports: [ReactiveFormsModule, ColorField, StickerSvg, LucideCheck, LucideCopy, LucideDownload, LucidePlus, LucideTrash2],
+  imports: [ReactiveFormsModule, ColorField, StickerSvg, LucideCheck, LucideCopy, LucideDownload, LucidePlus, LucideTrash2, Dropdown],
   templateUrl: './sticker-generator.html',
   styleUrl: './sticker-generator.css',
 })
@@ -42,10 +43,16 @@ export class StickerGenerator {
   private nextMockupId = 1;
   private copiedTimer: ReturnType<typeof setTimeout> | null = null;
 
-  protected readonly fonts = STICKER_FONTS;
-  protected readonly icons = STICKER_ICONS;
-  protected readonly presets = SIZE_PRESETS;
-  protected readonly contentScales = CONTENT_SCALES;
+  protected readonly fontOptions = dictionaryOptions(STICKER_FONTS);
+  protected readonly iconOptions: DropdownOption[] = [
+    { value: 'none', label: 'Без іконки' },
+    ...dictionaryOptions(STICKER_ICONS),
+  ];
+  protected readonly presetOptions: DropdownOption[] = SIZE_PRESETS.map((preset) => ({
+    value: preset.id,
+    label: `${preset.width} × ${preset.height}`,
+  }));
+  protected readonly contentScaleOptions = dictionaryOptions(CONTENT_SCALES);
   protected readonly maxTextLength = MAX_TEXT_LENGTH;
   protected readonly maxMockupStickers = MAX_MOCKUP_STICKERS;
 

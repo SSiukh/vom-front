@@ -10,6 +10,12 @@ import { SetWarehouseDialog } from './set-warehouse-dialog/set-warehouse-dialog'
 describe('SendersList', () => {
   let fixture: ComponentFixture<SendersList>;
   let el: HTMLElement;
+  const pickPageSize = (size: string) => {
+    (el.querySelector('.pagination-size .dropdown__trigger') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    (el.querySelector(`[data-value="${size}"]`) as HTMLElement).click();
+    fixture.detectChanges();
+  };
   let httpMock: HttpTestingController;
   let router: Router;
   const baseUrl = `${environment.apiUrl}/senders`;
@@ -155,6 +161,36 @@ describe('SendersList', () => {
 
     const activePage = el.querySelector('.pagination-box.is-active');
     expect(activePage?.textContent?.trim()).toBe('2');
+  });
+
+  it('refetches page 1 with the new page size when the page-size selector changes', () => {
+    create();
+    flushList(
+      Array.from({ length: 10 }, (_, i) => sender({ id: String(i) })),
+      25,
+      1,
+    );
+
+    const pageTwo = Array.from(el.querySelectorAll('.pagination-box')).find(
+      (b) => b.textContent?.trim() === '2',
+    ) as HTMLButtonElement;
+    pageTwo.click();
+    flushList(
+      Array.from({ length: 10 }, (_, i) => sender({ id: String(10 + i) })),
+      25,
+      2,
+    );
+
+    pickPageSize('30');
+
+    httpMock.expectOne(`${baseUrl}?page=1&pageSize=30`).flush({
+      items: Array.from({ length: 25 }, (_, i) => sender({ id: String(i) })),
+      total: 25,
+    });
+    fixture.detectChanges();
+
+    expect(el.querySelector('.pagination-pages')).toBeNull();
+    expect(el.querySelector('.pagination span')?.textContent?.trim()).toBe('1-25 з 25');
   });
 
   it('refreshes a single row in place without reloading the whole list', () => {

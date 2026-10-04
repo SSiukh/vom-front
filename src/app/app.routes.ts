@@ -29,6 +29,10 @@ export const routes: Routes = [
         loadChildren: () => import('./features/sticker-generator/sticker-generator.routes').then((m) => m.STICKER_ROUTES),
       },
       {
+        path: FEATURE_ROUTES.keychains.slice(1),
+        loadChildren: () => import('./features/keychain-mockups/keychain-mockups.routes').then((m) => m.KEYCHAIN_ROUTES),
+      },
+      {
         path: FEATURE_ROUTES.products.slice(1),
         loadChildren: () => import('./features/products/products.routes').then((m) => m.PRODUCTS_ROUTES),
       },

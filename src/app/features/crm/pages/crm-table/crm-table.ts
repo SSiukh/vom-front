@@ -5,28 +5,35 @@ import { Router } from '@angular/router';
 import type { Subscription } from 'rxjs';
 import { LucideListChecks } from '@lucide/angular';
 import { CrmApiService } from '../../../../core/api/crm-api.service';
+import { Dropdown, dictionaryOptions, type DropdownOption } from '../../../../shared/ui/dropdown/dropdown';
 import { DictionariesService } from '../../../../core/dictionaries/dictionaries.service';
 import { FEATURE_ROUTES } from '../../../../core/routes.constants';
-import { DateFieldTriggerDirective } from '../../../../shared/directives/date-field-trigger.directive';
 import { CopyableText } from '../../../../shared/ui/copyable-text/copyable-text';
-import { Pagination } from '../../../../shared/ui/pagination/pagination';
+import { DEFAULT_PAGE_SIZE, Pagination } from '../../../../shared/ui/pagination/pagination';
 import { SearchInput } from '../../../../shared/ui/search-input/search-input';
 import { shipmentStatusBadgeClass } from '../../../../shared/utils/shipment-status-badge.util';
 import type { CrmRow } from '../../models/crm-row.model';
-
-const PAGE_SIZE = 10;
+import { DatePicker } from '../../../../shared/ui/date-picker/date-picker';
 
 type SortOrder = 'asc' | 'desc';
 
 @Component({
   selector: 'app-crm-table',
-  imports: [DatePipe, Pagination, DateFieldTriggerDirective, CopyableText, SearchInput, LucideListChecks],
+  imports: [DatePipe, Pagination, DatePicker, Dropdown, CopyableText, SearchInput, LucideListChecks],
   templateUrl: './crm-table.html',
   styleUrl: './crm-table.css',
 })
 export class CrmTable {
   private readonly crmApi = inject(CrmApiService);
   protected readonly dictionaries = inject(DictionariesService);
+  protected readonly productTypeOptions = computed<DropdownOption[]>(() => [
+    { value: '', label: 'Усі типи' },
+    ...dictionaryOptions(this.dictionaries.productTypes()),
+  ]);
+  protected readonly shipmentStatusOptions = computed<DropdownOption[]>(() => [
+    { value: '', label: 'Усі статуси' },
+    ...dictionaryOptions(this.dictionaries.shipmentStatuses()),
+  ]);
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
   private loadSubscription: Subscription | null = null;
@@ -35,7 +42,7 @@ export class CrmTable {
   protected readonly total = signal(0);
   protected readonly totalAmountSum = signal(0);
   protected readonly page = signal(1);
-  protected readonly pageSize = PAGE_SIZE;
+  protected readonly pageSize = signal(DEFAULT_PAGE_SIZE);
   protected readonly loading = signal(false);
   protected readonly error = signal<string | null>(null);
 
@@ -74,29 +81,25 @@ export class CrmTable {
     this.load();
   }
 
-  onDateFromChange(event: Event): void {
-    const value = (event.target as HTMLInputElement).value;
+  onDateFromChange(value: string): void {
     this.dateFrom.set(value || null);
     this.page.set(1);
     this.load();
   }
 
-  onDateToChange(event: Event): void {
-    const value = (event.target as HTMLInputElement).value;
+  onDateToChange(value: string): void {
     this.dateTo.set(value || null);
     this.page.set(1);
     this.load();
   }
 
-  onProductTypeChange(event: Event): void {
-    const value = (event.target as HTMLSelectElement).value;
+  onProductTypeChange(value: string): void {
     this.productTypeId.set(value || null);
     this.page.set(1);
     this.load();
   }
 
-  onShipmentStatusChange(event: Event): void {
-    const value = (event.target as HTMLSelectElement).value;
+  onShipmentStatusChange(value: string): void {
     this.shipmentStatusId.set(value || null);
     this.page.set(1);
     this.load();
@@ -123,6 +126,12 @@ export class CrmTable {
 
   onPageChange(page: number): void {
     this.page.set(page);
+    this.load();
+  }
+
+  onPageSizeChange(pageSize: number): void {
+    this.pageSize.set(pageSize);
+    this.page.set(1);
     this.load();
   }
 
@@ -173,7 +182,7 @@ export class CrmTable {
     this.error.set(null);
     this.loadSubscription?.unsubscribe();
     this.loadSubscription = this.crmApi
-      .list(this.page(), this.pageSize, {
+      .list(this.page(), this.pageSize(), {
         dateFrom: this.dateFrom(),
         dateTo: this.dateTo(),
         productTypeId: this.productTypeId(),
@@ -184,7 +193,7 @@ export class CrmTable {
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (response) => {
-          const totalPages = Math.max(1, Math.ceil(response.total / this.pageSize));
+          const totalPages = Math.max(1, Math.ceil(response.total / this.pageSize()));
           if (this.page() > totalPages) {
             this.page.set(totalPages);
             this.load();

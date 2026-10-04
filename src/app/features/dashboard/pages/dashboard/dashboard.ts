@@ -4,9 +4,9 @@ import type { ChartConfiguration } from 'chart.js';
 import { BaseChartDirective } from 'ng2-charts';
 import { DashboardApiService } from '../../../../core/api/dashboard-api.service';
 import { DictionariesService } from '../../../../core/dictionaries/dictionaries.service';
-import { DateFieldTriggerDirective } from '../../../../shared/directives/date-field-trigger.directive';
 import type { ProductBrand } from '../../../../shared/models/product-brand.model';
 import type { DashboardSummary, ShipmentStatusBreakdown } from '../../models/dashboard-summary.model';
+import { DatePicker } from '../../../../shared/ui/date-picker/date-picker';
 
 const EXPENSE_CATEGORY_COLORS = ['#e8871e', '#c76a12', '#f3c98a', '#9a9d9f'];
 
@@ -23,7 +23,7 @@ const CHART_TICK_COLOR = '#83878b';
 
 @Component({
   selector: 'app-dashboard',
-  imports: [BaseChartDirective, DateFieldTriggerDirective],
+  imports: [BaseChartDirective, DatePicker],
   templateUrl: './dashboard.html',
   styleUrl: './dashboard.css',
 })
@@ -128,14 +128,12 @@ export class Dashboard {
     this.load();
   }
 
-  onDateFromChange(event: Event): void {
-    const value = (event.target as HTMLInputElement).value;
+  onDateFromChange(value: string): void {
     this.dateFrom.set(value || null);
     this.load();
   }
 
-  onDateToChange(event: Event): void {
-    const value = (event.target as HTMLInputElement).value;
+  onDateToChange(value: string): void {
     this.dateTo.set(value || null);
     this.load();
   }

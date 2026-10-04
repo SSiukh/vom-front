@@ -57,9 +57,10 @@ describe('ProductsForm', () => {
   };
 
   const fillRequiredFields = () => {
-    const typeSelect = el.querySelector('#typeId') as HTMLSelectElement;
-    typeSelect.value = 't1';
-    typeSelect.dispatchEvent(new Event('change'));
+    (el.querySelector('#typeId') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    (el.querySelector('[data-value="t1"]') as HTMLElement).click();
+    fixture.detectChanges();
 
     const setValue = (id: string, value: string) => {
       const input = el.querySelector(`#${id}`) as HTMLInputElement;

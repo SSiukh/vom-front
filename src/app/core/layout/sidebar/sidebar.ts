@@ -2,6 +2,7 @@ import { Component, inject } from '@angular/core';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 import {
   LucideDynamicIcon,
+  LucideKeyRound,
   LucideLayoutDashboard,
   LucidePackage,
   LucidePanelLeftClose,
@@ -32,6 +33,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'Дашборд', path: FEATURE_ROUTES.dashboard, icon: LucideLayoutDashboard },
   { label: 'Відправники', path: FEATURE_ROUTES.senders, icon: LucideUsers },
   { label: 'Наклейки', path: FEATURE_ROUTES.stickers, icon: LucideStickyNote },
+  { label: 'Брелки', path: FEATURE_ROUTES.keychains, icon: LucideKeyRound },
   { label: '2FA', path: AUTH_ROUTES.twoFa, icon: LucideShieldCheck },
 ];
 

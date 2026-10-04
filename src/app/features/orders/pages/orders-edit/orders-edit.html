@@ -31,11 +31,7 @@
       <div class="order-edit-main">
         <div class="field">
           <label class="field-label" for="shipmentTypeId">Тип відправки</label>
-          <select id="shipmentTypeId" class="text-input" formControlName="shipmentTypeId">
-            @for (type of dictionaries.shipmentTypes(); track type.id) {
-              <option [value]="type.id">{{ type.label }}</option>
-            }
-          </select>
+          <app-dropdown triggerId="shipmentTypeId" formControlName="shipmentTypeId" [options]="shipmentTypeOptions()" />
         </div>
 
         @for (itemForm of items.controls; track itemForm; let i = $index) {
@@ -60,11 +56,7 @@
 
           <div class="field">
             <label class="field-label" for="paymentTypeId">Тип оплати</label>
-            <select id="paymentTypeId" class="text-input" formControlName="paymentTypeId">
-              @for (type of dictionaries.paymentTypes(); track type.id) {
-                <option [value]="type.id">{{ type.label }}</option>
-              }
-            </select>
+            <app-dropdown triggerId="paymentTypeId" formControlName="paymentTypeId" [options]="paymentTypeOptions()" />
           </div>
 
           @if (paymentTypeCode() === 'partial') {

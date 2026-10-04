@@ -103,6 +103,12 @@ button:focus-visible {
   padding: 20px;
 }
 
+@media (max-width: 600px) {
+  .shell .content {
+    padding: 14px;
+  }
+}
+
 .field {
   display: flex;
   flex-direction: column;
@@ -331,6 +337,14 @@ fieldset.field legend {
   margin-bottom: 14px;
 }
 
+@media (max-width: 560px) {
+  .page-header {
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 10px;
+  }
+}
+
 .page-title {
   font-family: var(--font-heading);
   font-weight: 700;
@@ -370,11 +384,12 @@ fieldset.field legend {
   background: var(--color-bg-panel);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow);
-  overflow: hidden;
+  overflow-x: auto;
 }
 
 .data-table {
   width: 100%;
+  min-width: 640px;
   border-collapse: collapse;
 }
 
@@ -535,11 +550,13 @@ fieldset.field legend {
   display: flex;
   align-items: center;
   justify-content: center;
+  padding: 16px;
   z-index: 100;
 }
 
 .dialog-card {
   width: 400px;
+  max-width: 100%;
   border: 1px solid var(--color-border-outer);
   background: var(--color-bg-panel);
   border-radius: var(--radius-lg);
@@ -584,6 +601,13 @@ fieldset.field legend {
   margin-top: 14px;
 }
 
+@media (max-width: 560px) {
+  .pagination {
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+}
+
 .pagination-pages {
   display: flex;
   align-items: center;
@@ -619,6 +643,12 @@ fieldset.field legend {
 .pagination-ellipsis {
   color: var(--color-text-faint);
   padding: 0 4px;
+}
+
+.pagination-size {
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .segmented-control {
@@ -672,33 +702,7 @@ fieldset.field legend {
   color: var(--color-text-meta);
 }
 
-.date-field__input {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  border: 1px solid var(--color-border-inner);
-  background: var(--color-bg-panel-nested);
-  border-radius: var(--radius-sm);
-  padding: 6px 9px;
-  color: var(--color-text-muted);
-}
-
-.date-field__input input {
-  border: none;
-  background: none;
-  color: var(--color-text-secondary);
-  font-family: var(--font-body);
-  font-size: 12px;
-  width: 118px;
-}
-
-.date-field__input input:focus {
-  outline: none;
-}
-
 .filter-select {
-  padding: 6px 9px;
-  font-size: 12px;
   width: 150px;
 }
 
@@ -811,6 +815,12 @@ fieldset.field legend {
   padding: 16px;
   display: flex;
   gap: 16px;
+}
+
+@media (max-width: 560px) {
+  .detail-card {
+    flex-direction: column;
+  }
 }
 
 .detail-fields {
@@ -930,6 +940,13 @@ fieldset.field legend {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 14px;
+}
+
+@media (max-width: 560px) {
+  .form-grid-2,
+  .form-grid-3 {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 .field-hint {

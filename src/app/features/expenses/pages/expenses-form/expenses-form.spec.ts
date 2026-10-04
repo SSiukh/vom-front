@@ -53,12 +53,13 @@ describe('ExpensesForm', () => {
     el = fixture.nativeElement as HTMLElement;
   };
 
-  const selectType = (id: string) => {
-    const select = el.querySelector('#typeId') as HTMLSelectElement;
-    select.value = id;
-    select.dispatchEvent(new Event('change'));
+  const pick = (id: string, value: string) => {
+    (el.querySelector(`#${id}`) as HTMLButtonElement).click();
+    fixture.detectChanges();
+    (el.querySelector(`[data-value="${value}"]`) as HTMLElement).click();
     fixture.detectChanges();
   };
+  const selectType = (id: string) => pick('typeId', id);
 
   const setInputValue = (id: string, value: string) => {
     const input = el.querySelector(`#${id}`) as HTMLInputElement;
@@ -144,12 +145,9 @@ describe('ExpensesForm', () => {
       selectType('t1');
       setInputValue('amount', '150');
 
-      const brandSelect = el.querySelector('#brand') as HTMLSelectElement;
-      expect(brandSelect.value).toBe('');
+      expect(fixture.componentInstance['form'].controls.brand.value).toBe('');
 
-      brandSelect.value = 'vom';
-      brandSelect.dispatchEvent(new Event('change'));
-      fixture.detectChanges();
+      pick('brand', 'vom');
 
       (el.querySelector('.btn-primary') as HTMLButtonElement).click();
 
@@ -184,9 +182,9 @@ describe('ExpensesForm', () => {
       fixture.detectChanges();
 
       expect(el.querySelector('.page-title')?.textContent?.trim()).toBe('Редагувати витрату');
-      expect((el.querySelector('#typeId') as HTMLSelectElement).value).toBe('t1');
+      expect(fixture.componentInstance['form'].controls.typeId.value).toBe('t1');
       expect((el.querySelector('#amount') as HTMLInputElement).value).toBe('150');
-      expect((el.querySelector('#brand') as HTMLSelectElement).value).toBe('m');
+      expect(fixture.componentInstance['form'].controls.brand.value).toBe('m');
     });
 
     it('pre-fills "Спільна" for an expense with no brand', () => {
@@ -194,7 +192,7 @@ describe('ExpensesForm', () => {
       httpMock.expectOne(`${baseUrl}/9`).flush(responseExpense({ brand: null }));
       fixture.detectChanges();
 
-      expect((el.querySelector('#brand') as HTMLSelectElement).value).toBe('');
+      expect(fixture.componentInstance['form'].controls.brand.value).toBe('');
     });
 
     it('PATCHes the updated payload and navigates to the list on success', () => {
@@ -217,10 +215,7 @@ describe('ExpensesForm', () => {
       httpMock.expectOne(`${baseUrl}/9`).flush(responseExpense({ brand: 'vom' }));
       fixture.detectChanges();
 
-      const brandSelect = el.querySelector('#brand') as HTMLSelectElement;
-      brandSelect.value = '';
-      brandSelect.dispatchEvent(new Event('change'));
-      fixture.detectChanges();
+      pick('brand', '');
 
       (el.querySelector('.btn-primary') as HTMLButtonElement).click();
 
@@ -264,9 +259,9 @@ describe('ExpensesForm', () => {
     fixture.detectChanges();
 
     expect(el.querySelector('.page-title')?.textContent?.trim()).toBe('Нова витрата');
-    expect((el.querySelector('#typeId') as HTMLSelectElement).value).toBe('');
+    expect(fixture.componentInstance['form'].controls.typeId.value).toBe('');
     expect(el.querySelector('#name')).toBeNull();
-    expect((el.querySelector('#brand') as HTMLSelectElement).value).toBe('');
+    expect(fixture.componentInstance['form'].controls.brand.value).toBe('');
   });
 
   it('cancels the in-flight request for a stale id when navigation moves on before it resolves', () => {

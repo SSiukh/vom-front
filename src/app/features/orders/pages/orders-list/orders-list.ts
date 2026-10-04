@@ -5,26 +5,25 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Router } from '@angular/router';
 import type { Subscription } from 'rxjs';
 import {
-  LucideCalendar,
   LucideCircleAlert,
   LucidePackageCheck,
   LucidePackageOpen,
   LucidePlus,
   LucideRefreshCw,
 } from '@lucide/angular';
-import { OrdersApiService } from '../../../../core/api/orders-api.service';
+import { NO_SHIPMENT_STATUS, OrdersApiService } from '../../../../core/api/orders-api.service';
 import { SendersApiService } from '../../../../core/api/senders-api.service';
 import { DictionariesService } from '../../../../core/dictionaries/dictionaries.service';
 import { FEATURE_ROUTES } from '../../../../core/routes.constants';
-import { DateFieldTriggerDirective } from '../../../../shared/directives/date-field-trigger.directive';
+import { Dropdown, dictionaryOptions, type DropdownOption } from '../../../../shared/ui/dropdown/dropdown';
 import { CopyableText } from '../../../../shared/ui/copyable-text/copyable-text';
-import { Pagination } from '../../../../shared/ui/pagination/pagination';
+import { DEFAULT_PAGE_SIZE, Pagination } from '../../../../shared/ui/pagination/pagination';
 import { SearchInput } from '../../../../shared/ui/search-input/search-input';
 import { shipmentStatusBadgeClass } from '../../../../shared/utils/shipment-status-badge.util';
 import type { Sender } from '../../../senders/models/sender.model';
 import type { BulkSyncStatusResult, Order } from '../../models/order.model';
+import { DatePicker } from '../../../../shared/ui/date-picker/date-picker';
 
-const PAGE_SIZE = 10;
 const SENDERS_FETCH_PAGE_SIZE = 100;
 
 type SortOrder = 'newest' | 'oldest';
@@ -34,11 +33,11 @@ type SortOrder = 'newest' | 'oldest';
   imports: [
     DatePipe,
     Pagination,
-    DateFieldTriggerDirective,
+    DatePicker,
+    Dropdown,
     CopyableText,
     SearchInput,
     LucidePlus,
-    LucideCalendar,
     LucidePackageOpen,
     LucidePackageCheck,
     LucideCircleAlert,
@@ -59,14 +58,29 @@ export class OrdersList {
   protected readonly orders = signal<Order[]>([]);
   protected readonly total = signal(0);
   protected readonly page = signal(1);
-  protected readonly pageSize = PAGE_SIZE;
+  protected readonly pageSize = signal(DEFAULT_PAGE_SIZE);
   protected readonly loading = signal(false);
   protected readonly error = signal<string | null>(null);
   protected readonly dateFrom = signal<string | null>(null);
   protected readonly dateTo = signal<string | null>(null);
   protected readonly productTypeId = signal<string | null>(null);
   protected readonly senderId = signal<string | null>(null);
+  protected readonly shipmentStatusId = signal<string | null>(null);
   protected readonly search = signal<string | null>(null);
+  private readonly noShipmentStatus = NO_SHIPMENT_STATUS;
+  protected readonly productTypeOptions = computed<DropdownOption[]>(() => [
+    { value: '', label: 'Усі типи' },
+    ...dictionaryOptions(this.dictionaries.productTypes()),
+  ]);
+  protected readonly senderOptions = computed<DropdownOption[]>(() => [
+    { value: '', label: 'Усі відправники' },
+    ...this.senders().map((sender) => ({ value: sender.id, label: sender.fullName })),
+  ]);
+  protected readonly shipmentStatusOptions = computed<DropdownOption[]>(() => [
+    { value: '', label: 'Усі статуси' },
+    { value: this.noShipmentStatus, label: 'Без статусу' },
+    ...dictionaryOptions(this.dictionaries.shipmentStatuses()),
+  ]);
   protected readonly senders = signal<Sender[]>([]);
   protected readonly sortOrder = signal<SortOrder>('newest');
   protected readonly syncing = signal(false);
@@ -78,10 +92,11 @@ export class OrdersList {
       this.dateTo() !== null ||
       this.productTypeId() !== null ||
       this.senderId() !== null ||
+      this.shipmentStatusId() !== null ||
       this.search() !== null,
   );
 
-  protected readonly canSort = computed(() => this.total() <= this.pageSize);
+  protected readonly canSort = computed(() => this.total() <= this.pageSize());
 
   protected readonly displayedOrders = computed(() => {
     const orders = this.orders();
@@ -101,30 +116,32 @@ export class OrdersList {
     this.load();
   }
 
-  onDateFromChange(event: Event): void {
-    const value = (event.target as HTMLInputElement).value;
+  onDateFromChange(value: string): void {
     this.dateFrom.set(value || null);
     this.page.set(1);
     this.load();
   }
 
-  onDateToChange(event: Event): void {
-    const value = (event.target as HTMLInputElement).value;
+  onDateToChange(value: string): void {
     this.dateTo.set(value || null);
     this.page.set(1);
     this.load();
   }
 
-  onProductTypeChange(event: Event): void {
-    const value = (event.target as HTMLSelectElement).value;
+  onProductTypeChange(value: string): void {
     this.productTypeId.set(value || null);
     this.page.set(1);
     this.load();
   }
 
-  onSenderChange(event: Event): void {
-    const value = (event.target as HTMLSelectElement).value;
+  onSenderChange(value: string): void {
     this.senderId.set(value || null);
+    this.page.set(1);
+    this.load();
+  }
+
+  onShipmentStatusChange(value: string): void {
+    this.shipmentStatusId.set(value || null);
     this.page.set(1);
     this.load();
   }
@@ -148,6 +165,7 @@ export class OrdersList {
     this.dateTo.set(null);
     this.productTypeId.set(null);
     this.senderId.set(null);
+    this.shipmentStatusId.set(null);
     this.search.set(null);
     this.searchInput()?.clear();
     this.sortOrder.set('newest');
@@ -157,6 +175,12 @@ export class OrdersList {
 
   onPageChange(page: number): void {
     this.page.set(page);
+    this.load();
+  }
+
+  onPageSizeChange(pageSize: number): void {
+    this.pageSize.set(pageSize);
+    this.page.set(1);
     this.load();
   }
 
@@ -252,17 +276,18 @@ export class OrdersList {
     this.error.set(null);
     this.loadSubscription?.unsubscribe();
     this.loadSubscription = this.ordersApi
-      .list(this.page(), this.pageSize, {
+      .list(this.page(), this.pageSize(), {
         dateFrom: this.dateFrom(),
         dateTo: this.dateTo(),
         productTypeId: this.productTypeId(),
         senderId: this.senderId(),
+        shipmentStatusId: this.shipmentStatusId(),
         search: this.search(),
       })
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (response) => {
-          const totalPages = Math.max(1, Math.ceil(response.total / this.pageSize));
+          const totalPages = Math.max(1, Math.ceil(response.total / this.pageSize()));
           if (this.page() > totalPages) {
             this.page.set(totalPages);
             this.load();

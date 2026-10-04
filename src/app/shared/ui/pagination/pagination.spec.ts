@@ -15,9 +15,16 @@ describe('Pagination', () => {
     el = fixture.nativeElement as HTMLElement;
   };
 
-  it('renders nothing when everything fits on one page', () => {
-    configure(1, 10, 7);
+  it('renders nothing when there are no items', () => {
+    configure(1, 10, 0);
     expect(el.querySelector('.pagination')).toBeNull();
+  });
+
+  it('still shows the range and page-size selector, but no page buttons, when everything fits on one page', () => {
+    configure(1, 10, 7);
+    expect(el.querySelector('.pagination')).not.toBeNull();
+    expect(el.querySelector('.pagination-size .dropdown__trigger')).not.toBeNull();
+    expect(el.querySelector('.pagination-pages')).toBeNull();
   });
 
   it('shows the correct range text', () => {
@@ -86,4 +93,39 @@ describe('Pagination', () => {
     (boxes[boxes.length - 1] as HTMLButtonElement).click();
     expect(pageChange).toHaveBeenCalledWith(3);
   });
+
+  it('offers 10/15/20/30/50 as page-size choices, with the current size shown', () => {
+    configure(1, 20, 100);
+    (el.querySelector('.pagination-size .dropdown__trigger') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    const options = Array.from(el.querySelectorAll('[role="option"]')).map((o) => o.textContent?.trim());
+
+    expect(options).toEqual(['10', '15', '20', '30', '50']);
+    expect((el.querySelector('.pagination-size .dropdown__trigger') as HTMLElement).textContent?.trim()).toBe('20');
+  });
+
+  it('emits pageSizeChange when a different page size is chosen', () => {
+    configure(1, 10, 100);
+    const pageSizeChange = vi.fn();
+    fixture.componentInstance.pageSizeChange.subscribe(pageSizeChange);
+
+    (el.querySelector('.pagination-size .dropdown__trigger') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    (el.querySelector('[data-value="30"]') as HTMLElement).click();
+
+    expect(pageSizeChange).toHaveBeenCalledWith(30);
+  });
+
+  it('does not emit pageSizeChange when the same page size is re-selected', () => {
+    configure(1, 10, 100);
+    const pageSizeChange = vi.fn();
+    fixture.componentInstance.pageSizeChange.subscribe(pageSizeChange);
+
+    (el.querySelector('.pagination-size .dropdown__trigger') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    (el.querySelector('[data-value="10"]') as HTMLElement).click();
+
+    expect(pageSizeChange).not.toHaveBeenCalled();
+  });
+
 });

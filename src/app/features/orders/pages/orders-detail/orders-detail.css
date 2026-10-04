@@ -6,6 +6,12 @@
   margin-top: 14px;
 }
 
+@media (max-width: 800px) {
+  .order-detail-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 .order-detail-main,
 .order-detail-sidebar {
   display: flex;
@@ -15,8 +21,14 @@
 
 .info-panel__grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 8px 16px;
+}
+
+@media (max-width: 480px) {
+  .info-panel__grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 .order-status-badge {

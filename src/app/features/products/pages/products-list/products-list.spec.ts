@@ -9,6 +9,12 @@ import { ProductsList } from './products-list';
 describe('ProductsList', () => {
   let fixture: ComponentFixture<ProductsList>;
   let el: HTMLElement;
+  const pickPageSize = (size: string) => {
+    (el.querySelector('.pagination-size .dropdown__trigger') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    (el.querySelector(`[data-value="${size}"]`) as HTMLElement).click();
+    fixture.detectChanges();
+  };
   let httpMock: HttpTestingController;
   let router: Router;
   const baseUrl = `${environment.apiUrl}/products`;
@@ -71,6 +77,24 @@ describe('ProductsList', () => {
 
     const cards = el.querySelectorAll('.entity-card');
     expect(cards.length).toBe(2);
+  });
+
+  it('refetches page 1 with the new page size when the page-size selector changes', () => {
+    create();
+    flushList(
+      Array.from({ length: 10 }, (_, i) => product({ id: String(i) })),
+      25,
+    );
+
+    pickPageSize('20');
+
+    httpMock.expectOne(`${baseUrl}?page=1&pageSize=20`).flush({
+      items: Array.from({ length: 20 }, (_, i) => product({ id: String(i) })),
+      total: 25,
+    });
+    fixture.detectChanges();
+
+    expect(el.querySelectorAll('.entity-card').length).toBe(20);
   });
 
   it('shows the empty state when there are no products', () => {

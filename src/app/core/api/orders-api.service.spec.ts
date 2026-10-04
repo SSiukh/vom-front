@@ -4,7 +4,7 @@ import { TestBed } from '@angular/core/testing';
 import { environment } from '../../../environments/environment';
 import type { CreateOrderPayload } from '../../features/orders/models/order.model';
 import { REQUEST_TIMEOUT_MS } from '../interceptors/request-timeout.interceptor';
-import { OrdersApiService, type OrdersListFilters } from './orders-api.service';
+import { NO_SHIPMENT_STATUS, OrdersApiService, type OrdersListFilters } from './orders-api.service';
 
 describe('OrdersApiService', () => {
   let service: OrdersApiService;
@@ -68,6 +68,7 @@ describe('OrdersApiService', () => {
     dateTo: null,
     productTypeId: null,
     senderId: null,
+    shipmentStatusId: null,
     search: null,
   });
 
@@ -104,6 +105,20 @@ describe('OrdersApiService', () => {
     unfiltered.flush({ items: [], total: 0 });
   });
 
+  it('includes shipmentStatusId when filtering by a real status', () => {
+    service.list(1, 10, { ...noFilters(), shipmentStatusId: 'ss1' }).subscribe();
+    const req = httpMock.expectOne(`${baseUrl}?page=1&pageSize=10&shipmentStatusId=ss1`);
+    expect(req.request.method).toBe('GET');
+    req.flush({ items: [], total: 0 });
+  });
+
+  it('sends the "none" sentinel when filtering for orders without a status', () => {
+    service.list(1, 10, { ...noFilters(), shipmentStatusId: NO_SHIPMENT_STATUS }).subscribe();
+    const req = httpMock.expectOne(`${baseUrl}?page=1&pageSize=10&shipmentStatusId=none`);
+    expect(req.request.params.get('shipmentStatusId')).toBe('none');
+    req.flush({ items: [], total: 0 });
+  });
+
   it('sends search only when it is not empty', () => {
     service.list(1, 10, { ...noFilters(), search: 'Іваненко Іван' }).subscribe();
     const withSearch = httpMock.expectOne(
@@ -120,10 +135,17 @@ describe('OrdersApiService', () => {
 
   it('combines every filter in one request', () => {
     service
-      .list(2, 10, { dateFrom: '2026-01-01', dateTo: '2026-01-31', productTypeId: 't1', senderId: 's1', search: 'ivan' })
+      .list(2, 10, {
+        dateFrom: '2026-01-01',
+        dateTo: '2026-01-31',
+        productTypeId: 't1',
+        senderId: 's1',
+        shipmentStatusId: 'ss1',
+        search: 'ivan',
+      })
       .subscribe();
     const req = httpMock.expectOne(
-      `${baseUrl}?page=2&pageSize=10&dateFrom=2026-01-01&dateTo=2026-01-31&productTypeId=t1&senderId=s1&search=ivan`,
+      `${baseUrl}?page=2&pageSize=10&dateFrom=2026-01-01&dateTo=2026-01-31&productTypeId=t1&senderId=s1&shipmentStatusId=ss1&search=ivan`,
     );
     expect(req.request.method).toBe('GET');
     req.flush({ items: [], total: 0 });

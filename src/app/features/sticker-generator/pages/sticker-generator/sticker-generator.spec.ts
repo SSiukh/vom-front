@@ -4,6 +4,7 @@ import type { GlyphSource } from '../../models/glyph-source.model';
 import { FontLibraryService } from '../../services/font-library.service';
 import { MockupRenderer } from '../../services/mockup-renderer.service';
 import { StickerGenerator } from './sticker-generator';
+import { dropdownLabels, dropdownValue, pickDropdown } from '../../../../shared/ui/dropdown/dropdown-testing';
 
 const GLYPHS: GlyphSource = {
   unitsPerEm: 1000,
@@ -52,18 +53,13 @@ describe('StickerGenerator', () => {
     fixture.detectChanges();
   };
 
-  const setSelect = (id: string, value: string) => {
-    const select = el.querySelector(`#${id}`) as HTMLSelectElement;
-    select.value = value;
-    select.dispatchEvent(new Event('change'));
-    fixture.detectChanges();
-  };
+  const setSelect = (id: string, value: string) => pickDropdown(fixture, id, value);
 
-  const downloadButton = () => el.querySelector('.page-header .btn-primary') as HTMLButtonElement;
+  const downloadButton = () => el.querySelector('.sticker-download-svg') as HTMLButtonElement;
   const svg = () => el.querySelector('.sticker-preview__svg svg') as SVGSVGElement;
   const addButton = () => Array.from(el.querySelectorAll('button')).find((b) => b.textContent?.includes('Додати на фото')) as HTMLButtonElement;
-  const pngButton = () => Array.from(el.querySelectorAll('.page-header button')).find((b) => b.textContent?.includes('PNG')) as HTMLButtonElement;
-  const copyButton = () => Array.from(el.querySelectorAll('.page-header button')).find((b) => /Копіювати|Скопійовано/.test(b.textContent ?? '')) as HTMLButtonElement;
+  const pngButton = () => Array.from(el.querySelectorAll('.sticker-mockup-card button')).find((b) => b.textContent?.includes('PNG')) as HTMLButtonElement;
+  const copyButton = () => Array.from(el.querySelectorAll('.sticker-mockup-card button')).find((b) => /Копіювати|Скопійовано/.test(b.textContent ?? '')) as HTMLButtonElement;
   const mockupItems = () => Array.from(el.querySelectorAll('.mockup-card'));
   const canvas = () => el.querySelector('.mockup-canvas') as HTMLCanvasElement | null;
   const settle = async () => {
@@ -121,26 +117,23 @@ describe('StickerGenerator', () => {
     it('offers the font, icon and size choices', async () => {
       await create();
 
-      const labels = (id: string) =>
-        Array.from(el.querySelectorAll(`#${id} option`)).map((option) => option.textContent?.trim());
-      expect(labels('fontId')).toEqual(['Jua', 'Nunito (кирилиця)']);
-      expect(labels('iconId')).toEqual(['Без іконки', 'Instagram', 'TikTok', 'Telegram', 'Instagram (кольоровий)', 'TikTok (кольоровий)']);
-      expect(labels('presetId')).toEqual(['10 × 2', '13 × 2', '16 × 3', '18 × 4', '20 × 4', '22 × 5', '25 × 5']);
+      expect(dropdownLabels(fixture, 'fontId')).toEqual(['Jua', 'Nunito (кирилиця)']);
+      expect(dropdownLabels(fixture, 'iconId')).toEqual(['Без іконки', 'Instagram', 'TikTok', 'Telegram', 'Instagram (кольоровий)', 'TikTok (кольоровий)']);
+      expect(dropdownLabels(fixture, 'presetId')).toEqual(['10 × 2', '13 × 2', '16 × 3', '18 × 4', '20 × 4', '22 × 5', '25 × 5']);
     });
 
     it('offers the five content scales and starts on M', async () => {
       await create();
 
-      const labels = Array.from(el.querySelectorAll('#contentScaleId option')).map((option) => option.textContent?.trim());
-      expect(labels).toEqual(['XS', 'S', 'M', 'L', 'XL']);
-      expect((el.querySelector('#contentScaleId') as HTMLSelectElement).value).toBe('m');
+      expect(dropdownLabels(fixture, 'contentScaleId')).toEqual(['XS', 'S', 'M', 'L', 'XL']);
+      expect(dropdownValue(fixture, 'contentScaleId')).toBe('m');
     });
 
     it('starts with Instagram, the 18 x 4 size and white artwork on a black background', async () => {
       await create();
 
-      expect((el.querySelector('#iconId') as HTMLSelectElement).value).toBe('instagram');
-      expect((el.querySelector('#presetId') as HTMLSelectElement).value).toBe('18x4');
+      expect(dropdownValue(fixture, 'iconId')).toBe('instagram');
+      expect(dropdownValue(fixture, 'presetId')).toBe('18x4');
       expect((el.querySelector('#background') as HTMLInputElement).value).toBe('#000000');
       expect((el.querySelector('#artwork') as HTMLInputElement).value).toBe('#ffffff');
     });
@@ -483,7 +476,7 @@ describe('StickerGenerator', () => {
     it('starts empty, without a canvas, and with the PNG download blocked', async () => {
       await create();
 
-      expect(el.querySelector('.mockup-panel .field-label')?.textContent?.trim()).toBe('Макет на фото (0 / 5)');
+      expect(el.querySelector('.sticker-mockup-card .field-label')?.textContent?.trim()).toBe('Макет');
       expect(canvas()).toBeNull();
       expect(pngButton().disabled).toBe(true);
       expect(render).not.toHaveBeenCalled();
@@ -496,7 +489,7 @@ describe('StickerGenerator', () => {
 
       expect(mockupItems()).toHaveLength(1);
       expect(mockupItems()[0]?.textContent).toContain('username · 18 × 4');
-      expect(el.querySelector('.mockup-panel .field-label')?.textContent?.trim()).toBe('Макет на фото (1 / 5)');
+      expect(el.querySelector('.sticker-mockup-card .field-label')?.textContent?.trim()).toBe('Макет');
       expect(canvas()).not.toBeNull();
       expect(render).toHaveBeenCalledTimes(1);
       const [target, stickers] = render.mock.calls[0] as [HTMLCanvasElement, { presetWidth: number; presetHeight: number; fileName: string }[]];
@@ -619,7 +612,7 @@ describe('StickerGenerator', () => {
       await new Promise((resolve) => setTimeout(resolve));
       await settle();
 
-      expect(el.querySelector('.mockup-panel .error-text')?.textContent?.trim()).toBe('Не вдалося зібрати макет на фото');
+      expect(el.querySelector('.sticker-mockup-card .error-text')?.textContent?.trim()).toBe('Не вдалося зібрати макет на фото');
       expect(pngButton().disabled).toBe(true);
     });
 
@@ -631,7 +624,7 @@ describe('StickerGenerator', () => {
       pngButton().click();
       await settle();
 
-      expect(el.querySelector('.mockup-panel .error-text')?.textContent?.trim()).toBe('Не вдалося створити PNG');
+      expect(el.querySelector('.sticker-mockup-card .error-text')?.textContent?.trim()).toBe('Не вдалося створити PNG');
       expect(createObjectURL).not.toHaveBeenCalled();
     });
 
@@ -646,7 +639,7 @@ describe('StickerGenerator', () => {
       pngButton().click();
       await settle();
 
-      expect(el.querySelector('.mockup-panel .error-text')).toBeNull();
+      expect(el.querySelector('.sticker-mockup-card .error-text')).toBeNull();
       expect(clickedAnchors[0]?.download).toBe('sticker-mockup.png');
     });
   });
@@ -723,7 +716,7 @@ describe('StickerGenerator', () => {
       await new Promise((resolve) => setTimeout(resolve));
       await settle();
 
-      expect(el.querySelector('.mockup-panel .error-text')?.textContent?.trim()).toBe('Не вдалося скопіювати зображення');
+      expect(el.querySelector('.sticker-mockup-card .error-text')?.textContent?.trim()).toBe('Не вдалося скопіювати зображення');
       expect(copyButton().textContent).toContain('Копіювати макет');
     });
 

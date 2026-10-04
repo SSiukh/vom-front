@@ -1,0 +1,275 @@
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Брелки</h1>
+    <div class="page-subtitle">Макети брелків із фото, марки й тексту</div>
+  </div>
+</div>
+
+<div class="keychain-layout">
+  <form class="keychain-form" [formGroup]="form">
+    <section class="form-panel keychain-card keychain-card--general">
+      <h2 class="keychain-card__title">Брелок</h2>
+
+      <div class="field">
+        <label class="field-label" for="keychainFamilyId">Тип брелка</label>
+        <app-dropdown
+          triggerId="keychainFamilyId"
+          [value]="keychainType().family"
+          (valueChange)="onFamilyChange($event)"
+          [options]="keychainFamilyOptions"
+        />
+      </div>
+      <div class="field">
+        <label class="field-label" for="keychainTypeId">Підвид брелка</label>
+        <app-dropdown
+          triggerId="keychainTypeId"
+          formControlName="keychainTypeId"
+          [options]="keychainSubtypeOptions()"
+        />
+      </div>
+
+      <div class="field">
+        <span class="field-label">Дизайн</span>
+        <div class="keychain-designs" role="radiogroup" aria-label="Дизайн брелка">
+          @for (design of groupDesigns(); track design.id; let index = $index) {
+            <button
+              type="button"
+              class="keychain-design"
+              role="radio"
+              [attr.aria-label]="'Дизайн ' + (index + 1)"
+              [class.keychain-design--active]="design.id === selectedDesign().id"
+              [attr.aria-checked]="design.id === selectedDesign().id"
+              (click)="selectDesign(design.id)"
+            >
+              <img class="keychain-design__image" [src]="design.imageUrl" alt="" />
+            </button>
+          }
+        </div>
+      </div>
+    </section>
+
+    @if (photoEnabled()) {
+      <section class="form-panel keychain-card keychain-card--photo">
+        <h2 class="keychain-card__title">Зображення</h2>
+
+        <div class="field">
+          <span class="field-label">Фото</span>
+          <label
+            class="keychain-dropzone"
+            [class.keychain-dropzone--active]="dragging()"
+            for="photo"
+            (dragover)="onDragOver($event)"
+            (dragleave)="onDragLeave()"
+            (drop)="onDrop($event)"
+          >
+            <svg lucideUpload [size]="24" [strokeWidth]="1.5"></svg>
+            <span class="keychain-dropzone__title">Перетягніть фото сюди</span>
+            <span class="keychain-dropzone__hint"
+              >або натисніть, щоб обрати файл · PNG, JPG, WebP до 10 МБ</span
+            >
+            <input
+              id="photo"
+              type="file"
+              class="keychain-dropzone__input"
+              [accept]="acceptedPhotoTypes"
+              (change)="selectPhoto($event)"
+            />
+          </label>
+          @if (photoError()) {
+            <div class="error-text" role="alert">{{ photoError() }}</div>
+          }
+          @if (photoUrl(); as url) {
+            <div class="keychain-photo">
+              <img class="keychain-photo__image" [src]="url" alt="Завантажене фото" />
+              <span class="keychain-photo__name">{{ photo()?.name }}</span>
+              <button
+                type="button"
+                class="btn-outline-danger"
+                aria-label="Прибрати фото"
+                (click)="removePhoto()"
+              >
+                <svg lucideTrash2 [size]="14" [strokeWidth]="1.5"></svg>
+              </button>
+            </div>
+            @if (tracing()) {
+              <div class="loading-text" role="status">Обробка фото…</div>
+            } @else if (traceError()) {
+              <div class="error-text" role="alert">{{ traceError() }}</div>
+            } @else {
+              <div class="keychain-hint">Фото оброблено й додано до малюнка.</div>
+            }
+          } @else {
+            <div class="keychain-hint">Зазвичай чорно-біле фото, яке піде на трасування.</div>
+          }
+          <button
+            type="button"
+            class="btn-ghost"
+            aria-label="Зображення з Gemini, відкриється у новій вкладці"
+            [attr.aria-describedby]="geminiError() ? 'gemini-error' : null"
+            (click)="openGeminiPhoto()"
+          >
+            Зображення з Gemini
+          </button>
+          @if (geminiError()) {
+            <div id="gemini-error" class="error-text" role="alert">{{ geminiError() }}</div>
+          }
+        </div>
+
+        <div class="field">
+          <label class="field-label" for="photoScaleId">Розмір зображення</label>
+          <app-dropdown
+            triggerId="photoScaleId"
+            formControlName="photoScaleId"
+            [options]="imageScaleOptions"
+          />
+        </div>
+      </section>
+    }
+
+    @if (markEnabled()) {
+      <section class="form-panel keychain-card keychain-card--mark">
+        <h2 class="keychain-card__title">Марка</h2>
+
+        <div class="field">
+          <label class="field-label" for="markId">Оберіть марку</label>
+          <app-dropdown triggerId="markId" formControlName="markId" [options]="markOptions" />
+          @if (markLoading()) {
+            <div class="loading-text" role="status">Завантаження марки…</div>
+          }
+          @if (markError()) {
+            <div class="error-text" role="alert">{{ markError() }}</div>
+          }
+        </div>
+
+        @if (markVariantOptions().length > 1) {
+          <div class="field">
+            <label class="field-label" for="markVariantId">Тип марки</label>
+            <app-dropdown
+              triggerId="markVariantId"
+              formControlName="markVariantId"
+              [options]="markVariantOptions()"
+            />
+          </div>
+        }
+
+        @if (markSlots().length > 1) {
+          <div class="field">
+            <label class="field-label" for="markZoneId">Вивести у зону</label>
+            <app-dropdown
+              triggerId="markZoneId"
+              [value]="resolvedMarkSlotId()"
+              (valueChange)="onMarkZoneChange($event)"
+              [options]="slotOptions(markSlots())"
+            />
+          </div>
+        }
+
+        <div class="field">
+          <label class="field-label" for="markScaleId">Розмір марки</label>
+          <app-dropdown
+            triggerId="markScaleId"
+            formControlName="markScaleId"
+            [options]="imageScaleOptions"
+          />
+        </div>
+      </section>
+    }
+
+    @if (textEnabled()) {
+      <section class="form-panel keychain-card keychain-card--text">
+        <h2 class="keychain-card__title">Текст</h2>
+
+        <div class="field">
+          <label class="field-label" for="text">Напис</label>
+          <input
+            id="text"
+            type="text"
+            class="text-input"
+            formControlName="text"
+            autocomplete="off"
+            [attr.maxlength]="maxTextLength"
+          />
+          @if (missingCharacters().length > 0) {
+            <div class="error-text" role="alert">
+              У цьому шрифті немає символів: {{ missingCharacters().join(' ') }}. Приберіть їх або
+              оберіть інший шрифт.
+            </div>
+          }
+        </div>
+
+        <div class="field">
+          <label class="field-label" for="fontId">Шрифт</label>
+          <app-dropdown triggerId="fontId" formControlName="fontId" [options]="fontOptions" />
+          @if (fontError()) {
+            <div class="error-text" role="alert">{{ fontError() }}</div>
+          }
+        </div>
+
+        <div class="field">
+          <label class="field-label" for="textScaleId">Розмір тексту</label>
+          <app-dropdown
+            triggerId="textScaleId"
+            formControlName="textScaleId"
+            [options]="textScaleOptions"
+          />
+        </div>
+
+        @if (textSlots().length > 1) {
+          <div class="field">
+            <label class="field-label" for="textZoneId">Вивести у зону</label>
+            <app-dropdown
+              triggerId="textZoneId"
+              [value]="resolvedTextSlotId()"
+              (valueChange)="onTextZoneChange($event)"
+              [options]="slotOptions(textSlots())"
+            />
+          </div>
+        }
+      </section>
+    }
+  </form>
+
+  <div class="info-panel keychain-previews">
+    <div class="keychain-previews__header">
+      <span class="field-label">Макет</span>
+      <div class="keychain-actions">
+        <button type="button" class="btn-primary" [disabled]="!canExport()" (click)="downloadPng()">
+          <svg lucideDownload [size]="14" [strokeWidth]="1.5"></svg>
+          Завантажити PNG
+        </button>
+        <button type="button" class="btn-primary" [disabled]="!canExport()" (click)="copyPng()">
+          @if (copied()) {
+            <svg lucideCheck [size]="14" [strokeWidth]="1.5"></svg>
+            Скопійовано
+          } @else {
+            <svg lucideCopy [size]="14" [strokeWidth]="1.5"></svg>
+            Копіювати
+          }
+        </button>
+        <button
+          type="button"
+          class="btn-primary"
+          [disabled]="!hasArtwork()"
+          (click)="downloadSvg()"
+        >
+          <svg lucideDownload [size]="14" [strokeWidth]="1.5"></svg>
+          Завантажити SVG
+        </button>
+      </div>
+    </div>
+    @if (renderError() || actionError()) {
+      <div class="error-text" role="alert">{{ renderError() || actionError() }}</div>
+    }
+    <div class="keychain-canvas-wrap">
+      <canvas
+        #previewCanvas
+        class="keychain-canvas"
+        role="img"
+        [attr.aria-label]="'Макет брелка: ' + keychainType().label"
+      ></canvas>
+      @if (rendering()) {
+        <div class="keychain-loading" role="status">Збираємо макет…</div>
+      }
+    </div>
+  </div>
+</div>

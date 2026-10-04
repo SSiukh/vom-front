@@ -5,6 +5,7 @@ import { provideCharts, withDefaultRegisterables } from 'ng2-charts';
 import { environment } from '../../../../../environments/environment';
 import { DictionariesService } from '../../../../core/dictionaries/dictionaries.service';
 import { Dashboard } from './dashboard';
+import { pickDate } from '../../../../shared/ui/date-picker/date-picker-testing';
 
 describe('Dashboard', () => {
   let fixture: ComponentFixture<Dashboard>;
@@ -212,13 +213,11 @@ describe('Dashboard', () => {
     create();
     flush();
 
-    const [fromInput, toInput] = Array.from(el.querySelectorAll('input[type="date"]')) as HTMLInputElement[];
-    fromInput.value = '2026-08-01';
-    fromInput.dispatchEvent(new Event('change'));
+    
+    pickDate(fixture, 'date-from', '2026-08-01');
     flush({}, `${baseUrl}?dateFrom=2026-08-01`);
 
-    toInput.value = '2026-08-22';
-    toInput.dispatchEvent(new Event('change'));
+    pickDate(fixture, 'date-to', '2026-08-22');
     flush({}, `${baseUrl}?dateFrom=2026-08-01&dateTo=2026-08-22`);
   });
 

@@ -29,25 +29,30 @@
   color: var(--color-text-meta);
 }
 
-.sticker-add {
-  align-self: flex-start;
-}
-
 .sticker-warning {
   font-size: 12.5px;
   color: var(--color-warning-text);
 }
 
-.mockup-panel {
-  margin-top: 16px;
+.sticker-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.sticker-mockup-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .mockup-layout {
   display: grid;
-  grid-template-columns: minmax(0, 420px) minmax(220px, 340px);
+  grid-template-columns: minmax(240px, 360px) minmax(0, 1fr);
   gap: 16px;
   align-items: start;
-  margin-top: 10px;
 }
 
 .mockup-canvas {

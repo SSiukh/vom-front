@@ -26,6 +26,7 @@ import type { CreateOrderPayload } from '../../models/order.model';
 import { buildOrderItemPayload, createOrderItemFormGroup } from '../../order-item-form.util';
 import { OrderItemCard, type OrderItemFormGroup } from './order-item-card/order-item-card';
 import { computeItemSubtotal } from './order-item-subtotal.util';
+import { Dropdown, dictionaryOptions, type DropdownOption } from '../../../../shared/ui/dropdown/dropdown';
 
 type WizardStep = 1 | 2;
 type DeliveryMethod = 'warehouse' | 'postomat';
@@ -43,7 +44,7 @@ type DeliveryMethod = 'warehouse' | 'postomat';
     LucideBuilding,
     LucideLock,
     LucideTriangleAlert,
-    LucideX,
+    LucideX, Dropdown,
   ],
   templateUrl: './orders-create.html',
   styleUrl: './orders-create.css',
@@ -54,6 +55,14 @@ export class OrdersCreate {
   private readonly sendersApi = inject(SendersApiService);
   private readonly novaPoshtaApi = inject(NovaPoshtaApiService);
   protected readonly dictionaries = inject(DictionariesService);
+  protected readonly shipmentTypeOptions = computed<DropdownOption[]>(() => [
+    { value: '', label: 'Оберіть тип', disabled: true },
+    ...dictionaryOptions(this.dictionaries.shipmentTypes()),
+  ]);
+  protected readonly paymentTypeOptions = computed<DropdownOption[]>(() => [
+    { value: '', label: 'Оберіть тип оплати', disabled: true },
+    ...dictionaryOptions(this.dictionaries.paymentTypes()),
+  ]);
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
 

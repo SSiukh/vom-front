@@ -1734,6 +1734,34 @@ are read-only views built last since they aggregate everything else).
       3-digit shorthand expands on change/blur, invalid text reverts).
       Reviewed: no blockers; the two actionable nits fixed.
 
+## Done — keychain mock-ups page, base interface (2026-09-20)
+
+- [x] **New sidebar tab "Брелки" + page `/keychains` (feature
+      `features/keychain-mockups`), base interface only.**
+      Requested by the user; more than a raster→SVG converter — the page
+      will build keychain (брелок) mock-ups, all on the frontend. Details
+      (keychain types, styles, tracing, mock-up rendering) come later; this
+      pass reserves the page and builds the UI shell only.
+      Layout: form on the left, previews on the right.
+      Left form: photo upload (usually black-and-white, later traced),
+      keychain-type select, optional logo select (reuses the sticker
+      generator's Instagram/TikTok/Telegram icons), text input, font select
+      (reuses the sticker fonts), and a reserved block for mock-up styles.
+      Right: preview area for several mock-ups (one per style) with reserved
+      download / copy actions, plus a reserved SVG-download block below the
+      previews.
+      Decisions taken without the user (to confirm): route `/keychains`,
+      label "Брелки", Lucide `KeyRound` icon, photo limit PNG/JPEG/WebP up to
+      10 MB, text limit 40 chars, single text field, keychain types and
+      styles left EMPTY (not invented), fonts/icons imported from the
+      sticker-generator feature (cross-feature import — a move to `shared/`
+      is an open structural question).
+      Not built yet (by design): tracing (potrace, `esm-potrace-wasm`,
+      GPL accepted — see `.claude/artifacts/trace-test/`), mock-up
+      rendering, real download/copy, styles.
+      Skill: `.claude/skills/keychain-mockups/SKILL.md` (update after the
+      user's clarifications).
+
 ## Done — sender warning on order creation step 1 (2026-09-25)
 
 - [x] **Order creation, step 1 ("Відправлення"): show a warning that the
@@ -1795,6 +1823,310 @@ are read-only views built last since they aggregate everything else).
       Reviewed: no blockers; two should-fix fixed (reset now cancels a pending
       debounce; list loads cancel the previous in-flight request via
       unsubscribe so late answers cannot overwrite newer ones).
+
+## Done — keychain mock-ups: real generator (2026-09-26)
+
+- [x] **`/keychains` — from UI shell to a working generator.**
+      Material in `.claude/artifacts/keychains-assets/` (13 keychain photos →
+      `public/keychains/*.jpg` 1512x2016, 36 brand marks →
+      `public/marks/*.svg`, `example-result.svg`, `result-example.png`).
+      Decisions with the user: photos/marks are served from the app itself
+      (Vercel static, Cloudinary not needed now); the uploaded photo never
+      leaves the browser; fonts = the two sticker fonts (Jua, Nunito);
+      the artwork can be a traced photo, a mark, or both, plus optional
+      text (default order photo → mark → text, centred; final layouts come
+      later); potrace (`esm-potrace-wasm`, GPL accepted) on the main thread
+      (measured ~20 ms for 1134x1060, no Worker needed yet).
+      Pipeline: photo → threshold + crop to ink + 2x-style upscale (pure JS)
+      → potrace → absolute `M L C Z` path → `layoutArtwork` into the type's
+      print area → canvas (base photo + artwork, `multiply` for dark ink) →
+      PNG download/copy; artwork SVG download (1 unit = 1 px of the full-size
+      3024x4032 photo, like the user's example).
+      Decisions taken without the user (to confirm): print areas were
+      measured by hand from the photos (approximate rectangles); default ink
+      = white on the three dark bases, near-black otherwise; layout ratios
+      (photo ≤ 62 %, mark ≤ 22 % of the area height when combined); mark
+      labels corrected (Kawasaki, Mustang), `kaya`/`rottor` kept as named.
+      Reviewed: no blockers; fixed even-odd marks (Benelli, Loncin), serialised
+      trace runs, exponent numbers in potrace output, defs/clipPath paths
+      ignored. Accepted for now: cross-feature imports from sticker-generator
+      (a move to `shared/` is a separate refactor), 13 MB of JPEGs.
+
+## Done — keychains: fixed ink, 90° rotation, scale XS–XL (2026-09-27)
+
+- [x] **Keychain page changes requested by the user.**
+      (1) No ink-colour control: the colour comes from the keychain type —
+      black metal: white; other metals: black; leather and eco-leather:
+      medium brown `#6f4a2b` (user's pick); the two black leather bases get
+      the brown drawn over the photo (`source-over`), the rest is
+      multiplied. (2) Text and mark can be laid out horizontally (as now) or
+      rotated 90° counter-clockwise along the keychain (user's pick over
+      "stack vs side by side"); in vertical mode the photo stays upright in
+      the top half and the rotated mark + text fill the bottom half.
+      (3) Scale XS/S/M/L/XL for the whole artwork (same factors as the
+      stickers, default M), clamped to the print area.
+
+## Done — keychain photo drop zone (2026-09-27)
+
+- [x] **Larger photo picker with drag-and-drop** on `/keychains`
+      (`.keychain-dropzone`; the same validation/tracing path as the file
+      dialog; highlight while dragging; keyboard accessible). Verified in a
+      real browser with a synthetic `DataTransfer` drop.
+
+## Done — keychains: rotation direction + exact centring (2026-09-27)
+
+- [x] **User feedback from a screenshot of the white tag.** (1) Rotation must
+      be −90° (clockwise, text reads top to bottom); my first version was
+      counter-clockwise. With the flip the mark goes on the left and the
+      text on the right. (2) The artwork sits low on the tag: the hand-drawn
+      print areas were approximate. Re-measure every keychain's real surface
+      (flood fill + row/column occupancy to ignore chain, ring and tab),
+      centre the print area on it, and check each of the 13 with an overlay.
+      Done: clockwise rotation (mark left, text right, text reads top to
+      bottom); all 13 print areas re-centred on the real surface and checked
+      by overlay and in the browser (horizontal and vertical, every type).
+
+## Done — keychains: flicker fix + larger scales, default L (2026-09-27)
+
+- [x] **(1) The mock-up "blinks" when the type changes.** Causes: the
+      "Збираємо макет…" line and the disabled buttons toggle on every render
+      (layout shift), and the canvas is re-sized (cleared) on every draw.
+      Fix: resize only when the photo size differs, show the busy state only
+      if a render takes longer than ~150 ms, and show it as an overlay so the
+      layout never jumps. (2) Keychain-specific scales, all larger than the
+      sticker ones: XS 0.8, S 1.0, M 1.15, L 1.3 (default), XL 1.5 (user:
+      "a bit bigger for all values, L as the standard").
+      Also: all 13 print areas enlarged (the artwork cannot outgrow its
+      area), default scale L; verified in the browser (no layout shift or
+      blank frames).
+
+## Done — keychains: text size control (2026-09-27)
+
+- [x] **Separate text size XS–XL** (user: "font size must also be changeable").
+      Multiplies only the text block (0.6 / 0.8 / 1 / 1.3 / 1.6, default M =
+      current size), clamped to the area edge so a bigger text never forces
+      the mark or the photo to shrink for width; works in both orientations.
+
+## Done — keychains: smaller text sizes + settings in separate cards (2026-09-27)
+
+- [x] Text size factors lowered to 0.4 / 0.55 / 0.7 (default M) / 0.85 / 1;
+      the left column is now four cards (Брелок, Зображення, Марка,
+      Текст) inside one form; verified in the browser.
+
+## Done — keychains: per-block scale and orientation (2026-09-27)
+
+- [x] **Scale and orientation set separately for the image, the mark and
+      the text** (user; the overall scale in the "Брелок" card is removed).
+      Layout model: every block has its own factor and its own rotation
+      (0 / −90°). Upright blocks stack top to bottom; rotated blocks stand
+      side by side in a rotated frame; when both kinds exist the upright
+      stack takes the top half and the rotated row the bottom half (as
+      before). Per-block factors clamp to the area width, the stack shrinks
+      uniformly if too tall; limits relax to the area edge whenever some
+      factor > 1. Defaults keep the current look: image and mark L (1.3),
+      text M (0.91 = 0.7 × 1.3).
+
+## Done — marks reorganised by brand into icon/text/combined (2026-09-27)
+
+- [x] **`public/marks/<id>/` per brand**, replacing the flat `public/marks/<id>.svg`.
+      Each brand folder holds whichever of `icon.svg` / `text.svg` /
+      `combined.svg` its source artwork actually supports — nothing
+      invented. Of the 36 marks: 19 already had icon+text combined in one
+      file — split by hand (path-by-path, verified with numbered-overlay
+      renders and a side-by-side icon/blue-text check) into all three files;
+      4 were icon-only and 13 text-only — kept as their one existing file,
+      no fabricated second part; 2 (Loncin, Zonsen) turned out to be a
+      single fused path (icon and letters merged into one contour) that
+      cannot be safely split without redrawing — kept as `combined.svg`
+      only.
+      Found and fixed one bug while splitting: the first generator baked
+      each group's offset as an SVG `transform="translate()"` attribute,
+      which browsers render correctly but `parseMarkSvg` (used by the app)
+      ignores — silently misplacing/cropping the traced-out group. Fixed by
+      baking the translation into the path `d` data itself; re-verified all
+      17 split marks through the real app pipeline (not just standalone
+      SVG) after the fix.
+      Data: `KeychainMark.variants: Partial<Record<'icon'|'text'|'combined', string>>`
+      replaces the single `url`; `MarkLibrary.load(mark, variant)` caches
+      per mark+variant; new `utils/mark-variants.ts`
+      (`availableVariants`/`defaultVariant`/`MARK_VARIANT_LABELS`). Page:
+      a "Вигляд марки" select appears only when a mark has more than one
+      variant, defaulting to combined > icon > text; switching marks keeps
+      the current variant if the new mark has it, otherwise falls back to
+      that mark's default.
+      17 icon-only/text-only marks the user could supply the missing part
+      for (not needed, purely optional): icon needed for Benelli, BSE,
+      Fendt, Forte, Forte (2), Kawasaki, Kaya, KTM, Mustang (2), Rottor,
+      Tekken, Touareg, Viper; text needed for BMW, Kovi, Opel, Yamaha (3).
+## Done — mobile-responsive layout pass (2026-09-28)
+
+- [x] **Mobile-responsive layout pass.** Optimized every existing page for
+      phone widths (baseline 375px), while keeping desktop/laptop layout
+      pixel-identical to before. Verified page by page against the local
+      dev server via Playwright, at 375px and at several intermediate
+      widths to confirm genuinely gradual (not binary) scaling.
+      **Sidebar:** below 500px it opens as a full-viewport fixed overlay
+      (`sidebar.css`, `@media (max-width: 499px)`) instead of pushing
+      content; `LayoutStateService` now defaults the sidebar to collapsed
+      on construction when `window.innerWidth < MOBILE_NAV_BREAKPOINT_PX`
+      (500, exported as a named constant) so phones land on a collapsed
+      rail rather than an open overlay on first paint. The CSS breakpoint
+      and the TS constant must both mean strictly "< 500" — a first
+      reviewer pass caught a boundary mismatch (`max-width: 500px` in CSS
+      vs `< 500` in TS) that made the sidebar render as a full overlay at
+      exactly 500px even though the signal said "expanded"; fixed by
+      changing the CSS to `max-width: 499px` and added a regression spec
+      (`'starts expanded exactly at the breakpoint'`, `innerWidth = 500`).
+      **Tables:** `.data-table-wrapper` switched from `overflow: hidden`
+      to `overflow-x: auto` with `.data-table { min-width: 640px }`, so
+      every existing table scrolls horizontally on narrow screens instead
+      of crushing columns or reflowing into cards, per the user's explicit
+      choice.
+      **Grids:** every two/three/four-column layout (orders
+      create/edit/detail wizards and info panels, dashboard metric/chart
+      grids, product/order item-card field grids, 2FA recovery-code grid,
+      global `.form-grid-2`/`.form-grid-3`) gets a progressive collapse
+      across breakpoints (800px/560px/480px/420px depending on the
+      layout's own content). **Key technical pattern, worth remembering
+      for any future responsive grid work in this codebase:** a bare
+      `1fr` track has an implicit min-width of `auto` (min-content), so a
+      wide descendant (a table, an unbroken string) forces the whole grid
+      to overflow instead of shrinking — the actual fix is
+      `minmax(0, 1fr)`, not `1fr`, in every mobile-collapse rule. Self-
+      diagnosed mid-pass (via `getComputedStyle` showing a track that had
+      silently grown instead of collapsing) and applied everywhere; a
+      first reviewer pass still caught one bare `1fr` left behind in
+      `styles.css`'s global `.form-grid-2`/`.form-grid-3` collapse
+      (affecting every single-column mobile form app-wide — Products,
+      Expenses, Senders, dictionaries) — fixed.
+      **Other fixes:** dialogs (`.dialog-overlay`/`.dialog-card`) get
+      mobile padding/`max-width: 100%`; `.page-header`/`.pagination` wrap
+      on narrow widths; the 2FA page (which sits outside the main
+      Shell/sidebar layout) got its own separate padding/width/stacking
+      fixes since it wasn't covered by the shell-wide changes.
+      Reviewed twice by `reviewer`. First pass found 3 should-fix items:
+      the bare-`1fr` leftover above; the 500px sidebar boundary mismatch
+      above; and a `.code-cell` (2FA code-entry boxes) `flex`/`max-width`
+      rule that had been added to the unscoped base selector instead of a
+      mobile-only media query, which grew all 6 code boxes wider on
+      desktop too, violating the "desktop unchanged" requirement — moved
+      into the existing `@media (max-width: 480px)` block. Also tightened
+      a small cluster of edits that had added mobile-only properties
+      (`gap`, `flex-wrap`) to unscoped base rules (`.page-header`,
+      `.pagination` in global `styles.css`) even though they were
+      currently visually inert on desktop, purely to remove any doubt
+      against the explicit "desktop stays exactly as-is" requirement.
+      Second pass confirmed all fixes correct, independently re-ran the
+      full regression suite rather than trusting the first pass's
+      numbers, and found one final formatting nit (missing space in
+      `minmax(0,1fr)`) — fixed. 1039/1039 tests passing, clean
+      typecheck/lint/build (only the pre-existing, unrelated initial-
+      bundle-size warning remains, ~541.9kB vs the 500kB warning
+      threshold — not caused by or touched in this pass).
+
+## Done — sticker generator merge + products/dashboard mobile tidy-up (2026-09-28)
+
+- [x] **Sticker generator — merge preview and mockup-on-photo into one
+      card.** The `/stickers` page had a preview card, then a separate
+      full-page-width "mockup on photo" block below it, with the three
+      main action buttons (SVG download, PNG download, copy mockup) all
+      sitting far away in the top page-header. Restructured into a
+      single `.info-panel` card holding both sections (preview on top,
+      mockup-on-photo below, separated by a border-top divider matching
+      the existing `.recovery-section` divider idiom already used in
+      `two-fa.css`), moved each action button to sit next to what it
+      actually acts on (SVG download next to the preview's own label,
+      PNG-download/copy-mockup next to the mockup section's own label),
+      and widened the mockup's photo/list grid (`minmax(0, 1fr)
+      minmax(240px, 360px)`, was a hard-capped `420px` photo column) now
+      that it only spans the card's own width rather than the full page.
+      Reused the page's existing `@media (max-width: 800px)` single-
+      column collapse as-is — already correct for the new merged
+      structure. Purely template/CSS/spec-selector work, no component
+      logic touched. Reviewed once — clean, no findings (confirmed the
+      divider spacing math, the widened grid can't regress at any
+      intermediate width since its first track is `minmax(0, 1fr)`, and
+      the relocated buttons' spec selectors can't collide with the
+      per-sticker-card "SVG" button text). 1039/1039 tests passing,
+      clean typecheck/lint/build.
+- [x] **Products filters + Dashboard metric cards — mobile tidy-up.**
+      User feedback from real usage of the mobile-responsive pass above:
+      Products' filter row looked scattered on phones (the stock-sort
+      segmented control — За замовчуванням/Зростання/Спадання — didn't
+      fit one line at 375px and wrapped with one button orphaned alone
+      on its own row), and Dashboard's 4 metric cards used an awkward
+      2-column middle tier between 480–800px that the user wanted
+      collapsed straight to one column instead.
+      **Products** (`products-list.css`, page-scoped, doesn't touch the
+      global `.filters-row`/`.segmented-control` classes or any other
+      page that shares them — Angular's view encapsulation scopes a
+      page's own `.css` file to only that page's own template elements):
+      at `max-width: 560px`, `.filters-row` switches to a stacked column
+      (`align-items: stretch`) so the search field and the sort control
+      each become full-width instead of floating at their own natural
+      size — the type-filter segmented control keeps its compact
+      `width: fit-content` unaffected, since that one already looked
+      fine and wasn't part of the complaint; the sort segmented control
+      (marked with a new `.sort-control` modifier class) stacks into
+      full-width buttons, one per row, instead of wrapping unevenly.
+      **Dashboard** (`dashboard.css`): `.metric-grid`'s separate
+      480px/800px two-tier collapse merged into one `max-width: 800px`
+      rule straight to `minmax(0, 1fr)` (single column) — matches the
+      user's explicit "зробити в стовпчик" ask; `.chart-grid`/
+      `.donut-row` and the filters above the cards were left untouched
+      (not part of the complaint, user confirmed "все інше наче ок").
+      Verified live via Playwright at several widths (375/430/560/700
+      for Products, 375/600/800/900 for Dashboard): no horizontal
+      overflow at any width, Products' filters now form a clean vertical
+      rhythm on phones with the desktop layout (>560px) pixel-identical
+      to before, Dashboard's cards stay single-column and fully legible
+      all the way up to 800px then correctly return to 4 columns above
+      it. 1039/1039 tests passing, clean typecheck/lint/build.
+      **Follow-up in the same batch:** user also flagged the search
+      field on the Products page sitting visually uneven against the
+      sort control next to it on desktop — root cause: the shared
+      `app-search-input` component (used by Orders/CRM) already has
+      `:host { align-self: flex-end }` specifically so a labelless
+      search box lines up with a labelled sibling like `.date-field`
+      (label above control) in the same `.filters-row`; Products uses
+      its own raw `.search-field` markup instead of that shared
+      component and was missing the same rule. Added
+      `align-self: flex-end` to `.search-field` in `products-list.css`,
+      matching the existing convention exactly rather than inventing a
+      new one. A second `reviewer` pass on just this follow-up then
+      caught a real gap in the fix by re-deriving the same box-model
+      math: the third element in the same row — the type-filter
+      `.segmented-control` (Усі/Брелок/Наклейка) — is exactly as short
+      as the search field and was left centering against the taller
+      `.date-field` too, un-fixed; confirmed live (bottom edge at y=155
+      vs. the other two at y=164, a real 9px mismatch, not just a
+      theoretical one). Fixed the same way, scoped to
+      `.filters-row > .segmented-control` (the `>` combinator
+      deliberately excludes the nested sort-control's own
+      `.segmented-control.sort-control`, which sits one level deeper
+      inside `.date-field` and needs no such fix). Both new rules get a
+      mobile-block counterpart resetting `align-self` back to
+      `flex-start` (type filter) since `align-self` governs the
+      opposite axis once `.filters-row` becomes a stacked column at
+      `max-width: 560px` — without the reset the pills would have
+      right-aligned themselves instead of stacking flush left like
+      every other stacked group. Also dropped the `align-self: stretch`
+      the first pass had added to the search field's own mobile block,
+      per the same review's finding that it was fully redundant next to
+      the already-present `width: 100%` there. Verified live — all
+      three filter groups (type filter, search field, sort control) now
+      share an exact bottom-edge pixel match on desktop (y=164 in a
+      1280px-wide check, matching how Orders/CRM already look), mobile
+      stacked layout re-confirmed unaffected at 375/430/560/700px (no
+      overflow, type filter stays left-aligned, not pushed right).
+      Reviewed three times total across this whole batch (twice on the
+      original mobile-tidy-up work, once more on this alignment
+      follow-up, which itself needed one fix-and-reverify round) — final
+      state clean. 1039/1039 tests passing, clean typecheck/lint/build
+      (ran the full `ng build`, not just lint/test, before closing this
+      out, per the second review's should-fix note that a full build
+      re-run is the project's actual standard, not optional for a
+      low-risk change).
 
 ## Done — fix: order wizard's product search only searched the first 100 (2026-09-30)
 
@@ -1862,3 +2194,411 @@ are read-only views built last since they aggregate everything else).
       smaller than the `feat/keychain-mockup-generator` branch's count
       since that branch's work is committed there, not on `main`), clean
       typecheck/lint/build.
+
+## Done — configurable page size on every paginated list (2026-10-03)
+
+- [x] **Page-size selector (10/15/20/30/50, default 10) on every list page
+      that supports pagination** — Senders, Products, Expenses, Orders,
+      CRM (the 5 pages using the shared `app-pagination` component).
+      **No backend changes needed** — checked all 5 real `vom-back`
+      `List*QueryDto`s (`senders`/`products`/`expenses`/`orders`/`crm`):
+      every one already validates `pageSize` with `@Max(100)`, so the
+      full requested range (up to 50) was already accepted; the frontend
+      had simply never offered anything but a hardcoded `10`.
+      **Shared `Pagination` component** (`shared/ui/pagination/`): added
+      `PAGE_SIZE_OPTIONS`/`DEFAULT_PAGE_SIZE` exports, a `pageSizeChange`
+      output, and a `<select>` (one `<option>` per size, the current one
+      marked via `[selected]` on the option itself rather than a
+      `[value]` binding on the `<select>` — the latter raced against the
+      `@for`-rendered options not existing yet at binding time, picking
+      the first option instead of the intended one; caught by the
+      component's own spec, not assumed). Changed the template's outer
+      guard from `@if (totalPages() > 1)` (which hid the whole bar,
+      including the range text, whenever everything already fit on one
+      page) to `@if (total() > 0)`, with only the prev/numbers/next block
+      still gated behind `totalPages() > 1` — so the size selector (and
+      the "X-Y з Total" range) now stays visible even on a single page,
+      letting the user switch to a larger size at any time; confirmed via
+      the parent pages that `<app-pagination>` itself is only ever
+      rendered once there's at least one item (the empty-state branch
+      doesn't render it at all), so `total() > 0` never needed to be
+      stricter.
+      **Each of the 5 list pages**: `pageSize` changed from a plain
+      `const`/readonly-constant class field to a `signal(DEFAULT_PAGE_SIZE)`,
+      threaded through the existing `.list(this.page(), this.pageSize(), ...)`
+      calls and the existing page-clamping math
+      (`Math.ceil(response.total / this.pageSize())`); a new
+      `onPageSizeChange(pageSize)` mirrors the existing `onPageChange`
+      pattern exactly (set the signal, reset to page 1, reload) rather
+      than inventing a different shape. Orders list's existing
+      `canSort` guard (hides the client-only "Старі" sort toggle once
+      there's more than one page, since a client-side reversal of just
+      the current page would misrepresent the rest) now reacts to
+      `pageSize()` too, for free — picking a larger page size that makes
+      everything fit on one page correctly brings the toggle back;
+      covered by a new test, not just incidentally working.
+      Verified live via Playwright (desktop and 375px mobile): selecting
+      a size re-fetches page 1 with the new `pageSize` query param,
+      renders the right item count, and the pagination bar wraps cleanly
+      into two rows on mobile (reusing the `.pagination`
+      `flex-wrap`/`@media (max-width: 560px)` rule from the earlier
+      mobile-responsive pass — untouched, already correct for a third
+      flex child). Added a page-size-selector test to each of the 5 page
+      specs plus the shared component's own spec (options list, current
+      selection, emits on change, no-op on re-selecting the same size).
+      1051/1051 tests passing, clean typecheck/lint/build (only the
+      pre-existing unrelated initial-bundle-size warning).
+      **Follow-up from a real-browser screenshot (same day):** the native
+      `<select>`'s own CSS had `background: none`, unlike every other
+      select in this app (`.text-input`, which uses a solid
+      `background: var(--color-bg-panel-nested)`) — Chromium renders a
+      native select's dropdown *popup* using the select's own
+      `background-color`, and `none`/transparent made it fall back to
+      the OS-default white popup, clashing with the dark theme (visible
+      only once actually opened in a real browser, not caught by the
+      Playwright checks above since headless Chromium's native `<select>`
+      popup isn't part of the page's own render tree a screenshot can
+      capture — confirmed via `getComputedStyle` instead:
+      `background-color` is now `rgb(43, 47, 51)` matching
+      `--color-bg-panel-nested`). Fixed to match `.text-input`'s existing
+      convention. Also moved the selector to be the first child of
+      `.pagination` (left of the range text), per explicit user request.
+      Re-ran the full suite (1051/1051), lint, and `tsc` after — all
+      still clean, confirmed via `getComputedStyle` and DOM child order
+      rather than a screenshot for the parts a screenshot can't show.
+      **Final layout tweak (same day):** user then asked for the page
+      switcher (prev/numbers/next) centered and the size selector on the
+      right instead — reordered `.pagination`'s children to range text →
+      `.pagination-pages` (when present) → size selector, relying on the
+      existing `justify-content: space-between` to place the three
+      naturally (confirmed via `getComputedStyle` + DOM order, and a
+      screenshot of the closed bar: "1-10 з 37" left, page buttons
+      centered, "Показувати по 10" right; mobile wrap unaffected).
+      1051/1051 tests, clean lint/tsc/build.
+
+## Done — shipment-status filter on Orders list (2026-10-03)
+
+- [x] **Filter the Orders list by Nova Poshta shipment status, including an
+      explicit "Без статусу" (no status) option.** CRM already has a
+      shipment-status filter but only for a real dictionary id, no "no
+      status" option; Orders had none at all.
+      **Backend gap found and reported to the user rather than guessed
+      around:** `GET /orders` (`ListOrdersQueryDto`) has no
+      `shipmentStatusId` param at all today, unlike CRM's
+      `ListCrmQueryDto` which has one (but only accepts a real Mongo id,
+      no way to ask for `shipmentStatusId: null`). Since `main.ts`'s
+      `ValidationPipe` is `whitelist: true, forbidNonWhitelisted: true`,
+      sending an unrecognized query param would 400 outright — this is a
+      hard blocker, not a nice-to-have, and this project only has
+      read-only access to `vom-back`. Proposed exact diff to the user:
+      add `shipmentStatusId?: string` to `ListOrdersQueryDto` (plain
+      string, not `@IsMongoId()`, since it must also accept a sentinel)
+      and in `orders.service.ts`'s `findAll()`,
+      `where.shipmentStatusId = value === 'none' ? null : value`,
+      mirroring how every other filter in that same `where` object is
+      already built. **User chose to add this to `vom-back` themselves**
+      — not yet landed as of this entry (checked: no `shipmentStatusId`
+      in the real `list-orders-query.dto.ts`/`orders.service.ts` yet).
+      **Frontend built ahead of the backend landing, to the exact agreed
+      contract** (`NO_SHIPMENT_STATUS = 'none'` exported from
+      `OrdersApiService` so the sentinel lives in one place, not
+      duplicated as a magic string): `OrdersListFilters` gained
+      `shipmentStatusId: string | null`; `orders-list.ts` gained a
+      `shipmentStatusId` signal wired into `hasActiveFilters`,
+      `resetFilters()`, and the `.list()` call, plus
+      `onShipmentStatusChange()` mirroring the page's existing
+      `onProductTypeChange`/`onSenderChange` shape exactly; the new
+      `<select id="shipmentStatusId">` in `orders-list.html` (same
+      `.date-field`/`.text-input.filter-select` markup as the existing
+      type/sender filters) lists "Усі статуси" (no filter) → "Без
+      статусу" (`value="none"`, the sentinel) → the real
+      `dictionaries.shipmentStatuses()` entries.
+      Tests added to `orders-api.service.spec.ts` (real-id filtering, the
+      `none` sentinel, the combined-filters request) and
+      `orders-list.spec.ts` (option list contents, selecting a real
+      status, selecting "Без статусу", reset clearing it). 1057/1057
+      tests passing, clean typecheck/lint/build — **but not yet verified
+      against the real backend**, since the DTO/service change isn't
+      live yet; all current verification is against mocked HTTP
+      responses matching the agreed contract. Re-verify live (real
+      `GET /orders?shipmentStatusId=none` round-trip) and mark this entry
+      done once the user confirms the backend change has landed.
+      **Reviewed — frontend code itself clean, but one real should-fix
+      surfaced: this is an active landmine in the dev environment right
+      now, not just "untested."** `vom-back/src/main.ts`'s
+      `ValidationPipe({ whitelist: true, forbidNonWhitelisted: true })`
+      means the real backend 400s the *entire* `GET /orders` request the
+      moment `shipmentStatusId` is sent at all (confirmed: still true as
+      of the review, DTO/service unchanged) — and `orders-list.ts`'s
+      generic error handler turns that into "Не вдалося завантажити
+      список замовлень" with the whole list dropped, not just the one
+      filter failing gracefully. So picking *any* value in this new
+      dropdown against the current real `vom-back` breaks the page
+      entirely until the backend half lands — don't exercise this filter
+      against the real backend (only mocked specs) until the user
+      confirms the DTO/service change is live.
+      Also corrected one point of reasoning from the original
+      implementation note: the `[value]`-on-select binding here is safe
+      not because "dictionaries load async and a later CD pass
+      self-heals it" (that was never actually the mechanism, and no test
+      exercises that race anyway) — it's safe because the default/reset
+      value and the new "Без статусу" option are both *static* siblings
+      of the `<select>` (present from the same render pass, no `@for`
+      involved), and any dynamic dictionary-sourced value can only ever
+      enter the signal via a `change` event on an option the user just
+      clicked, which by construction already exists in the DOM — there
+      is no race window at all for this pattern, structurally, not via
+      self-healing. Worth remembering correctly for the next select that
+      copies this pattern.
+      **Backend landed and verified real, not just mocked.** The user
+      added the agreed contract to `vom-back` themselves: `@Matches(/^(none|[0-9a-fA-F]{24})$/)`
+      on `ListOrdersQueryDto.shipmentStatusId` (stricter than this
+      session's own proposal of a plain `@IsString()`, since it actually
+      rejects garbage instead of silently no-op querying), and in
+      `orders.service.ts`'s `findAll()`, `shipmentStatusId === 'none'` →
+      `OR: [{ shipmentStatusId: null }, { shipmentStatusId: { isSet: false } }]`
+      — a real improvement over this session's own simpler
+      `value === 'none' ? null : value` suggestion, since MongoDB lets a
+      field be explicitly `null` *or* entirely absent from the document,
+      and only checking for `null` would have missed orders where the
+      field was never set at all. The user also added real e2e coverage
+      in `vom-back/test/orders.e2e-spec.ts` (3 new cases: filters by a
+      real status id, filters by `"none"`, rejects a malformed id with
+      400) — ran it directly rather than guessing it passed: all 24
+      tests in that file green, including the 3 new ones, plus
+      `orders.service.spec.ts`'s 73 unit tests, both against the real
+      NestJS app / real `ValidationPipe` / real Prisma (not mocked).
+      Re-ran the frontend's own full suite once more after confirming
+      the backend side — still 1057/1057, no frontend code changed since
+      the prior review, so no new frontend review pass was needed.
+      **What wasn't done:** a live click-through in an actual browser
+      against the real running dev server — would have required either
+      the user's own real login or creating a throwaway user directly in
+      the shared dev database, judged unnecessary operational risk given
+      the backend's own e2e suite already exercises the exact same
+      request shapes (`?shipmentStatusId=<id>`, `?shipmentStatusId=none`,
+      a malformed value) end-to-end against real infrastructure, and the
+      frontend's own Playwright checks already confirmed it builds those
+      exact same request shapes. If a real-browser click-through is
+      still wanted, it needs either real credentials or a deliberate
+      throwaway-user script — not done here, flagging rather than
+      silently skipping.
+
+## Done — sticker page: split preview/mockup into two cards (2026-10-03)
+
+- [x] **User feedback from a screenshot of the merged preview+mockup
+      card.** Split the single `.info-panel.sticker-panel` card (from
+      the earlier merge — see the 2026-09-28 entry above) back into two
+      separate cards, `.sticker-cards` (a `display:flex;flex-direction:
+      column` wrapper, the second column of the existing `.sticker-layout`
+      grid) holding:
+      **Card 1 — "Попередній перегляд"**: label, SVG preview, hints,
+      then a `.sticker-actions` row at the very bottom with both
+      "Завантажити SVG" and "Додати на фото" (previously SVG-download
+      sat alone in the card's header row; now both action buttons live
+      together at the bottom, per the user's explicit request).
+      **Card 2 — mockup**: a `.sticker-mockup-card__header` row at the
+      top (label + `.sticker-actions` with "Завантажити PNG макета"/
+      "Копіювати макет"), then the photo+sticker-list area. The old
+      dynamic "Макет на фото ({{count}} / {{max}})" label was first
+      removed per the request, then the user clarified mid-turn to keep
+      a label but simplify it to a static "Макет" (no count) — done.
+      Swapped `.mockup-layout`'s internal order/column widths so the
+      added-sticker cards list sits on the left (`minmax(240px, 360px)`)
+      and the photo canvas on the right (`minmax(0, 1fr)`) — was
+      photo-left/list-right before, per explicit request to put "усі
+      картки наклейок, які розміщені на фото" on the left.
+      Renamed the outer-card classes to avoid a real collision:
+      `.mockup-card` was already the class for each *individual* added-
+      sticker list item, so the new big container card is
+      `.sticker-mockup-card`, not a second `.mockup-card`.
+      Both cards stay in the same right-hand grid column as before
+      (form stays the separate left column), card 2 below card 1 —
+      matches the existing `.sticker-layout` grid and the existing
+      `@media (max-width: 800px)` single-column collapse, neither
+      touched since both still apply correctly to two stacked cards the
+      same way they did to one.
+      Updated `sticker-generator.spec.ts`: `.mockup-section` selectors
+      renamed to `.sticker-mockup-card` (the component's own `pngButton`/
+      `copyButton`/error-text helpers), and the two tests asserting the
+      old dynamic count label now assert the static "Макет" text
+      instead. Verified live via Playwright (1400px desktop + 375px
+      mobile, with a sticker added to the mockup): no horizontal
+      overflow at either width, screenshots confirm the exact requested
+      layout (two distinct cards, buttons where asked, list-left/photo-
+      right). 1057/1057 tests passing, clean typecheck/lint/build (only
+      the pre-existing unrelated bundle-size warning).
+
+## Done — keychains page: 2-column settings, SVG card removed (2026-10-03)
+
+- [x] **User feedback from a screenshot of `/keychains`.** Two changes,
+      desktop-only (mobile explicitly told to stay exactly as-is):
+      **(1) The 4 settings cards** (Брелок, Зображення, Марка, Текст —
+      `.keychain-form > .keychain-card`) **now lay out 2-per-row** on
+      desktop instead of stacking in one column: `.keychain-form`
+      switched from `flex-direction: column` to `display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);` — no DOM
+      reordering needed, since the existing card order (Брелок,
+      Зображення, Марка, Текст) already auto-places into exactly the
+      requested Брелок+Зображення / Марка+Текст 2×2 grid. Widened
+      `.keychain-layout`'s first grid column from `minmax(260px, 340px)`
+      to `minmax(520px, 640px)` to fit two card-columns comfortably side
+      by side, with the mockup now taking the remaining flexible width
+      to its right. Added a `.keychain-form` override back to a single
+      column inside the pre-existing `@media (max-width: 800px)` block
+      (the same breakpoint `.keychain-layout` itself already collapses
+      at), so mobile keeps the original one-column stack exactly as
+      before — per the user's explicit "не відноситься до моб версії"
+      instruction.
+      **(2) The separate "SVG" card (with its own flat vector preview of
+      the artwork) was removed entirely** — the user judged it redundant
+      since the artwork is already visible on the PNG mock-up card next
+      to it. Its "Завантажити SVG" button moved onto the mock-up card's
+      own header, alongside the existing "Завантажити PNG"/"Копіювати"
+      buttons (now three buttons in one `.keychain-actions` row), kept
+      wired to the exact same `hasArtwork()`/`downloadSvg()` it always
+      used — unlike PNG download/copy, SVG export never depended on the
+      canvas having rendered successfully, so it correctly keeps its own
+      `canExport()`-independent guard. The now-single-child
+      `.keychain-results` grid wrapper (previously holding two cards
+      side by side) was removed as dead wrapping — `.keychain-previews`
+      is now the direct second child of `.keychain-layout`.
+      **Dead code removed from `keychain-mockups.ts`**, not just hidden:
+      `inkIsLight`/`artworkViewBox` computed signals existed only to
+      drive the now-deleted SVG preview's dark-background class and
+      `viewBox` attribute — grepped the whole file and confirmed zero
+      other callers, so both were deleted along with their
+      now-unused-everywhere imports (`isLightColor`, `formatNumber`).
+      `ink()` itself was kept — still used by `downloadSvg()`'s real SVG
+      export, unrelated to the removed preview. Confirmed the ink-color-
+      in-export logic this was indirectly guarding isn't losing real
+      coverage: `exportArtworkSvg`'s own ink handling and `isLightColor`
+      itself both already have independent dedicated unit test files
+      (`artwork-svg.spec.ts`, `is-light-color.spec.ts`), so removing the
+      component-level preview-specific test wasn't a coverage gap, just
+      removing a test for UI that no longer exists.
+      **Spec rewrite**: `svgPaths()` (previously read path `d` attributes
+      off the deleted preview's DOM) now reads `lastRender().paths` —
+      the same artwork-paths data that always fed the real PNG-canvas
+      render pipeline, so every test that used to cross-check "the
+      preview shows the right paths" now equivalently checks "the
+      renderer was called with the right paths," with no loss of what
+      was actually being verified (dozens of call sites across photo/
+      mark/text/orientation/scale tests, all kept passing unchanged by
+      redefining just the one helper). Removed only the two tests that
+      had no remaining equivalent because they tested the removed UI
+      itself (the SVG-block-position layout test, and the ink-color/
+      dark-background preview test) — not replaced, since there's
+      nothing left to assert about UI that no longer exists.
+      Verified live via Playwright (1400px desktop + 375px mobile, with
+      a value typed into the text field so the mock-up actually renders
+      artwork): no horizontal overflow at either width, screenshots
+      confirm the 2×2 card grid and the three-button mock-up card on
+      desktop, and the untouched single-column mobile stack. 1055/1055
+      tests passing (two fewer than before — see above, not a gap),
+      clean typecheck/lint/build (only the pre-existing unrelated
+      bundle-size warning).
+      **Reviewed — one real should-fix found and fixed, one nit taken.**
+      The single-column collapse breakpoint had been left at the
+      pre-existing `800px` while the left column's minimum width grew
+      from `260px` to `520px` for the new 2-column form — `reviewer`
+      worked out this leaves a band (roughly 800–1200px) where the
+      right-hand mock-up column gets squeezed; **live-checked across
+      600–1600px and confirmed it was worse than just "squeezed": the
+      mock-up card shrank to 30–98px — narrower than its own action
+      buttons.** Fixed by raising the shared breakpoint for both
+      `.keychain-layout` and `.keychain-form` from 800px to 1200px (one
+      number, not two — they now always collapse together), re-verified
+      across the same 600–1600px range: no band left where the mock-up
+      card is narrower than a sensible minimum; right at 1200–1210px the
+      three action buttons wrap to their own stacked column instead of a
+      row, which is the same graceful-degradation pattern already used
+      elsewhere on this page, not a new one. Also took the reviewer's
+      button-order nit: PNG download / Copy (the established pair this
+      card already had) now come before the newly-added SVG download,
+      instead of SVG leading.
+      **`.claude/skills/keychain-mockups/SKILL.md` updated** per its own
+      checklist's "update THIS skill" step, which this change had missed
+      on the first pass — the stale "SVG preview" references (asset
+      pipeline description, page-structure table) and the whole "Page
+      layout" section (which still described the deleted `.keychain-
+      results` side-by-side panel and the old 800px/1500px breakpoints)
+      now describe the current 2-column form grid, the single merged
+      mock-up card, and the real 1200px breakpoint.
+      Re-ran the full suite after all three fixes: still 1055/1055,
+      clean typecheck/lint/build.
+
+## Custom dropdown to replace native selects (2026-10-04)
+
+- [x] **Replace native `<select>` popups with a design-system dropdown.**
+      User: the native dropdown's selected/hover row is system blue and
+      does not match the app. Verified that CSS cannot override it in
+      this Chrome (option:hover/:focus/:checked, !important, accent-color
+      all tried — the highlighted row stays browser-blue), so a custom
+      component is required. Scope: 28 `<select>` across 10 templates
+      (crm-table, expenses-form, keychain-mockups, order-item-card,
+      orders-create, orders-edit, orders-list, products-form,
+      sticker-generator, pagination). Plan: one shared `shared/ui/select`
+      component implementing ControlValueAccessor (so `formControlName`
+      keeps working) plus a plain `value`/`valueChange` API for filter
+      bindings; optgroup support for the keychain type list; keyboard
+      support and ARIA roles matching the existing `searchable-select`.
+      Done: `shared/ui/dropdown` (`app-dropdown`, ControlValueAccessor +
+      `value` model, optgroup via `group`, keyboard + ARIA) with test
+      helpers in `dropdown-testing.ts`. All 28 native selects converted;
+      `grep '<select'` under src/app is empty. Global `.filter-select` now
+      only sets width. Tests, lint and build green.
+
+## Custom date picker to replace native date inputs (2026-10-04)
+
+- [x] **Style calendars in the design system.** User: calendars also need
+      styling. Native `<input type="date">` opens a browser popup whose
+      blue selection cannot be restyled with CSS (same limit as native
+      select). Scope: 6 date inputs across dashboard (2), crm-table (2),
+      orders-list (2). Plan: `shared/ui/date-picker` (`app-date-picker`,
+      ControlValueAccessor + `value` model, ISO `YYYY-MM-DD` string so the
+      existing filter logic stays the same). Closed field shows
+      `дд.мм.рррр` with the calendar icon from the design bundle; popup has
+      month navigation, Monday-first week, accent selected day, "Очистити".
+      Remove `DateFieldTriggerDirective` (replaced by the component).
+      Test helpers in `date-picker-testing.ts`; specs switch from
+      `input[type=date]` to the picker helper.
+      Done: `shared/ui/date-picker` (component, utils, test helper, specs);
+      6 inputs converted; `DateFieldTriggerDirective` and `.date-field__input`
+      CSS removed. Tests, lint, build green.
+
+## Keychain type split into family and subtype (2026-10-04)
+
+- [x] **Split the keychain type dropdown into two selects.** User: the
+      grouped 13-item list should be two selects, type (family) and
+      subtype. `keychainFamilyId` (not a form control) drives
+      `keychainTypeId`: picking a family selects its first subtype.
+      `keychainTypeId` lists only that family's subtypes, labelled by
+      `keychainSubtypeLabel` (text after the first `, `). Tests and lint
+      green.
+
+## Keychain designs drive the mockup layout (2026-10-04)
+
+- [x] **Design icons pick the layout, cards and SVG structure.** User
+      answers: the design is chosen by icon (gallery in the "Брелок" card,
+      filtered by type: eco/eco-round/loop/metal). The design fixes
+      orientation (no orientation controls); scale controls stay. Cards
+      follow the design: photo card if the design has an image zone, mark
+      and text cards if it has slots. A single "МАРК/ТЕКСТ" slot accepts
+      mark or text with both cards shown; mark wins when both are filled.
+      Two-slot designs get a "Вивести у зону" select on the mark and text
+      cards. Base is the product photo; design zones are mapped onto the
+      type's printArea. Zone rects are measured from the design SVGs.
+      Open points (see final message): v-2/h-2 have one text slot in the
+      SVG, not two; photo rotation for h-designs.
+      Done: `data/keychain-designs.ts` (14 designs), `utils/layout-design.ts`
+      (+ spec, clamps into the print area), gallery in the Брелок card,
+      conditional cards, zone selects, orientation controls removed, dead
+      layout constants and `layout-artwork` removed, SKILL.md updated.
+      Verified: lint, types, 1052 tests, build; geometry checked offline by
+      rendering every design over its photo (live page needs a backend
+      session). Follow-up (2026-10-04): photos of `-h-` designs are turned a
+      quarter turn; gallery has no captions (aria-label "Дизайн N"); only
+      `-3` designs have two zones (v-2/h-2 have one). Open: hint when the
+      mark silently wins over the text, keyboard navigation of the gallery,
+      ICON zone approximated from the nub.

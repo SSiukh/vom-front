@@ -1,0 +1,46 @@
+<button
+  type="button"
+  class="dropdown__trigger text-input"
+  role="combobox"
+  aria-haspopup="listbox"
+  [id]="triggerId()"
+  [attr.data-value]="value()"
+  [attr.aria-expanded]="isOpen()"
+  [attr.aria-controls]="isOpen() ? listboxId : null"
+  [attr.aria-activedescendant]="activeOptionId()"
+  [attr.aria-label]="ariaLabel() || null"
+  [disabled]="isDisabled()"
+  (click)="toggle()"
+  (keydown)="onKeydown($event)"
+  (blur)="onBlur()"
+>
+  <span class="dropdown__value">{{ selectedLabel() }}</span>
+  <svg lucideChevronDown [size]="14" [strokeWidth]="1.5" class="dropdown__chevron"></svg>
+</button>
+
+@if (isOpen()) {
+  <ul class="dropdown__panel" role="listbox" [id]="listboxId" [class.dropdown__panel--up]="openUpward()">
+    @for (row of rows(); track $index) {
+      @if (row.kind === 'group') {
+        <li class="dropdown__group" role="presentation">{{ row.label }}</li>
+      } @else {
+        <li
+          class="dropdown__option"
+          role="option"
+          [attr.data-value]="row.option.value"
+          [id]="row.selectableIndex >= 0 ? optionId(row.selectableIndex) : null"
+          [class.dropdown__option--highlighted]="row.selectableIndex >= 0 && row.selectableIndex === highlightedIndex()"
+          [class.dropdown__option--disabled]="row.option.disabled"
+          [attr.aria-selected]="row.option.value === value()"
+          [attr.aria-disabled]="row.option.disabled ? true : null"
+          tabindex="-1"
+          (mousedown)="$event.preventDefault()"
+          (click)="choose(row.option)"
+          (keydown.enter)="choose(row.option)"
+        >
+          {{ row.option.label }}
+        </li>
+      }
+    }
+  </ul>
+}

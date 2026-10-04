@@ -5,10 +5,18 @@ import { provideRouter, Router } from '@angular/router';
 import { environment } from '../../../../../environments/environment';
 import { DictionariesService } from '../../../../core/dictionaries/dictionaries.service';
 import { CrmTable } from './crm-table';
+import { pickDropdown } from '../../../../shared/ui/dropdown/dropdown-testing';
+import { pickDate } from '../../../../shared/ui/date-picker/date-picker-testing';
 
 describe('CrmTable', () => {
   let fixture: ComponentFixture<CrmTable>;
   let el: HTMLElement;
+  const pickPageSize = (size: string) => {
+    (el.querySelector('.pagination-size .dropdown__trigger') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    (el.querySelector(`[data-value="${size}"]`) as HTMLElement).click();
+    fixture.detectChanges();
+  };
   let httpMock: HttpTestingController;
   let router: Router;
   const baseUrl = `${environment.apiUrl}/crm/table`;
@@ -138,13 +146,11 @@ describe('CrmTable', () => {
     create();
     flushList([], 0, 0);
 
-    const [fromInput, toInput] = Array.from(el.querySelectorAll('input[type="date"]')) as HTMLInputElement[];
-    fromInput.value = '2026-08-01';
-    fromInput.dispatchEvent(new Event('change'));
+    
+    pickDate(fixture, 'date-from', '2026-08-01');
     flushList([], 0, 0, `${baseUrl}?page=1&pageSize=10&sortOrder=desc&dateFrom=2026-08-01`);
 
-    toInput.value = '2026-08-22';
-    toInput.dispatchEvent(new Event('change'));
+    pickDate(fixture, 'date-to', '2026-08-22');
     flushList([], 0, 0, `${baseUrl}?page=1&pageSize=10&sortOrder=desc&dateFrom=2026-08-01&dateTo=2026-08-22`);
   });
 
@@ -152,14 +158,10 @@ describe('CrmTable', () => {
     create();
     flushList([], 0, 0);
 
-    const productSelect = el.querySelector('#productTypeId') as HTMLSelectElement;
-    productSelect.value = 'prt1';
-    productSelect.dispatchEvent(new Event('change'));
+    pickDropdown(fixture, 'productTypeId', 'prt1');
     flushList([], 0, 0, `${baseUrl}?page=1&pageSize=10&sortOrder=desc&productTypeId=prt1`);
 
-    const statusSelect = el.querySelector('#shipmentStatusId') as HTMLSelectElement;
-    statusSelect.value = 'ss2';
-    statusSelect.dispatchEvent(new Event('change'));
+    pickDropdown(fixture, 'shipmentStatusId', 'ss2');
     flushList([], 0, 0, `${baseUrl}?page=1&pageSize=10&sortOrder=desc&productTypeId=prt1&shipmentStatusId=ss2`);
   });
 
@@ -193,6 +195,26 @@ describe('CrmTable', () => {
       `${baseUrl}?page=2&pageSize=10&sortOrder=desc`,
     );
     expect(el.querySelectorAll('tbody tr').length).toBe(10);
+  });
+
+  it('refetches page 1 with the new page size when the page-size selector changes', () => {
+    create();
+    flushList(
+      Array.from({ length: 10 }, (_, i) => row({ id: `${i}` })),
+      25,
+      1000,
+    );
+
+    pickPageSize('15');
+
+    flushList(
+      Array.from({ length: 15 }, (_, i) => row({ id: `${i}` })),
+      25,
+      1000,
+      `${baseUrl}?page=1&pageSize=15&sortOrder=desc`,
+    );
+
+    expect(el.querySelectorAll('tbody tr').length).toBe(15);
   });
 
   it('navigates to the order detail page when a row is clicked', () => {

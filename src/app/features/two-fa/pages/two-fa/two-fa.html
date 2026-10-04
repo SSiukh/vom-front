@@ -28,14 +28,20 @@
                   }
                 </div>
               </div>
-              <button type="button" class="btn-primary" (click)="continueToApp()">Продовжити</button>
+              <button type="button" class="btn-primary" (click)="continueToApp()">
+                Продовжити
+              </button>
             } @else if (alreadyConfigured()) {
               <div class="card-header">
                 <h1 class="title">Двофакторна авторизація</h1>
                 <span class="status-badge status-badge--success">Налаштовано</span>
               </div>
-              <p class="hint">Двофакторна автентифікація вже налаштована для цього облікового запису.</p>
-              <button type="button" class="btn-primary" (click)="continueToApp()">Продовжити</button>
+              <p class="hint">
+                Двофакторна автентифікація вже налаштована для цього облікового запису.
+              </p>
+              <button type="button" class="btn-primary" (click)="continueToApp()">
+                Продовжити
+              </button>
             } @else {
               <div class="card-header">
                 <h1 class="title">Двофакторна авторизація</h1>
@@ -50,7 +56,7 @@
                     <img [src]="qr" alt="QR-код для підключення 2FA" />
                   }
                 </div>
-                <div class="setup-fields">
+                <form class="setup-fields" [formGroup]="codeForm" (submit)="submitSetup($event)">
                   <div class="field">
                     <span class="field-label">Секретний ключ</span>
                     <div class="secret-row">
@@ -67,7 +73,7 @@
                   </div>
                   <fieldset class="field code-fieldset">
                     <legend class="field-label">Код підтвердження</legend>
-                    <div class="code-cells">
+                    <div class="code-cells" formArrayName="digits">
                       @for (i of [0, 1, 2, 3, 4, 5]; track i) {
                         <input
                           #digitCell
@@ -75,7 +81,7 @@
                           type="text"
                           inputmode="numeric"
                           maxlength="1"
-                          [value]="digits()[i]"
+                          [formControlName]="i"
                           (input)="onDigitInput($event, i)"
                           (keydown)="onDigitKeydown($event, i)"
                         />
@@ -83,17 +89,16 @@
                     </div>
                   </fieldset>
                   @if (errorMessage()) {
-                    <div class="error-text">{{ errorMessage() }}</div>
+                    <div class="error-text" role="alert">{{ errorMessage() }}</div>
                   }
                   <button
-                    type="button"
+                    type="submit"
                     class="btn-primary confirm-button"
                     [disabled]="!isCodeComplete() || submitting() || !secret()"
-                    (click)="confirmSetup()"
                   >
                     Підтвердити
                   </button>
-                </div>
+                </form>
               </div>
             }
           </div>
@@ -113,34 +118,35 @@
             <h1 class="title">Підтвердження входу</h1>
           </div>
           <p class="hint">Введіть 6-значний код із застосунку-автентифікатора.</p>
-          <fieldset class="field code-fieldset">
-            <legend class="field-label">Код підтвердження</legend>
-            <div class="code-cells">
-              @for (i of [0, 1, 2, 3, 4, 5]; track i) {
-                <input
-                  #digitCell
-                  class="code-cell"
-                  type="text"
-                  inputmode="numeric"
-                  maxlength="1"
-                  [value]="digits()[i]"
-                  (input)="onDigitInput($event, i)"
-                  (keydown)="onDigitKeydown($event, i)"
-                />
-              }
-            </div>
-          </fieldset>
-          @if (errorMessage()) {
-            <div class="error-text">{{ errorMessage() }}</div>
-          }
-          <button
-            type="button"
-            class="btn-primary confirm-button"
-            [disabled]="!isCodeComplete() || submitting()"
-            (click)="verify()"
-          >
-            Підтвердити
-          </button>
+          <form [formGroup]="codeForm" (submit)="submitVerify($event)">
+            <fieldset class="field code-fieldset">
+              <legend class="field-label">Код підтвердження</legend>
+              <div class="code-cells" formArrayName="digits">
+                @for (i of [0, 1, 2, 3, 4, 5]; track i) {
+                  <input
+                    #digitCell
+                    class="code-cell"
+                    type="text"
+                    inputmode="numeric"
+                    maxlength="1"
+                    [formControlName]="i"
+                    (input)="onDigitInput($event, i)"
+                    (keydown)="onDigitKeydown($event, i)"
+                  />
+                }
+              </div>
+            </fieldset>
+            @if (errorMessage()) {
+              <div class="error-text" role="alert">{{ errorMessage() }}</div>
+            }
+            <button
+              type="submit"
+              class="btn-primary confirm-button"
+              [disabled]="!isCodeComplete() || submitting()"
+            >
+              Підтвердити
+            </button>
+          </form>
         </div>
       </div>
 

@@ -1,3 +1,4 @@
+import { pickDropdown, dropdownValue } from '../../../../shared/ui/dropdown/dropdown-testing';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
@@ -90,7 +91,7 @@ describe('OrdersCreate', () => {
     flushActiveSender();
     flushAddresses();
 
-    expect((el.querySelector('#shipmentTypeId') as HTMLSelectElement).value).toBe('st-docs');
+    expect(dropdownValue(fixture, 'shipmentTypeId')).toBe('st-docs');
   });
 
   it('warns on step 1 that the shipment goes out from the active sender', () => {
@@ -172,11 +173,6 @@ describe('OrdersCreate', () => {
     expect(el.querySelectorAll('app-order-item-card').length).toBe(2);
   });
 
-  const selectValue = (select: HTMLSelectElement, value: string) => {
-    select.value = value;
-    select.dispatchEvent(new Event('change'));
-  };
-
   const inputValue = (input: HTMLInputElement, value: string) => {
     input.value = value;
     input.dispatchEvent(new Event('input'));
@@ -190,9 +186,9 @@ describe('OrdersCreate', () => {
     const nextButton = () => Array.from(el.querySelectorAll('button')).find((b) => b.textContent?.includes('Далі'))!;
     expect(nextButton().disabled).toBe(true);
 
-    selectValue(el.querySelector('#paymentTypeId') as HTMLSelectElement, 'pt-full');
+    pickDropdown(fixture, 'paymentTypeId', 'pt-full');
     fixture.detectChanges();
-    selectValue(el.querySelector('select[formcontrolname="productTypeId"]') as HTMLSelectElement, 'prt-custom');
+    pickDropdown(fixture, 'productTypeId-0', 'prt-custom');
     fixture.detectChanges();
     inputValue(el.querySelector('input[formcontrolname="name"]') as HTMLInputElement, 'Кастом');
     inputValue(el.querySelector('input[formcontrolname="price"]') as HTMLInputElement, '50');
@@ -212,7 +208,7 @@ describe('OrdersCreate', () => {
 
     expect(el.querySelector('#partialAmount')).toBeNull();
 
-    selectValue(el.querySelector('#paymentTypeId') as HTMLSelectElement, 'pt-partial');
+    pickDropdown(fixture, 'paymentTypeId', 'pt-partial');
     fixture.detectChanges();
 
     expect(el.querySelector('#partialAmount')).not.toBeNull();

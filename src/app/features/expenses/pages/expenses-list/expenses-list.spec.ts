@@ -9,6 +9,12 @@ import { ExpensesList } from './expenses-list';
 describe('ExpensesList', () => {
   let fixture: ComponentFixture<ExpensesList>;
   let el: HTMLElement;
+  const pickPageSize = (size: string) => {
+    (el.querySelector('.pagination-size .dropdown__trigger') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    (el.querySelector(`[data-value="${size}"]`) as HTMLElement).click();
+    fixture.detectChanges();
+  };
   let httpMock: HttpTestingController;
   let router: Router;
   const baseUrl = `${environment.apiUrl}/expenses`;
@@ -63,6 +69,25 @@ describe('ExpensesList', () => {
     flushList([expense(), expense({ id: '2' })], 2);
 
     expect(el.querySelectorAll('.entity-card').length).toBe(2);
+  });
+
+  it('refetches page 1 with the new page size when the page-size selector changes', () => {
+    create();
+    flushList(
+      Array.from({ length: 10 }, (_, i) => expense({ id: String(i) })),
+      25,
+    );
+
+    pickPageSize('50');
+
+    flushList(
+      Array.from({ length: 25 }, (_, i) => expense({ id: String(i) })),
+      25,
+      `${baseUrl}?page=1&pageSize=50`,
+    );
+
+    expect(el.querySelectorAll('.entity-card').length).toBe(25);
+    expect(el.querySelector('.pagination-pages')).toBeNull();
   });
 
   it('shows the empty state when there are no expenses', () => {

@@ -1,5 +1,5 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, DestroyRef, inject, signal } from '@angular/core';
+import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
 import { FormArray, FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -16,10 +16,11 @@ import type { Order, UpdateOrderPayload } from '../../models/order.model';
 import { buildOrderItemPayload, createOrderItemFormGroup } from '../../order-item-form.util';
 import { OrderItemCard, type OrderItemFormGroup } from '../orders-create/order-item-card/order-item-card';
 import { computeItemSubtotal } from '../orders-create/order-item-subtotal.util';
+import { Dropdown, dictionaryOptions, type DropdownOption } from '../../../../shared/ui/dropdown/dropdown';
 
 @Component({
   selector: 'app-orders-edit',
-  imports: [ReactiveFormsModule, OrderItemCard, LucideChevronLeft, LucideLock, LucideTriangleAlert],
+  imports: [ReactiveFormsModule, OrderItemCard, LucideChevronLeft, LucideLock, LucideTriangleAlert, Dropdown],
   templateUrl: './orders-edit.html',
   styleUrl: './orders-edit.css',
 })
@@ -29,6 +30,8 @@ export class OrdersEdit {
   private readonly sendersApi = inject(SendersApiService);
   private readonly productsApi = inject(ProductsApiService);
   protected readonly dictionaries = inject(DictionariesService);
+  protected readonly shipmentTypeOptions = computed<DropdownOption[]>(() => dictionaryOptions(this.dictionaries.shipmentTypes()));
+  protected readonly paymentTypeOptions = computed<DropdownOption[]>(() => dictionaryOptions(this.dictionaries.paymentTypes()));
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);

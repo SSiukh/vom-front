@@ -20,12 +20,11 @@
     <div class="item-card__fields">
       <div class="field">
         <label class="field-label" [for]="'productTypeId-' + index()">Тип товару</label>
-        <select [id]="'productTypeId-' + index()" class="text-input" formControlName="productTypeId">
-          <option value="" disabled>Оберіть тип</option>
-          @for (type of productTypes(); track type.id) {
-            <option [value]="type.id">{{ type.label }}</option>
-          }
-        </select>
+        <app-dropdown
+          [triggerId]="'productTypeId-' + index()"
+          formControlName="productTypeId"
+          [options]="typeOptions()"
+        />
       </div>
 
       @if (isCustomType()) {

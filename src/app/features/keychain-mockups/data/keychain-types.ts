@@ -1,0 +1,134 @@
+import type { KeychainType } from '../models/keychain.model';
+
+export const KEYCHAIN_TYPES: readonly KeychainType[] = [
+  {
+    id: 'leather-black',
+    label: 'Шкіряна петля, чорна',
+    family: 'leather',
+    imageUrl: 'keychains/leather-black.jpg',
+    printArea: { x: 668, y: 870, width: 178, height: 700 },
+    inkColor: '#6f4a2b',
+    inkBlend: 'source-over',
+  },
+  {
+    id: 'leather-brown',
+    label: 'Шкіряна петля, коричнева',
+    family: 'leather',
+    imageUrl: 'keychains/leather-brown.jpg',
+    printArea: { x: 661, y: 849, width: 184, height: 700 },
+    inkColor: '#6f4a2b',
+    inkBlend: 'multiply',
+  },
+  {
+    id: 'leather-gray',
+    label: 'Шкіряна петля, сіра',
+    family: 'leather',
+    imageUrl: 'keychains/leather-gray.jpg',
+    printArea: { x: 678, y: 852, width: 162, height: 700 },
+    inkColor: '#6f4a2b',
+    inkBlend: 'multiply',
+  },
+  {
+    id: 'metal-black',
+    label: 'Жетон, чорний',
+    family: 'metal',
+    imageUrl: 'keychains/metal-black.jpg',
+    printArea: { x: 642, y: 940, width: 238, height: 390 },
+    inkColor: '#ffffff',
+    inkBlend: 'source-over',
+  },
+  {
+    id: 'metal-glossy',
+    label: 'Жетон, глянцевий',
+    family: 'metal',
+    imageUrl: 'keychains/metal-glossy.jpg',
+    printArea: { x: 621, y: 835, width: 262, height: 410 },
+    inkColor: '#000000',
+    inkBlend: 'multiply',
+  },
+  {
+    id: 'metal-mat',
+    label: 'Жетон, матовий',
+    family: 'metal',
+    imageUrl: 'keychains/metal-mat.jpg',
+    printArea: { x: 645, y: 856, width: 232, height: 380 },
+    inkColor: '#000000',
+    inkBlend: 'multiply',
+  },
+  {
+    id: 'metal-white',
+    label: 'Жетон, білий у силіконі',
+    family: 'metal',
+    imageUrl: 'keychains/metal-white.jpg',
+    printArea: { x: 648, y: 912, width: 232, height: 380 },
+    inkColor: '#000000',
+    inkBlend: 'multiply',
+  },
+  {
+    id: 'subleather-black',
+    label: 'Екошкіра, чорна',
+    family: 'subleather',
+    imageUrl: 'keychains/subleather-black.jpg',
+    printArea: { x: 649, y: 871, width: 200, height: 470 },
+    inkColor: '#6f4a2b',
+    inkBlend: 'source-over',
+  },
+  {
+    id: 'subleather-circle',
+    label: 'Екошкіра, кругла коричнева',
+    family: 'subleather',
+    imageUrl: 'keychains/subleather-circle.jpg',
+    printArea: { x: 626, y: 905, width: 250, height: 350 },
+    inkColor: '#6f4a2b',
+    inkBlend: 'multiply',
+  },
+  {
+    id: 'subleather-green',
+    label: 'Екошкіра, зелена',
+    family: 'subleather',
+    imageUrl: 'keychains/subleather-green.jpg',
+    printArea: { x: 656, y: 891, width: 188, height: 478 },
+    inkColor: '#6f4a2b',
+    inkBlend: 'multiply',
+  },
+  {
+    id: 'subleather-mint',
+    label: "Екошкіра, м'ятна",
+    family: 'subleather',
+    imageUrl: 'keychains/subleather-mint.jpg',
+    printArea: { x: 653, y: 876, width: 190, height: 492 },
+    inkColor: '#6f4a2b',
+    inkBlend: 'multiply',
+  },
+  {
+    id: 'subleather-pink',
+    label: 'Екошкіра, рожева',
+    family: 'subleather',
+    imageUrl: 'keychains/subleather-pink.jpg',
+    printArea: { x: 653, y: 862, width: 206, height: 490 },
+    inkColor: '#6f4a2b',
+    inkBlend: 'multiply',
+  },
+  {
+    id: 'subleather-yellow',
+    label: 'Екошкіра, жовта',
+    family: 'subleather',
+    imageUrl: 'keychains/subleather-yellow.jpg',
+    printArea: { x: 657, y: 889, width: 180, height: 452 },
+    inkColor: '#6f4a2b',
+    inkBlend: 'multiply',
+  },
+];
+
+export const DEFAULT_KEYCHAIN_TYPE_ID = 'metal-white';
+
+export function keychainSubtypeLabel(type: KeychainType): string {
+  const subtype = type.label.slice(type.label.indexOf(', ') + 2);
+  return subtype.charAt(0).toUpperCase() + subtype.slice(1);
+}
+
+export const KEYCHAIN_FAMILY_LABELS = {
+  leather: 'Шкіряна петля',
+  metal: 'Металевий жетон',
+  subleather: 'Екошкіра',
+} as const;

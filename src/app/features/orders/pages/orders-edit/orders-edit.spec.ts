@@ -1,3 +1,4 @@
+import { pickDropdown, dropdownValue } from '../../../../shared/ui/dropdown/dropdown-testing';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
@@ -120,8 +121,8 @@ describe('OrdersEdit', () => {
     create();
     flushAll();
 
-    expect((el.querySelector('#shipmentTypeId') as HTMLSelectElement).value).toBe('st1');
-    expect((el.querySelector('#paymentTypeId') as HTMLSelectElement).value).toBe('pt1');
+    expect(dropdownValue(fixture, 'shipmentTypeId')).toBe('st1');
+    expect(dropdownValue(fixture, 'paymentTypeId')).toBe('pt1');
     expect(el.querySelector('.item-card__subtotal')?.textContent?.trim()).toBe('300 ₴');
     expect(el.querySelector('.item-card__photo img')).not.toBeNull();
   });
@@ -142,10 +143,7 @@ describe('OrdersEdit', () => {
     flushAll();
     expect(el.querySelector('#partialAmount')).toBeNull();
 
-    const select = el.querySelector('#paymentTypeId') as HTMLSelectElement;
-    select.value = 'pt2';
-    select.dispatchEvent(new Event('change'));
-    fixture.detectChanges();
+    pickDropdown(fixture, 'paymentTypeId', 'pt2');
 
     expect(el.querySelector('#partialAmount')).not.toBeNull();
   });

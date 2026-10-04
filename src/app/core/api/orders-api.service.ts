@@ -14,11 +14,14 @@ import { REQUEST_TIMEOUT_MS } from '../interceptors/request-timeout.interceptor'
 
 const SYNC_ALL_STATUSES_TIMEOUT_MS = 90_000;
 
+export const NO_SHIPMENT_STATUS = 'none';
+
 export interface OrdersListFilters {
   dateFrom: string | null;
   dateTo: string | null;
   productTypeId: string | null;
   senderId: string | null;
+  shipmentStatusId: string | null;
   search: string | null;
 }
 
@@ -40,6 +43,9 @@ export class OrdersApiService {
     }
     if (filters.senderId) {
       params = params.set('senderId', filters.senderId);
+    }
+    if (filters.shipmentStatusId) {
+      params = params.set('shipmentStatusId', filters.shipmentStatusId);
     }
     if (filters.search) {
       params = params.set('search', filters.search);
