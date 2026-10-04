@@ -8,10 +8,11 @@ import { catchError, of, switchMap } from 'rxjs';
 import { DictionariesService } from '../../../../core/dictionaries/dictionaries.service';
 import { ProductsApiService } from '../../../../core/api/products-api.service';
 import { FEATURE_ROUTES } from '../../../../core/routes.constants';
+import { Dropdown, dictionaryOptions, type DropdownOption } from '../../../../shared/ui/dropdown/dropdown';
 
 @Component({
   selector: 'app-products-form',
-  imports: [ReactiveFormsModule, LucideChevronLeft, LucideCloudUpload, LucideSave],
+  imports: [ReactiveFormsModule, LucideChevronLeft, LucideCloudUpload, LucideSave, Dropdown],
   templateUrl: './products-form.html',
   styleUrl: './products-form.css',
 })
@@ -35,6 +36,10 @@ export class ProductsForm {
   });
 
   protected readonly filterableTypes = computed(() => this.dictionaries.productTypes().filter((t) => !t.isCustom));
+  protected readonly typeOptions = computed<DropdownOption[]>(() => [
+    { value: '', label: 'Оберіть тип', disabled: true },
+    ...dictionaryOptions(this.filterableTypes()),
+  ]);
 
   protected readonly selectedFile = signal<File | null>(null);
   protected readonly photoPreviewUrl = signal<string | null>(null);

@@ -25,7 +25,9 @@ describe('decodePhoto', () => {
         data: new Uint8ClampedArray(width * height * 4),
       })),
     };
-    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockImplementation(function (this: HTMLCanvasElement) {
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockImplementation(function (
+      this: HTMLCanvasElement,
+    ) {
       canvases.push(this);
       return context as unknown as CanvasRenderingContext2D;
     });
@@ -70,13 +72,17 @@ describe('decodePhoto', () => {
     stubBitmap(10, 10);
     vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(null);
 
-    await expect(decodePhoto(new File(['x'], 'a.png', { type: 'image/png' }))).rejects.toThrow('Canvas 2D context is not available');
+    await expect(decodePhoto(new File(['x'], 'a.png', { type: 'image/png' }))).rejects.toThrow(
+      'Canvas 2D context is not available',
+    );
     expect(close).toHaveBeenCalledTimes(1);
   });
 
   it('fails when the browser cannot decode the file', async () => {
     vi.stubGlobal('createImageBitmap', vi.fn().mockRejectedValue(new Error('bad image')));
 
-    await expect(decodePhoto(new File(['x'], 'a.png', { type: 'image/png' }))).rejects.toThrow('bad image');
+    await expect(decodePhoto(new File(['x'], 'a.png', { type: 'image/png' }))).rejects.toThrow(
+      'bad image',
+    );
   });
 });

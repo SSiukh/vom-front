@@ -1,6 +1,10 @@
 import type { GlyphSource } from '../../sticker-generator/models/glyph-source.model';
 import { layoutText } from '../../sticker-generator/utils/layout-sticker';
-import { commandsBounds, commandsToPathData, transformCommands } from '../../sticker-generator/utils/path-data';
+import {
+  commandsBounds,
+  commandsToPathData,
+  transformCommands,
+} from '../../sticker-generator/utils/path-data';
 import type { TextGraphic } from '../models/keychain.model';
 
 const FALLBACK_CAP_HEIGHT_RATIO = 0.7;
@@ -16,7 +20,8 @@ export function buildTextGraphic(text: string, glyphs: GlyphSource): TextGraphic
   if (!bounds || bounds.maxX <= bounds.minX || bounds.maxY <= bounds.minY) {
     return { graphic: null, missingCharacters: run.missingCharacters };
   }
-  const capHeight = glyphs.capHeight > 0 ? glyphs.capHeight : glyphs.unitsPerEm * FALLBACK_CAP_HEIGHT_RATIO;
+  const capHeight =
+    glyphs.capHeight > 0 ? glyphs.capHeight : glyphs.unitsPerEm * FALLBACK_CAP_HEIGHT_RATIO;
   return {
     graphic: {
       paths: [commandsToPathData(transformCommands(run.commands, 1, -bounds.minX, -bounds.minY))],

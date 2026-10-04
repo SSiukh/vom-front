@@ -1,6 +1,11 @@
 import { prepareTraceInput, type RasterImage } from './trace-input';
 
-function image(width: number, height: number, ink: (x: number, y: number) => boolean, alpha = 255): RasterImage {
+function image(
+  width: number,
+  height: number,
+  ink: (x: number, y: number) => boolean,
+  alpha = 255,
+): RasterImage {
   const data = new Uint8ClampedArray(width * height * 4);
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
@@ -15,7 +20,13 @@ function image(width: number, height: number, ink: (x: number, y: number) => boo
   return { data, width, height };
 }
 
-function inkPixels(result: RasterImage): { minX: number; maxX: number; minY: number; maxY: number; count: number } {
+function inkPixels(result: RasterImage): {
+  minX: number;
+  maxX: number;
+  minY: number;
+  maxY: number;
+  count: number;
+} {
   let minX = result.width;
   let maxX = -1;
   let minY = result.height;

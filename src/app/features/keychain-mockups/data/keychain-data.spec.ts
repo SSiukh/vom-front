@@ -35,7 +35,11 @@ describe('keychain data', () => {
       for (const type of KEYCHAIN_TYPES) {
         expect(type.id.startsWith(`${type.family}-`)).toBe(true);
       }
-      expect(Object.keys(KEYCHAIN_FAMILY_LABELS).sort()).toEqual(['leather', 'metal', 'subleather']);
+      expect(Object.keys(KEYCHAIN_FAMILY_LABELS).sort()).toEqual([
+        'leather',
+        'metal',
+        'subleather',
+      ]);
     });
 
     it('has unique ids and labels', () => {
@@ -58,7 +62,13 @@ describe('keychain data', () => {
       const area = KEYCHAIN_TYPES.find((type) => type.id === 'metal-white')?.printArea;
 
       expect(area).toEqual({ x: 648, y: 912, width: 232, height: 380 });
-      expect(area && 653 >= area.x - 5 && 870 <= area.x + area.width && 968 >= area.y && 1270 <= area.y + area.height).toBe(true);
+      expect(
+        area &&
+          653 >= area.x - 5 &&
+          870 <= area.x + area.width &&
+          968 >= area.y &&
+          1270 <= area.y + area.height,
+      ).toBe(true);
     });
 
     it('prints white on the black metal, black on the other metals and medium brown on leather and eco-leather', () => {
@@ -77,7 +87,9 @@ describe('keychain data', () => {
     });
 
     it('draws over the photo, instead of multiplying, only where the ink is lighter than the base: the three black keychains', () => {
-      const overlay = KEYCHAIN_TYPES.filter((type) => type.inkBlend === 'source-over').map((type) => type.id);
+      const overlay = KEYCHAIN_TYPES.filter((type) => type.inkBlend === 'source-over').map(
+        (type) => type.id,
+      );
 
       expect(overlay).toEqual(['leather-black', 'metal-black', 'subleather-black']);
     });
@@ -125,7 +137,21 @@ describe('keychain data', () => {
 
     it('never invents a variant the source artwork does not have', () => {
       const iconOnly = ['bmw', 'opel', 'yamaha-3'];
-      const textOnly = ['benelli', 'bse', 'fendt', 'forte', 'forte-2', 'kawaski', 'kaya', 'ktm', 'musstang-2', 'rottor', 'tekken', 'touareg', 'viper'];
+      const textOnly = [
+        'benelli',
+        'bse',
+        'fendt',
+        'forte',
+        'forte-2',
+        'kawaski',
+        'kaya',
+        'ktm',
+        'musstang-2',
+        'rottor',
+        'tekken',
+        'touareg',
+        'viper',
+      ];
       const combinedOnly = ['zonsen'];
       const byId = (id: string) => KEYCHAIN_MARKS.find((mark) => mark.id === id)?.variants;
 

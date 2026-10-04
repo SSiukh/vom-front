@@ -21,39 +21,22 @@
 
     <div class="field">
       <label class="field-label" for="fontId">Шрифт</label>
-      <select id="fontId" class="text-input" formControlName="fontId">
-        @for (font of fonts; track font.id) {
-          <option [value]="font.id">{{ font.label }}</option>
-        }
-      </select>
+      <app-dropdown triggerId="fontId" formControlName="fontId" [options]="fontOptions" />
     </div>
 
     <div class="field">
       <label class="field-label" for="iconId">Іконка</label>
-      <select id="iconId" class="text-input" formControlName="iconId">
-        <option value="none">Без іконки</option>
-        @for (icon of icons; track icon.id) {
-          <option [value]="icon.id">{{ icon.label }}</option>
-        }
-      </select>
+      <app-dropdown triggerId="iconId" formControlName="iconId" [options]="iconOptions" />
     </div>
 
     <div class="field">
       <label class="field-label" for="presetId">Розмір</label>
-      <select id="presetId" class="text-input" formControlName="presetId">
-        @for (preset of presets; track preset.id) {
-          <option [value]="preset.id">{{ preset.width }} × {{ preset.height }}</option>
-        }
-      </select>
+      <app-dropdown triggerId="presetId" formControlName="presetId" [options]="presetOptions" />
     </div>
 
     <div class="field">
       <label class="field-label" for="contentScaleId">Масштаб вмісту</label>
-      <select id="contentScaleId" class="text-input" formControlName="contentScaleId">
-        @for (scale of contentScales; track scale.id) {
-          <option [value]="scale.id">{{ scale.label }}</option>
-        }
-      </select>
+      <app-dropdown triggerId="contentScaleId" formControlName="contentScaleId" [options]="contentScaleOptions" />
     </div>
 
     <div class="sticker-colors">
@@ -64,15 +47,9 @@
     </div>
   </form>
 
-  <div class="info-panel sticker-panel">
-    <div class="sticker-panel__preview">
-      <div class="sticker-panel__header">
-        <span class="field-label">Попередній перегляд</span>
-        <button type="button" class="btn-primary sticker-download-svg" [disabled]="!canDownload()" (click)="download()">
-          <svg lucideDownload [size]="14" [strokeWidth]="1.5"></svg>
-          Завантажити SVG
-        </button>
-      </div>
+  <div class="sticker-cards">
+    <div class="info-panel sticker-preview-card">
+      <span class="field-label">Попередній перегляд</span>
 
       @if (stickerDocument(); as sticker) {
         <app-sticker-svg class="sticker-preview__svg" [document]="sticker" [label]="previewLabel()" />
@@ -94,15 +71,21 @@
         <div class="sticker-warning" role="status">Кольори фону й малюнка майже не відрізняються — наклейку буде важко прочитати.</div>
       }
 
-      <button type="button" class="btn-primary sticker-add" [disabled]="!canAddToMockup()" (click)="addToMockup()">
-        <svg lucidePlus [size]="14" [strokeWidth]="1.5"></svg>
-        Додати на фото
-      </button>
+      <div class="sticker-actions">
+        <button type="button" class="btn-primary sticker-download-svg" [disabled]="!canDownload()" (click)="download()">
+          <svg lucideDownload [size]="14" [strokeWidth]="1.5"></svg>
+          Завантажити SVG
+        </button>
+        <button type="button" class="btn-primary sticker-add" [disabled]="!canAddToMockup()" (click)="addToMockup()">
+          <svg lucidePlus [size]="14" [strokeWidth]="1.5"></svg>
+          Додати на фото
+        </button>
+      </div>
     </div>
 
-    <div class="mockup-section">
-      <div class="sticker-panel__header">
-        <span class="field-label">Макет на фото ({{ mockupStickers().length }} / {{ maxMockupStickers }})</span>
+    <div class="info-panel sticker-mockup-card">
+      <div class="sticker-mockup-card__header">
+        <span class="field-label">Макет</span>
         <div class="sticker-actions">
           <button type="button" class="btn-primary" [disabled]="!canDownloadMockup()" (click)="downloadMockup()">
             <svg lucideDownload [size]="14" [strokeWidth]="1.5"></svg>
@@ -129,7 +112,6 @@
           <div class="loading-text">Збираємо макет…</div>
         }
         <div class="mockup-layout">
-          <canvas #mockupCanvas class="mockup-canvas" role="img" aria-label="Макет наклейок на фото"></canvas>
           <ul class="mockup-cards">
             @for (sticker of mockupStickers(); track sticker.id) {
               <li class="mockup-card">
@@ -156,6 +138,7 @@
               </li>
             }
           </ul>
+          <canvas #mockupCanvas class="mockup-canvas" role="img" aria-label="Макет наклейок на фото"></canvas>
         </div>
       }
     </div>

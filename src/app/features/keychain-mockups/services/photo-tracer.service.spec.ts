@@ -1,6 +1,12 @@
 import { TestBed } from '@angular/core/testing';
 import type { RasterImage } from '../utils/trace-input';
-import { NO_INK_ERROR, PHOTO_DECODER, POTRACE_LOADER, PhotoTracer, type PotraceRunner } from './photo-tracer.service';
+import {
+  NO_INK_ERROR,
+  PHOTO_DECODER,
+  POTRACE_LOADER,
+  PhotoTracer,
+  type PotraceRunner,
+} from './photo-tracer.service';
 
 function raster(width: number, height: number, ink: boolean): RasterImage {
   const data = new Uint8ClampedArray(width * height * 4).fill(255);

@@ -122,6 +122,11 @@ export const KEYCHAIN_TYPES: readonly KeychainType[] = [
 
 export const DEFAULT_KEYCHAIN_TYPE_ID = 'metal-white';
 
+export function keychainSubtypeLabel(type: KeychainType): string {
+  const subtype = type.label.slice(type.label.indexOf(', ') + 2);
+  return subtype.charAt(0).toUpperCase() + subtype.slice(1);
+}
+
 export const KEYCHAIN_FAMILY_LABELS = {
   leather: 'Шкіряна петля',
   metal: 'Металевий жетон',

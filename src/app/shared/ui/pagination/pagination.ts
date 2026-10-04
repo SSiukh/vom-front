@@ -1,11 +1,15 @@
 import { Component, computed, input, output } from '@angular/core';
 import { LucideChevronLeft, LucideChevronRight } from '@lucide/angular';
+import { Dropdown, type DropdownOption } from '../dropdown/dropdown';
 
 type PageItem = number | 'ellipsis';
 
+const PAGE_SIZE_OPTIONS: readonly number[] = [10, 15, 20, 30, 50];
+export const DEFAULT_PAGE_SIZE: number = PAGE_SIZE_OPTIONS[0];
+
 @Component({
   selector: 'app-pagination',
-  imports: [LucideChevronLeft, LucideChevronRight],
+  imports: [LucideChevronLeft, LucideChevronRight, Dropdown],
   templateUrl: './pagination.html',
   styleUrl: './pagination.css',
 })
@@ -15,6 +19,12 @@ export class Pagination {
   readonly total = input.required<number>();
 
   readonly pageChange = output<number>();
+  readonly pageSizeChange = output<number>();
+
+  protected readonly pageSizeChoices: DropdownOption[] = PAGE_SIZE_OPTIONS.map((size) => ({
+    value: String(size),
+    label: String(size),
+  }));
 
   protected readonly totalPages = computed(() => Math.max(1, Math.ceil(this.total() / this.pageSize())));
   protected readonly rangeStart = computed(() =>
@@ -61,5 +71,12 @@ export class Pagination {
 
   next(): void {
     this.goToPage(this.page() + 1);
+  }
+
+  onPageSizeChange(value: string): void {
+    const size = Number(value);
+    if (size !== this.pageSize()) {
+      this.pageSizeChange.emit(size);
+    }
   }
 }

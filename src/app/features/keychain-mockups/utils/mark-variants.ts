@@ -1,11 +1,11 @@
 import type { KeychainMark, MarkVariantKind } from '../models/keychain.model';
 
-export const MARK_VARIANT_ORDER: readonly MarkVariantKind[] = ['combined', 'icon', 'text'];
+const MARK_VARIANT_ORDER: readonly MarkVariantKind[] = ['icon', 'text', 'combined'];
 
 export const MARK_VARIANT_LABELS: Record<MarkVariantKind, string> = {
-  combined: 'Разом',
-  icon: 'Значок',
-  text: 'Напис',
+  combined: 'Іконка + текст',
+  icon: 'Іконка',
+  text: 'Текст',
 };
 
 export function availableVariants(mark: KeychainMark | null): MarkVariantKind[] {
@@ -16,5 +16,6 @@ export function availableVariants(mark: KeychainMark | null): MarkVariantKind[] 
 }
 
 export function defaultVariant(mark: KeychainMark | null): MarkVariantKind | null {
-  return availableVariants(mark)[0] ?? null;
+  const variants = availableVariants(mark);
+  return variants.includes('combined') ? 'combined' : (variants[0] ?? null);
 }

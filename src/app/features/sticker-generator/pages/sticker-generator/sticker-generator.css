@@ -29,22 +29,18 @@
   color: var(--color-text-meta);
 }
 
-.sticker-add {
-  align-self: flex-start;
-}
-
 .sticker-warning {
   font-size: 12.5px;
   color: var(--color-warning-text);
 }
 
-.sticker-panel__preview {
+.sticker-cards {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 16px;
 }
 
-.sticker-panel__header {
+.sticker-mockup-card__header {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -52,17 +48,9 @@
   gap: 8px;
 }
 
-.mockup-section {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  padding-top: 14px;
-  border-top: 1px solid var(--color-border-inner);
-}
-
 .mockup-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(240px, 360px);
+  grid-template-columns: minmax(240px, 360px) minmax(0, 1fr);
   gap: 16px;
   align-items: start;
 }

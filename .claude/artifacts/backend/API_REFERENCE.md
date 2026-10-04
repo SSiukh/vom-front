@@ -223,7 +223,7 @@ document, with Nova Poshta waybill creation/update/deletion kept in sync.
 | Method & path | Throttle | Body/Query | Response |
 |---|---|---|---|
 | `POST /orders` | 20/min | `CreateOrderDto` | `OrderResponseDto` |
-| `GET /orders` | default | `?page&pageSize&dateFrom&dateTo&productTypeId&senderId&search` | `ListOrdersResponseDto` |
+| `GET /orders` | default | `?page&pageSize&dateFrom&dateTo&productTypeId&senderId&shipmentStatusId&search` | `ListOrdersResponseDto` |
 | `GET /orders/:id` | default | — | `OrderResponseDto` |
 | `PATCH /orders/:id` | 20/min | `UpdateOrderDto` (all fields optional) | `OrderResponseDto` |
 | `PATCH /orders/:id/sync-status` | 20/min | — | `OrderResponseDto` (manual Nova Poshta status pull, no polling) |
@@ -248,6 +248,11 @@ name. It is split on whitespace and **every** word must match somewhere
 regardless of field order; regex metacharacters are matched literally.
 Combinable with all other filters (AND). The identical `search` param exists
 on `GET /crm/table` (§8).
+
+`shipmentStatusId` (optional) filters to orders with that shipment status.
+Besides a Mongo id from `GET /dictionaries/shipment-statuses`, it also
+accepts the literal `"none"` for orders that haven't received a status yet.
+Malformed value (not `"none"` and not a valid id) → `400`.
 
 ```ts
 CreateOrderDto {

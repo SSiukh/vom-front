@@ -12,33 +12,33 @@
   />
   <div class="date-field">
     <label for="date-from">Від</label>
-    <div class="date-field__input" appDateFieldTrigger>
-      <input id="date-from" type="date" [value]="dateFrom() ?? ''" (change)="onDateFromChange($event)" />
-    </div>
+    <app-date-picker triggerId="date-from" [value]="dateFrom() ?? ''" (valueChange)="onDateFromChange($event)" />
   </div>
   <div class="date-field">
     <label for="date-to">До</label>
-    <div class="date-field__input" appDateFieldTrigger>
-      <input id="date-to" type="date" [value]="dateTo() ?? ''" (change)="onDateToChange($event)" />
-    </div>
+    <app-date-picker triggerId="date-to" [value]="dateTo() ?? ''" (valueChange)="onDateToChange($event)" />
   </div>
   <div class="date-field">
     <label for="productTypeId">Тип товару</label>
-    <select id="productTypeId" class="text-input filter-select" (change)="onProductTypeChange($event)">
-      <option value="">Усі типи</option>
-      @for (type of dictionaries.productTypes(); track type.id) {
-        <option [value]="type.id">{{ type.label }}</option>
-      }
-    </select>
+    <app-dropdown
+      class="filter-select"
+      size="sm"
+      triggerId="productTypeId"
+      [value]="productTypeId() ?? ''"
+      (valueChange)="onProductTypeChange($event)"
+      [options]="productTypeOptions()"
+    />
   </div>
   <div class="date-field">
     <label for="shipmentStatusId">Статус відправлення</label>
-    <select id="shipmentStatusId" class="text-input filter-select" (change)="onShipmentStatusChange($event)">
-      <option value="">Усі статуси</option>
-      @for (status of dictionaries.shipmentStatuses(); track status.id) {
-        <option [value]="status.id">{{ status.label }}</option>
-      }
-    </select>
+    <app-dropdown
+      class="filter-select"
+      size="sm"
+      triggerId="shipmentStatusId"
+      [value]="shipmentStatusId() ?? ''"
+      (valueChange)="onShipmentStatusChange($event)"
+      [options]="shipmentStatusOptions()"
+    />
   </div>
   <div class="date-field">
     <span class="date-field__label">Сортування</span>
@@ -134,5 +134,11 @@
     <span class="crm-totals__amount">{{ totalAmountSum() }} ₴</span>
   </div>
 
-  <app-pagination [page]="page()" [pageSize]="pageSize" [total]="total()" (pageChange)="onPageChange($event)" />
+  <app-pagination
+    [page]="page()"
+    [pageSize]="pageSize()"
+    [total]="total()"
+    (pageChange)="onPageChange($event)"
+    (pageSizeChange)="onPageSizeChange($event)"
+  />
 }

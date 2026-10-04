@@ -1,5 +1,8 @@
 import { TestBed } from '@angular/core/testing';
-import { IMAGE_LOADER, type ImageLoader } from '../../sticker-generator/services/mockup-renderer.service';
+import {
+  IMAGE_LOADER,
+  type ImageLoader,
+} from '../../sticker-generator/services/mockup-renderer.service';
 import { KeychainRenderer } from './keychain-renderer.service';
 
 interface FakeContext {
@@ -26,7 +29,12 @@ describe('KeychainRenderer', () => {
     signal = new AbortController().signal,
     evenOddPaths: string[] = [],
     blend: 'multiply' | 'source-over' = 'multiply',
-  ) => renderer.render(asCanvas(), { imageUrl: 'keychains/metal-white.jpg', paths, evenOddPaths, ink, blend }, signal);
+  ) =>
+    renderer.render(
+      asCanvas(),
+      { imageUrl: 'keychains/metal-white.jpg', paths, evenOddPaths, ink, blend },
+      signal,
+    );
 
   beforeEach(() => {
     image = { naturalWidth: 1512, naturalHeight: 2016 } as HTMLImageElement;
@@ -165,9 +173,29 @@ describe('KeychainRenderer', () => {
 
     loadImage.mockRejectedValueOnce(new Error('404'));
     await expect(
-      renderer.render(asCanvas(), { imageUrl: 'keychains/other.jpg', paths: [], evenOddPaths: [], ink: '#111111', blend: 'multiply' as const }, new AbortController().signal),
+      renderer.render(
+        asCanvas(),
+        {
+          imageUrl: 'keychains/other.jpg',
+          paths: [],
+          evenOddPaths: [],
+          ink: '#111111',
+          blend: 'multiply' as const,
+        },
+        new AbortController().signal,
+      ),
     ).rejects.toThrow('404');
-    await renderer.render(asCanvas(), { imageUrl: 'keychains/other.jpg', paths: [], evenOddPaths: [], ink: '#111111', blend: 'multiply' as const }, new AbortController().signal);
+    await renderer.render(
+      asCanvas(),
+      {
+        imageUrl: 'keychains/other.jpg',
+        paths: [],
+        evenOddPaths: [],
+        ink: '#111111',
+        blend: 'multiply' as const,
+      },
+      new AbortController().signal,
+    );
 
     expect(loadImage.mock.calls.filter(([url]) => url === 'keychains/other.jpg')).toHaveLength(2);
   });

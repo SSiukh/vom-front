@@ -7,7 +7,9 @@ import { prepareTraceInput, type RasterImage } from '../utils/trace-input';
 export type PhotoDecoder = (file: File) => Promise<RasterImage>;
 export type PotraceRunner = (image: RasterImage) => Promise<string[]>;
 
-export const PHOTO_DECODER = new InjectionToken<PhotoDecoder>('PHOTO_DECODER', { factory: () => decodePhoto });
+export const PHOTO_DECODER = new InjectionToken<PhotoDecoder>('PHOTO_DECODER', {
+  factory: () => decodePhoto,
+});
 
 export const POTRACE_LOADER = new InjectionToken<() => Promise<PotraceRunner>>('POTRACE_LOADER', {
   factory: () => async () => {

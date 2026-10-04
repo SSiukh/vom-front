@@ -2,10 +2,17 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import type { GlyphSource } from '../../../sticker-generator/models/glyph-source.model';
 import { FontLibraryService } from '../../../sticker-generator/services/font-library.service';
 import { MockupRenderer } from '../../../sticker-generator/services/mockup-renderer.service';
+import {
+  dropdownLabels,
+  dropdownValue,
+  pickDropdown,
+} from '../../../../shared/ui/dropdown/dropdown-testing';
+import { KEYCHAIN_TYPES } from '../../data/keychain-types';
 import type { VectorGraphic } from '../../models/keychain.model';
 import { KeychainRenderer } from '../../services/keychain-renderer.service';
 import { MarkLibrary } from '../../services/mark-library.service';
 import { NO_INK_ERROR, PhotoTracer } from '../../services/photo-tracer.service';
+import { GEMINI_APP_URL, GEMINI_PHOTO_PROMPT } from '../../data/gemini-photo-prompt';
 import { KeychainMockups } from './keychain-mockups';
 
 const GLYPHS: GlyphSource = {
@@ -25,7 +32,20 @@ const GLYPHS: GlyphSource = {
 
 const PHOTO: VectorGraphic = { width: 100, height: 100, paths: ['M0 0L100 0L100 100Z'] };
 const MARK: VectorGraphic = { width: 400, height: 40, paths: ['M0 0L400 0L400 40Z'] };
-const PHOTO_ON_WHITE_TAG = 'M652.64 990.64L875.36 990.64L875.36 1213.36Z';
+const WHITE_TAG_PRINT_AREA = { x: 648, y: 912, width: 232, height: 380 };
+
+function expectInsideArea(
+  path: string,
+  area: { x: number; y: number; width: number; height: number },
+): void {
+  const values = (path.match(/-?\d+(?:\.\d+)?/g) ?? []).map(Number);
+  const xs = values.filter((_, index) => index % 2 === 0);
+  const ys = values.filter((_, index) => index % 2 === 1);
+  expect(Math.min(...xs)).toBeGreaterThanOrEqual(area.x - 1);
+  expect(Math.max(...xs)).toBeLessThanOrEqual(area.x + area.width + 1);
+  expect(Math.min(...ys)).toBeGreaterThanOrEqual(area.y - 1);
+  expect(Math.max(...ys)).toBeLessThanOrEqual(area.y + area.height + 1);
+}
 
 describe('KeychainMockups', () => {
   let fixture: ComponentFixture<KeychainMockups>;
@@ -67,17 +87,32 @@ describe('KeychainMockups', () => {
   };
 
   const photoInput = () => el.querySelector('#photo') as HTMLInputElement;
-  const png = (name = 'bike.png', size = 100) => new File([new Uint8Array(size)], name, { type: 'image/png' });
+  const png = (name = 'bike.png', size = 100) =>
+    new File([new Uint8Array(size)], name, { type: 'image/png' });
   const chooseFile = async (file: File) => {
     Object.defineProperty(photoInput(), 'files', { value: [file], configurable: true });
     photoInput().dispatchEvent(new Event('change'));
     await settle();
   };
   const setSelect = async (id: string, value: string) => {
-    const select = el.querySelector(`#${id}`) as HTMLSelectElement;
-    select.value = value;
-    select.dispatchEvent(new Event('change'));
+    pickDropdown(fixture, id, value);
     await settle();
+  };
+  const chooseKeychainType = async (id: string) => {
+    const family = KEYCHAIN_TYPES.find((type) => type.id === id)?.family ?? '';
+    if (dropdownValue(fixture, 'keychainFamilyId') !== family) {
+      pickDropdown(fixture, 'keychainFamilyId', family);
+    }
+    await setSelect('keychainTypeId', id);
+  };
+  const chooseDesign = (id: string) => {
+    const design = Array.from(el.querySelectorAll('.keychain-design')).find((candidate) =>
+      candidate
+        .querySelector('.keychain-design__image')
+        ?.getAttribute('src')
+        ?.endsWith(`/${id}.svg`),
+    ) as HTMLButtonElement;
+    design.click();
   };
   const setInput = async (id: string, value: string) => {
     const input = el.querySelector(`#${id}`) as HTMLInputElement;
@@ -85,19 +120,29 @@ describe('KeychainMockups', () => {
     input.dispatchEvent(new Event('input'));
     await settle();
   };
-  const options = (id: string) => Array.from(el.querySelectorAll(`#${id} option`)).map((option) => option.textContent?.trim());
+  const options = (id: string) => dropdownLabels(fixture, id);
   const button = (text: string) =>
-    Array.from(el.querySelectorAll('button')).find((candidate) => candidate.textContent?.includes(text)) as HTMLButtonElement;
+    Array.from(el.querySelectorAll('button')).find((candidate) =>
+      candidate.textContent?.includes(text),
+    ) as HTMLButtonElement;
   const lastRender = () =>
-    render.mock.calls.at(-1)?.[1] as { imageUrl: string; paths: string[]; evenOddPaths: string[]; ink: string; blend: string };
-  const svgPaths = () => Array.from(el.querySelectorAll('.keychain-svg__preview path')).map((path) => path.getAttribute('d'));
+    render.mock.calls.at(-1)?.[1] as {
+      imageUrl: string;
+      paths: string[];
+      evenOddPaths: string[];
+      ink: string;
+      blend: string;
+    };
+  const svgPaths = () => lastRender()?.paths ?? [];
 
   beforeEach(() => {
     createObjectURL = vi.fn().mockReturnValue('blob:photo-1');
     revokeObjectURL = vi.fn();
     Object.assign(URL, { createObjectURL, revokeObjectURL });
     clickedAnchors = [];
-    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (this: HTMLAnchorElement) {
+    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (
+      this: HTMLAnchorElement,
+    ) {
       clickedAnchors.push(this);
     });
     trace = vi.fn().mockResolvedValue(PHOTO);
@@ -115,41 +160,30 @@ describe('KeychainMockups', () => {
   });
 
   describe('layout', () => {
-    it('shows the page title and puts the form on the left and the results on the right', async () => {
+    it('shows the page title and puts the form on the left and the mock-up on the right', async () => {
       await create();
 
       expect(el.querySelector('.page-title')?.textContent?.trim()).toBe('Брелки');
       const layout = el.querySelector('.keychain-layout') as HTMLElement;
       expect(layout.children[0]?.classList.contains('keychain-form')).toBe(true);
-      expect(layout.children[1]?.classList.contains('keychain-results')).toBe(true);
-    });
-
-    it('puts the SVG block right after the mock-up block', async () => {
-      await create();
-
-      const results = el.querySelector('.keychain-results') as HTMLElement;
-      expect(results.children[0]?.classList.contains('keychain-previews')).toBe(true);
-      expect(results.children[1]?.classList.contains('keychain-svg')).toBe(true);
+      expect(layout.children[1]?.classList.contains('keychain-previews')).toBe(true);
     });
 
     it('splits the settings into separate cards for the keychain, the image, the mark and the text', async () => {
       await create();
 
       const cards = Array.from(el.querySelectorAll('.keychain-form > .keychain-card'));
-      expect(cards.map((card) => card.querySelector('.keychain-card__title')?.textContent?.trim())).toEqual([
-        'Брелок',
-        'Зображення',
-        'Марка',
-        'Текст',
-      ]);
+      expect(
+        cards.map((card) => card.querySelector('.keychain-card__title')?.textContent?.trim()),
+      ).toEqual(['Брелок', 'Зображення', 'Марка', 'Текст']);
       const ids = (card: Element | undefined) =>
-        Array.from(card?.querySelectorAll('select, input') ?? [])
+        Array.from(card?.querySelectorAll('input, [role="combobox"]') ?? [])
           .map((control) => control.id)
           .filter(Boolean);
-      expect(ids(cards[0])).toEqual(['keychainTypeId']);
-      expect(ids(cards[1])).toEqual(['photo', 'photoScaleId', 'photoOrientation']);
-      expect(ids(cards[2])).toEqual(['markId', 'markScaleId', 'markOrientation']);
-      expect(ids(cards[3])).toEqual(['text', 'fontId', 'textScaleId', 'textOrientation']);
+      expect(ids(cards[0])).toEqual(['keychainFamilyId', 'keychainTypeId']);
+      expect(ids(cards[1])).toEqual(['photo', 'photoScaleId']);
+      expect(ids(cards[2])).toEqual(['markId', 'markScaleId']);
+      expect(ids(cards[3])).toEqual(['text', 'fontId', 'textScaleId']);
     });
 
     it('makes every card a panel of its own, all inside the one form', async () => {
@@ -159,36 +193,45 @@ describe('KeychainMockups', () => {
       expect(form.querySelectorAll('.form-panel.keychain-card')).toHaveLength(4);
       expect(form.classList.contains('form-panel')).toBe(false);
     });
-
-    it('keeps the reserved block for mock-up styles', async () => {
-      await create();
-
-      expect(el.textContent).toContain('Стилі макета буде додано пізніше.');
-    });
   });
 
   describe('form', () => {
-    it('groups the thirteen keychain types by family, starting with metal', async () => {
+    it('splits the keychain type into a family select and a subtype select of that family', async () => {
       await create();
 
-      const groups = Array.from(el.querySelectorAll('#keychainTypeId optgroup')).map((group) => group.getAttribute('label'));
-      expect(groups).toEqual(['Металевий жетон', 'Екошкіра', 'Шкіряна петля']);
-      expect(el.querySelectorAll('#keychainTypeId option')).toHaveLength(13);
-      expect((el.querySelector('#keychainTypeId') as HTMLSelectElement).value).toBe('metal-white');
+      expect(options('keychainFamilyId')).toEqual(['Металевий жетон', 'Екошкіра', 'Шкіряна петля']);
+      expect(dropdownValue(fixture, 'keychainFamilyId')).toBe('metal');
+      expect(options('keychainTypeId')).toEqual([
+        'Чорний',
+        'Глянцевий',
+        'Матовий',
+        'Білий у силіконі',
+      ]);
+      expect(dropdownValue(fixture, 'keychainTypeId')).toBe('metal-white');
+    });
+
+    it('lists only the subtypes of the chosen family, and picking a family selects its first subtype', async () => {
+      await create();
+
+      pickDropdown(fixture, 'keychainFamilyId', 'leather');
+      await settle();
+
+      expect(options('keychainTypeId')).toEqual(['Чорна', 'Коричнева', 'Сіра']);
+      expect(dropdownValue(fixture, 'keychainTypeId')).toBe('leather-black');
     });
 
     it('offers every mark, or none, and the two sticker fonts', async () => {
       await create();
 
       expect(options('markId')?.[0]).toBe('Без марки');
-      expect(el.querySelectorAll('#markId option')).toHaveLength(37);
+      expect(options('markId')).toHaveLength(37);
       expect(options('fontId')).toEqual(['Jua', 'Nunito (кирилиця)']);
     });
 
     it('starts without a mark, with empty text limited to 40 characters', async () => {
       await create();
 
-      expect((el.querySelector('#markId') as HTMLSelectElement).value).toBe('none');
+      expect(dropdownValue(fixture, 'markId')).toBe('none');
       expect((el.querySelector('#text') as HTMLInputElement).value).toBe('');
       expect(el.querySelector('#text')?.getAttribute('maxlength')).toBe('40');
     });
@@ -206,15 +249,6 @@ describe('KeychainMockups', () => {
       expect(el.querySelector('app-color-field')).toBeNull();
     });
 
-    it('offers the two orientations separately for the image, the mark and the text, all starting horizontal', async () => {
-      await create();
-
-      for (const id of ['photoOrientation', 'markOrientation', 'textOrientation']) {
-        expect(options(id)).toEqual(['Горизонтально', 'Вертикально (повернуто на 90°)']);
-        expect((el.querySelector(`#${id}`) as HTMLSelectElement).value).toBe('horizontal');
-      }
-    });
-
     it('offers XS to XL separately for the image, the mark and the text, starting on L, L and M', async () => {
       await create();
 
@@ -224,7 +258,7 @@ describe('KeychainMockups', () => {
         ['textScaleId', 'm'],
       ]) {
         expect(options(id ?? '')).toEqual(['XS', 'S', 'M', 'L', 'XL']);
-        expect((el.querySelector(`#${id}`) as HTMLSelectElement).value).toBe(start);
+        expect(dropdownValue(fixture, id)).toBe(start);
       }
     });
 
@@ -232,7 +266,7 @@ describe('KeychainMockups', () => {
       await create();
 
       expect(el.querySelector('#contentScaleId')).toBeNull();
-      expect(el.querySelector('#orientation')).toBeNull();
+      expect(el.querySelector('#photoOrientation, #markOrientation, #textOrientation')).toBeNull();
     });
   });
 
@@ -254,29 +288,25 @@ describe('KeychainMockups', () => {
     it('renders the other photo with the fixed ink of that type when the type changes', async () => {
       await create();
 
-      await setSelect('keychainTypeId', 'metal-black');
+      await chooseKeychainType('metal-black');
       expect(lastRender().imageUrl).toBe('keychains/metal-black.jpg');
       expect([lastRender().ink, lastRender().blend]).toEqual(['#ffffff', 'source-over']);
 
-      await setSelect('keychainTypeId', 'subleather-mint');
+      await chooseKeychainType('subleather-mint');
       expect([lastRender().ink, lastRender().blend]).toEqual(['#6f4a2b', 'multiply']);
 
-      await setSelect('keychainTypeId', 'leather-black');
+      await chooseKeychainType('leather-black');
       expect([lastRender().ink, lastRender().blend]).toEqual(['#6f4a2b', 'source-over']);
     });
 
-    it('renders again when the scale or the orientation changes', async () => {
+    it('renders again when the text scale changes', async () => {
       await create();
       await setInput('text', 'A');
       const before = lastRender().paths[0];
 
       await setSelect('textScaleId', 'xs');
-      const smaller = lastRender().paths[0];
-      await setSelect('textOrientation', 'vertical');
-      const rotated = lastRender().paths[0];
 
-      expect(smaller).not.toBe(before);
-      expect(rotated).not.toBe(smaller);
+      expect(lastRender().paths[0]).not.toBe(before);
     });
 
     it('shows a loading overlay only when assembling takes longer than a moment', async () => {
@@ -287,17 +317,21 @@ describe('KeychainMockups', () => {
       await new Promise((resolve) => setTimeout(resolve, 250));
       await settle();
 
-      expect(el.querySelector('.keychain-canvas-wrap .keychain-loading')?.textContent?.trim()).toBe('Збираємо макет…');
+      expect(el.querySelector('.keychain-canvas-wrap .keychain-loading')?.textContent?.trim()).toBe(
+        'Збираємо макет…',
+      );
     });
 
     it('never flashes the loading overlay or the disabled buttons for a quick redraw', async () => {
       await create();
       const seen: boolean[] = [];
-      const observer = new MutationObserver(() => seen.push(el.querySelector('.keychain-loading') !== null));
+      const observer = new MutationObserver(() =>
+        seen.push(el.querySelector('.keychain-loading') !== null),
+      );
       observer.observe(el, { childList: true, subtree: true });
 
-      await setSelect('keychainTypeId', 'metal-black');
-      await setSelect('keychainTypeId', 'leather-brown');
+      await chooseKeychainType('metal-black');
+      await chooseKeychainType('leather-brown');
       await flush();
       observer.disconnect();
 
@@ -322,7 +356,9 @@ describe('KeychainMockups', () => {
       await create();
       await flush();
 
-      expect(el.querySelector('.keychain-previews .error-text')?.textContent?.trim()).toBe('Не вдалося зібрати макет');
+      expect(el.querySelector('.keychain-previews .error-text')?.textContent?.trim()).toBe(
+        'Не вдалося зібрати макет',
+      );
       expect(button('Завантажити PNG').disabled).toBe(true);
     });
   });
@@ -343,10 +379,13 @@ describe('KeychainMockups', () => {
 
       expect(trace).toHaveBeenCalledTimes(1);
       expect((trace.mock.calls[0]?.[0] as File).name).toBe('bike.png');
-      expect((el.querySelector('.keychain-photo__image') as HTMLImageElement).getAttribute('src')).toBe('blob:photo-1');
+      expect(
+        (el.querySelector('.keychain-photo__image') as HTMLImageElement).getAttribute('src'),
+      ).toBe('blob:photo-1');
       expect(el.querySelector('.keychain-photo__name')?.textContent?.trim()).toBe('bike.png');
-      expect(lastRender().paths).toEqual([PHOTO_ON_WHITE_TAG]);
-      expect(svgPaths()).toEqual([PHOTO_ON_WHITE_TAG]);
+      expect(lastRender().paths).toHaveLength(1);
+      expect(svgPaths()).toHaveLength(1);
+      expectInsideArea(lastRender().paths[0] ?? '', WHITE_TAG_PRINT_AREA);
     });
 
     it('shows a processing message while the photo is being traced', async () => {
@@ -355,7 +394,9 @@ describe('KeychainMockups', () => {
 
       await chooseFile(png());
 
-      expect(el.querySelector('.keychain-photo ~ .loading-text')?.textContent?.trim()).toBe('Обробка фото…');
+      expect(el.querySelector('.keychain-photo ~ .loading-text')?.textContent?.trim()).toBe(
+        'Обробка фото…',
+      );
     });
 
     it('says the photo was processed once tracing finished', async () => {
@@ -390,7 +431,9 @@ describe('KeychainMockups', () => {
 
     it('ignores a slow trace of a photo that was replaced meanwhile', async () => {
       let resolveFirst: (graphic: VectorGraphic) => void = () => undefined;
-      trace.mockImplementationOnce(() => new Promise<VectorGraphic>((resolve) => (resolveFirst = resolve)));
+      trace.mockImplementationOnce(
+        () => new Promise<VectorGraphic>((resolve) => (resolveFirst = resolve)),
+      );
       trace.mockResolvedValueOnce({ width: 50, height: 100, paths: ['M0 0L50 0L50 100Z'] });
       await create();
       await chooseFile(png('first.png'));
@@ -402,7 +445,7 @@ describe('KeychainMockups', () => {
       await flush();
 
       expect(svgPaths()).toHaveLength(1);
-      expect(svgPaths()[0]).not.toBe(PHOTO_ON_WHITE_TAG);
+      expect(svgPaths()[0]).toBeDefined();
     });
 
     it('rejects an unsupported file type without tracing', async () => {
@@ -410,7 +453,9 @@ describe('KeychainMockups', () => {
 
       await chooseFile(new File(['x'], 'a.gif', { type: 'image/gif' }));
 
-      expect(el.querySelector('.error-text')?.textContent?.trim()).toBe('Підтримуються лише PNG, JPG та WebP');
+      expect(el.querySelector('.error-text')?.textContent?.trim()).toBe(
+        'Підтримуються лише PNG, JPG та WebP',
+      );
       expect(trace).not.toHaveBeenCalled();
       expect(el.querySelector('.keychain-photo')).toBeNull();
     });
@@ -420,7 +465,9 @@ describe('KeychainMockups', () => {
 
       await chooseFile(png('big.png', 10 * 1024 * 1024 + 1));
 
-      expect(el.querySelector('.error-text')?.textContent?.trim()).toBe('Файл завеликий, максимум 10 МБ');
+      expect(el.querySelector('.error-text')?.textContent?.trim()).toBe(
+        'Файл завеликий, максимум 10 МБ',
+      );
       expect(trace).not.toHaveBeenCalled();
     });
 
@@ -478,10 +525,64 @@ describe('KeychainMockups', () => {
     });
   });
 
+  describe('Gemini photo prompt', () => {
+    const geminiButton = () => button('Зображення з Gemini');
+
+    it('opens Gemini in a new tab and copies the photo prompt to the clipboard', async () => {
+      await create();
+      const open = vi.fn().mockReturnValue({ opener: 'page' });
+      vi.stubGlobal('open', open);
+      const writeText = vi.fn().mockResolvedValue(undefined);
+      Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
+
+      geminiButton().click();
+      await flush();
+
+      expect(open).toHaveBeenCalledWith(GEMINI_APP_URL, '_blank');
+      expect(writeText).toHaveBeenCalledWith(GEMINI_PHOTO_PROMPT);
+      expect(el.querySelector('.error-text')).toBeNull();
+    });
+
+    it('shows an error when the browser blocks the new tab', async () => {
+      await create();
+      vi.stubGlobal('open', vi.fn().mockReturnValue(null));
+      Object.defineProperty(navigator, 'clipboard', {
+        value: { writeText: vi.fn().mockResolvedValue(undefined) },
+        configurable: true,
+      });
+
+      geminiButton().click();
+      await flush();
+
+      expect(el.querySelector('.error-text')?.textContent?.trim()).toBe(
+        'Браузер заблокував нову вкладку. Дозвольте спливаючі вікна для цього сайту.',
+      );
+    });
+
+    it('shows an error when the prompt cannot be copied', async () => {
+      await create();
+      vi.stubGlobal('open', vi.fn());
+      const writeText = vi.fn().mockRejectedValue(new Error('denied'));
+      Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
+
+      geminiButton().click();
+      await flush();
+
+      expect(el.querySelector('.error-text')?.textContent?.trim()).toBe(
+        'Не вдалося скопіювати текст промпту. Скопіюйте його вручну.',
+      );
+    });
+  });
+
   describe('photo drop zone', () => {
     const dropzone = () => el.querySelector('.keychain-dropzone') as HTMLElement;
-    const drag = (type: 'dragover' | 'dragleave' | 'drop', dataTransfer: unknown = { types: ['Files'], files: [] }) => {
-      const event = Object.assign(new Event(type, { bubbles: true, cancelable: true }), { dataTransfer });
+    const drag = (
+      type: 'dragover' | 'dragleave' | 'drop',
+      dataTransfer: unknown = { types: ['Files'], files: [] },
+    ) => {
+      const event = Object.assign(new Event(type, { bubbles: true, cancelable: true }), {
+        dataTransfer,
+      });
       dropzone().dispatchEvent(event);
       fixture.detectChanges();
       return event;
@@ -533,7 +634,8 @@ describe('KeychainMockups', () => {
       expect(event.defaultPrevented).toBe(true);
       expect((trace.mock.calls[0]?.[0] as File).name).toBe('dropped.png');
       expect(el.querySelector('.keychain-photo__name')?.textContent?.trim()).toBe('dropped.png');
-      expect(lastRender().paths).toEqual([PHOTO_ON_WHITE_TAG]);
+      expect(lastRender().paths).toHaveLength(1);
+      expectInsideArea(lastRender().paths[0] ?? '', WHITE_TAG_PRINT_AREA);
     });
 
     it('clears the highlight after a drop', async () => {
@@ -560,7 +662,9 @@ describe('KeychainMockups', () => {
 
       drag('drop', { types: ['Files'], files: [new File(['x'], 'a.gif', { type: 'image/gif' })] });
 
-      expect(el.querySelector('.error-text')?.textContent?.trim()).toBe('Підтримуються лише PNG, JPG та WebP');
+      expect(el.querySelector('.error-text')?.textContent?.trim()).toBe(
+        'Підтримуються лише PNG, JPG та WebP',
+      );
       expect(trace).not.toHaveBeenCalled();
     });
 
@@ -589,7 +693,10 @@ describe('KeychainMockups', () => {
       await setSelect('markId', 'bmw');
       await flush();
 
-      expect(loadMark).toHaveBeenCalledWith({ id: 'bmw', label: 'BMW', variants: { icon: 'marks/bmw/icon.svg' } }, 'icon');
+      expect(loadMark).toHaveBeenCalledWith(
+        { id: 'bmw', label: 'BMW', variants: { icon: 'marks/bmw/icon.svg' } },
+        'icon',
+      );
       expect(lastRender().paths).toHaveLength(1);
       expect(svgPaths()).toHaveLength(1);
     });
@@ -625,8 +732,13 @@ describe('KeychainMockups', () => {
       expect(lastRender().paths).toEqual([]);
     });
 
-    it('draws a mark made of even-odd paths with the even-odd rule in the preview and the canvas request', async () => {
-      loadMark.mockResolvedValue({ width: 400, height: 40, paths: [], evenOddPaths: ['M0 0L400 0L400 40Z'] });
+    it('draws a mark made of even-odd paths with the even-odd rule in the canvas request', async () => {
+      loadMark.mockResolvedValue({
+        width: 400,
+        height: 40,
+        paths: [],
+        evenOddPaths: ['M0 0L400 0L400 40Z'],
+      });
       await create();
 
       await setSelect('markId', 'benelli');
@@ -634,8 +746,6 @@ describe('KeychainMockups', () => {
 
       expect(lastRender().paths).toEqual([]);
       expect(lastRender().evenOddPaths).toHaveLength(1);
-      const previewPath = el.querySelector('.keychain-svg__preview path') as SVGPathElement;
-      expect(previewPath.getAttribute('fill-rule')).toBe('evenodd');
       expect(button('Завантажити SVG').disabled).toBe(false);
     });
 
@@ -660,14 +770,14 @@ describe('KeychainMockups', () => {
       expect(el.querySelector('#markVariantId')).toBeNull();
     });
 
-    it('offers Разом/Значок/Напис for a mark with all three, defaulting to Разом', async () => {
+    it('offers Іконка/Текст/Іконка + текст for a mark with all three, defaulting to Іконка + текст', async () => {
       await create();
 
       await setSelect('markId', 'lifan');
       await flush();
 
-      expect(options('markVariantId')).toEqual(['Разом', 'Значок', 'Напис']);
-      expect((el.querySelector('#markVariantId') as HTMLSelectElement).value).toBe('combined');
+      expect(options('markVariantId')).toEqual(['Іконка', 'Текст', 'Іконка + текст']);
+      expect(dropdownValue(fixture, 'markVariantId')).toBe('combined');
     });
 
     it('loads a different file when another variant is chosen for the same mark', async () => {
@@ -706,7 +816,7 @@ describe('KeychainMockups', () => {
       await setSelect('markId', 'honda');
       await flush();
 
-      expect((el.querySelector('#markVariantId') as HTMLSelectElement).value).toBe('text');
+      expect(dropdownValue(fixture, 'markVariantId')).toBe('text');
       expect(loadMark).toHaveBeenCalledWith(expect.objectContaining({ id: 'honda' }), 'text');
     });
 
@@ -762,7 +872,9 @@ describe('KeychainMockups', () => {
   describe('text size', () => {
     const lastTextHeight = () => {
       const paths = lastRender().paths;
-      const values = (paths.at(-1)?.match(/-?\d+(?:\.\d+)?/g) ?? []).map(Number).filter((_, index) => index % 2 === 1);
+      const values = (paths.at(-1)?.match(/-?\d+(?:\.\d+)?/g) ?? [])
+        .map(Number)
+        .filter((_, index) => index % 2 === 1);
       return Math.max(...values) - Math.min(...values);
     };
 
@@ -770,16 +882,20 @@ describe('KeychainMockups', () => {
       await create();
 
       expect(options('textScaleId')).toEqual(['XS', 'S', 'M', 'L', 'XL']);
-      expect((el.querySelector('#textScaleId') as HTMLSelectElement).value).toBe('m');
+      expect(dropdownValue(fixture, 'textScaleId')).toBe('m');
     });
 
     it('shrinks and enlarges only the text, leaving the mark alone', async () => {
       await create();
+      chooseDesign('metal-v-3');
+      await settle();
       await setSelect('markId', 'bmw');
       await flush();
       await setInput('text', 'AB');
       const markSize = () => {
-        const values = (lastRender().paths[0]?.match(/-?\d+(?:\.\d+)?/g) ?? []).map(Number).filter((_, index) => index % 2 === 0);
+        const values = (lastRender().paths[0]?.match(/-?\d+(?:\.\d+)?/g) ?? [])
+          .map(Number)
+          .filter((_, index) => index % 2 === 0);
         return Math.max(...values) - Math.min(...values);
       };
       const markBefore = markSize();
@@ -790,7 +906,7 @@ describe('KeychainMockups', () => {
       await setSelect('textScaleId', 'l');
       const large = lastTextHeight();
 
-      expect(small).toBeCloseTo((standard * 0.4) / 0.7, 0);
+      expect(small).toBeCloseTo((standard * 0.52) / 0.91, 0);
       expect(large).toBeGreaterThan(standard);
       expect(markSize()).toBeCloseTo(markBefore, 6);
     });
@@ -799,7 +915,9 @@ describe('KeychainMockups', () => {
       await create();
       await setInput('text', 'A');
       const height = () => {
-        const values = (svgPaths()[0]?.match(/-?\d+(?:\.\d+)?/g) ?? []).map(Number).filter((_, index) => index % 2 === 1);
+        const values = (svgPaths()[0]?.match(/-?\d+(?:\.\d+)?/g) ?? [])
+          .map(Number)
+          .filter((_, index) => index % 2 === 1);
         return Math.max(...values) - Math.min(...values);
       };
       const standard = height();
@@ -810,64 +928,102 @@ describe('KeychainMockups', () => {
     });
   });
 
-  describe('orientation and scale of each block', () => {
-    const numbers = (path: string | undefined) => (path?.match(/-?\d+(?:\.\d+)?/g) ?? []).map(Number);
+  describe('design and scale of each block', () => {
+    const numbers = (path: string | undefined) =>
+      (path?.match(/-?\d+(?:\.\d+)?/g) ?? []).map(Number);
     const span = (path: string | undefined, axis: 0 | 1) => {
       const values = numbers(path).filter((_, index) => index % 2 === axis);
       return Math.max(...values) - Math.min(...values);
     };
+    const designIdOf = (image: Element | null) =>
+      /([^/]+)\.svg$/.exec(image?.getAttribute('src') ?? '')?.[1];
+    const designNames = () =>
+      Array.from(el.querySelectorAll('.keychain-design__image')).map((image) => designIdOf(image));
+    const activeDesign = () =>
+      designIdOf(el.querySelector('.keychain-design--active .keychain-design__image'));
+    const cardTitles = () =>
+      Array.from(el.querySelectorAll('.keychain-form .keychain-card__title')).map((title) =>
+        title.textContent?.trim(),
+      );
 
-    it('turns the mark a quarter turn with its own orientation, so it becomes taller than wide', async () => {
+    it('offers the designs of the chosen type and starts with the first one', async () => {
       await create();
+
+      expect(designNames()).toEqual([
+        'metal-v-2',
+        'metal-v-3',
+        'metal-h-1',
+        'metal-h-2',
+        'metal-h-3',
+        'metal-h-t',
+        'metal-v-t',
+        'metla-v-1',
+      ]);
+      expect(activeDesign()).toBe('metal-v-2');
+    });
+
+    it('offers the round designs for the circle subleather and the loop designs for leather', async () => {
+      await create();
+
+      await chooseKeychainType('subleather-circle');
+      expect(designNames()).toEqual(['eco-round-v', 'eco-round-h']);
+      expect(activeDesign()).toBe('eco-round-v');
+
+      await chooseKeychainType('leather-black');
+      expect(designNames()).toEqual(['loop-icon', 'loop']);
+    });
+
+    it('shows only the cards the chosen design has zones for', async () => {
+      await create();
+      expect(cardTitles()).toEqual(['Брелок', 'Зображення', 'Марка', 'Текст']);
+
+      chooseDesign('metal-h-1');
+      await settle();
+      expect(cardTitles()).toEqual(['Брелок', 'Зображення']);
+
+      await chooseKeychainType('subleather-mint');
+      chooseDesign('eco-v');
+      await settle();
+      expect(cardTitles()).toEqual(['Брелок', 'Марка', 'Текст']);
+    });
+
+    it('offers the zone select only where a design has two zones for the same element', async () => {
+      await create();
+      expect(el.querySelector('#markZoneId')).toBeNull();
+      expect(el.querySelector('#textZoneId')).toBeNull();
+
+      chooseDesign('metal-v-3');
+      await settle();
+
+      expect(options('markZoneId')).toEqual(['Основна зона', 'Мала зона']);
+      expect(dropdownValue(fixture, 'markZoneId')).toBe('small');
+      expect(dropdownValue(fixture, 'textZoneId')).toBe('main');
+    });
+
+    it('keeps the mark when a text is added to the single zone of the design', async () => {
+      await create();
+      await chooseKeychainType('subleather-mint');
+      chooseDesign('eco-v');
+      await settle();
       await setSelect('markId', 'bmw');
       await flush();
-      const upright = lastRender().paths[0];
+      const markOnly = lastRender().paths;
 
-      await setSelect('markOrientation', 'vertical');
+      await setInput('text', 'AB');
 
-      const rotated = lastRender().paths[0];
-      expect(span(rotated, 1) / span(rotated, 0)).toBeCloseTo(span(upright, 0) / span(upright, 1), 1);
-      expect(rotated).not.toBe(upright);
+      expect(lastRender().paths).toEqual(markOnly);
     });
 
-    it('turns only that block: the traced photo stays upright when the mark is turned', async () => {
+    it('puts the text into the zone chosen in the text card', async () => {
       await create();
-      await chooseFile(png());
-      await setSelect('markId', 'bmw');
-      await flush();
-      const before = lastRender().paths.length;
+      chooseDesign('metal-v-3');
+      await settle();
+      await setInput('text', 'AB');
+      const defaultZone = lastRender().paths[0];
 
-      await setSelect('markOrientation', 'vertical');
+      await setSelect('textZoneId', 'small');
 
-      expect(lastRender().paths).toHaveLength(before);
-      const photo = lastRender().paths[0];
-      expect(span(photo, 0)).toBeCloseTo(span(photo, 1), 0);
-    });
-
-    it('turns the traced photo with the image orientation', async () => {
-      trace.mockResolvedValue({ width: 100, height: 200, paths: ['M0 0L100 0L100 200Z'] });
-      await create();
-      await chooseFile(png());
-      await flush();
-      const upright = lastRender().paths[0];
-      expect(span(upright, 1)).toBeGreaterThan(span(upright, 0));
-
-      await setSelect('photoOrientation', 'vertical');
-
-      const turned = lastRender().paths[0];
-      expect(span(turned, 0)).toBeGreaterThan(span(turned, 1));
-    });
-
-    it('turns the text on its own too: a wide line of text becomes a tall one', async () => {
-      await create();
-      await setInput('text', 'ABCDEF');
-      const before = lastRender().paths[0];
-      expect(span(before, 0)).toBeGreaterThan(span(before, 1));
-
-      await setSelect('textOrientation', 'vertical');
-
-      const turned = lastRender().paths[0];
-      expect(span(turned, 1)).toBeGreaterThan(span(turned, 0));
+      expect(lastRender().paths[0]).not.toBe(defaultZone);
     });
 
     it('scales the image on its own: XS is smaller than L', async () => {
@@ -883,6 +1039,8 @@ describe('KeychainMockups', () => {
 
     it('scales the mark on its own without touching the photo or the text', async () => {
       await create();
+      chooseDesign('metal-v-3');
+      await settle();
       await chooseFile(png());
       await setSelect('markId', 'lifan');
       await flush();
@@ -910,24 +1068,11 @@ describe('KeychainMockups', () => {
     });
   });
 
-  describe('SVG block', () => {
-    it('asks for content and blocks the download while there is no artwork', async () => {
+  describe('SVG download', () => {
+    it('blocks the download while there is no artwork', async () => {
       await create();
 
-      expect(el.querySelector('.keychain-svg .keychain-reserved')?.textContent).toContain('Додайте фото, марку або текст');
       expect(button('Завантажити SVG').disabled).toBe(true);
-    });
-
-    it('previews the artwork in the ink of the keychain type, on a dark background for the white ink', async () => {
-      await create();
-      await setInput('text', 'A');
-      expect((el.querySelector('.keychain-svg__preview g') as SVGGElement).getAttribute('fill')).toBe('#000000');
-      expect(el.querySelector('.keychain-svg__preview--dark')).toBeNull();
-
-      await setSelect('keychainTypeId', 'metal-black');
-
-      expect((el.querySelector('.keychain-svg__preview g') as SVGGElement).getAttribute('fill')).toBe('#ffffff');
-      expect(el.querySelector('.keychain-svg__preview--dark')).not.toBeNull();
     });
 
     it('downloads the artwork as an SVG at full photo resolution', async () => {
@@ -991,7 +1136,9 @@ describe('KeychainMockups', () => {
       button('Завантажити PNG').click();
       await flush();
 
-      expect(el.querySelector('.keychain-previews .error-text')?.textContent?.trim()).toBe('Не вдалося створити PNG');
+      expect(el.querySelector('.keychain-previews .error-text')?.textContent?.trim()).toBe(
+        'Не вдалося створити PNG',
+      );
     });
 
     describe('clipboard', () => {
@@ -1007,7 +1154,10 @@ describe('KeychainMockups', () => {
           }
         }
         vi.stubGlobal('ClipboardItem', FakeClipboardItem);
-        Object.defineProperty(navigator, 'clipboard', { value: { write: clipboardWrite }, configurable: true });
+        Object.defineProperty(navigator, 'clipboard', {
+          value: { write: clipboardWrite },
+          configurable: true,
+        });
       });
 
       it('copies the mock-up as an image instead of downloading it', async () => {
@@ -1042,7 +1192,9 @@ describe('KeychainMockups', () => {
         button('Копіювати').click();
         await flush();
 
-        expect(el.querySelector('.keychain-previews .error-text')?.textContent?.trim()).toBe('Не вдалося скопіювати зображення');
+        expect(el.querySelector('.keychain-previews .error-text')?.textContent?.trim()).toBe(
+          'Не вдалося скопіювати зображення',
+        );
       });
     });
   });

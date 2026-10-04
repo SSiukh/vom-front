@@ -4,7 +4,12 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
 import { of, throwError } from 'rxjs';
 import { environment } from '../../../../../environments/environment';
-import { ACCESS_TOKEN_KEY, AuthService, LOGIN_KEY, REFRESH_TOKEN_KEY } from '../../../../core/auth/auth.service';
+import {
+  ACCESS_TOKEN_KEY,
+  AuthService,
+  LOGIN_KEY,
+  REFRESH_TOKEN_KEY,
+} from '../../../../core/auth/auth.service';
 import { TwoFa } from './two-fa';
 
 interface AuthServiceStubOverrides {
@@ -32,7 +37,9 @@ describe('TwoFa', () => {
       login: () => null,
       logout: vi.fn(),
       ensureTwoFaStatus: vi.fn().mockReturnValue(of(false)),
-      setupTwoFactor: vi.fn().mockReturnValue(of({ qrCodeDataUrl: 'data:image/png;base64,x', secret: 'SECRET-KEY' })),
+      setupTwoFactor: vi
+        .fn()
+        .mockReturnValue(of({ qrCodeDataUrl: 'data:image/png;base64,x', secret: 'SECRET-KEY' })),
       confirmTwoFactor: vi.fn(),
       verifyTwoFactor: vi.fn(),
       ...overrides,
@@ -85,8 +92,34 @@ describe('TwoFa', () => {
       expect(router.navigateByUrl).toHaveBeenCalledWith('/');
     });
 
+    it('submits the code form and prevents the native page reload', () => {
+      const verifyTwoFactor = vi.fn().mockReturnValue(of({ accessToken: 'a', refreshToken: 'r' }));
+      configure(buildAuthServiceStub({ hasPendingTwoFa: () => true, verifyTwoFactor }));
+
+      fillCode('123456');
+      const submit = new Event('submit', { cancelable: true });
+      (el.querySelector('form') as HTMLFormElement).dispatchEvent(submit);
+
+      expect(submit.defaultPrevented).toBe(true);
+      expect(verifyTwoFactor).toHaveBeenCalledWith('123456');
+    });
+
+    it('ignores submit while the code is incomplete', () => {
+      const verifyTwoFactor = vi.fn().mockReturnValue(of({ accessToken: 'a', refreshToken: 'r' }));
+      configure(buildAuthServiceStub({ hasPendingTwoFa: () => true, verifyTwoFactor }));
+
+      fillCode('123');
+      (el.querySelector('form') as HTMLFormElement).dispatchEvent(
+        new Event('submit', { cancelable: true }),
+      );
+
+      expect(verifyTwoFactor).not.toHaveBeenCalled();
+    });
+
     it('shows an error message on an invalid code (401)', () => {
-      const verifyTwoFactor = vi.fn().mockReturnValue(throwError(() => new HttpErrorResponse({ status: 401 })));
+      const verifyTwoFactor = vi
+        .fn()
+        .mockReturnValue(throwError(() => new HttpErrorResponse({ status: 401 })));
       configure(buildAuthServiceStub({ hasPendingTwoFa: () => true, verifyTwoFactor }));
 
       fillCode('000000');
@@ -136,11 +169,15 @@ describe('TwoFa', () => {
       expect((el.querySelector('.qr-placeholder img') as HTMLImageElement)?.src).toContain(
         'data:image/png;base64,x',
       );
-      expect(el.querySelector('.status-badge--warning')?.textContent?.trim()).toBe('Не налаштовано');
+      expect(el.querySelector('.status-badge--warning')?.textContent?.trim()).toBe(
+        'Не налаштовано',
+      );
     });
 
     it('shows the recovery codes after a successful confirm', () => {
-      const confirmTwoFactor = vi.fn().mockReturnValue(of({ recoveryCodes: ['aaaa-1111', 'bbbb-2222'] }));
+      const confirmTwoFactor = vi
+        .fn()
+        .mockReturnValue(of({ recoveryCodes: ['aaaa-1111', 'bbbb-2222'] }));
       configure(buildAuthServiceStub({ isAuthenticated: () => true, confirmTwoFactor }));
 
       fillCode('123456');
@@ -148,7 +185,9 @@ describe('TwoFa', () => {
       fixture.detectChanges();
 
       expect(confirmTwoFactor).toHaveBeenCalledWith('123456');
-      const codes = Array.from(el.querySelectorAll('.recovery-code')).map((n) => n.textContent?.trim());
+      const codes = Array.from(el.querySelectorAll('.recovery-code')).map((n) =>
+        n.textContent?.trim(),
+      );
       expect(codes).toEqual(['aaaa-1111', 'bbbb-2222']);
       expect(el.querySelector('.code-cells')).toBeNull();
     });
@@ -163,11 +202,15 @@ describe('TwoFa', () => {
       (el.querySelector('.confirm-button') as HTMLButtonElement).click();
       fixture.detectChanges();
 
-      expect(el.querySelector('.error-text')?.textContent?.trim()).toBe('Невірний код підтвердження');
+      expect(el.querySelector('.error-text')?.textContent?.trim()).toBe(
+        'Невірний код підтвердження',
+      );
     });
 
     it('keeps the confirm button disabled if setupTwoFactor fails to load', () => {
-      const setupTwoFactor = vi.fn().mockReturnValue(throwError(() => new HttpErrorResponse({ status: 500 })));
+      const setupTwoFactor = vi
+        .fn()
+        .mockReturnValue(throwError(() => new HttpErrorResponse({ status: 500 })));
       configure(buildAuthServiceStub({ isAuthenticated: () => true, setupTwoFactor }));
 
       fillCode('123456');
@@ -213,10 +256,14 @@ describe('TwoFa', () => {
 
       fillCode('123456');
       (el.querySelector('.confirm-button') as HTMLButtonElement).click();
-      httpMock.expectOne(`${baseUrl}/2fa/confirm`).flush({ recoveryCodes: ['aaaa-1111', 'bbbb-2222'] });
+      httpMock
+        .expectOne(`${baseUrl}/2fa/confirm`)
+        .flush({ recoveryCodes: ['aaaa-1111', 'bbbb-2222'] });
       fixture.detectChanges();
 
-      const codes = Array.from(el.querySelectorAll('.recovery-code')).map((n) => n.textContent?.trim());
+      const codes = Array.from(el.querySelectorAll('.recovery-code')).map((n) =>
+        n.textContent?.trim(),
+      );
       expect(codes).toEqual(['aaaa-1111', 'bbbb-2222']);
       expect(el.querySelector('.status-badge--success')).toBeNull();
     });

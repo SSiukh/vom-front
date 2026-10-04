@@ -36,7 +36,9 @@ describe('buildTextGraphic', () => {
 
   it('falls back to a proportional cap height when the font reports none', () => {
     expect(buildTextGraphic('A', glyphs({ capHeight: 0 })).graphic?.capHeight).toBe(700);
-    expect(buildTextGraphic('A', glyphs({ capHeight: 0, unitsPerEm: 2000 })).graphic?.capHeight).toBe(1400);
+    expect(
+      buildTextGraphic('A', glyphs({ capHeight: 0, unitsPerEm: 2000 })).graphic?.capHeight,
+    ).toBe(1400);
   });
 
   it('returns no graphic for empty or whitespace-only text', () => {

@@ -19,12 +19,7 @@
   <div class="form-grid-2">
     <div class="field">
       <label class="field-label" for="typeId">Тип товару</label>
-      <select id="typeId" class="text-input" formControlName="typeId">
-        <option value="" disabled>Оберіть тип</option>
-        @for (type of filterableTypes(); track type.id) {
-          <option [value]="type.id">{{ type.label }}</option>
-        }
-      </select>
+      <app-dropdown triggerId="typeId" formControlName="typeId" [options]="typeOptions()" />
     </div>
     <div class="field">
       <label class="field-label" for="name">Назва товару</label>

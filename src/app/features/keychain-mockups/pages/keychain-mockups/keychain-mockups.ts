@@ -1,7 +1,22 @@
-import { Component, DestroyRef, ElementRef, computed, effect, inject, signal, viewChild } from '@angular/core';
+import {
+  Component,
+  DestroyRef,
+  ElementRef,
+  computed,
+  effect,
+  inject,
+  signal,
+  viewChild,
+} from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
-import { LucideCheck, LucideCopy, LucideDownload, LucideTrash2, LucideUpload } from '@lucide/angular';
+import {
+  LucideCheck,
+  LucideCopy,
+  LucideDownload,
+  LucideTrash2,
+  LucideUpload,
+} from '@lucide/angular';
 import { catchError, from, map, merge, of, startWith, switchMap, tap } from 'rxjs';
 import { STICKER_FONTS } from '../../../sticker-generator/data/sticker-fonts';
 import type { GlyphSource } from '../../../sticker-generator/models/glyph-source.model';
@@ -9,32 +24,48 @@ import { FontLibraryService } from '../../../sticker-generator/services/font-lib
 import { MockupRenderer } from '../../../sticker-generator/services/mockup-renderer.service';
 import { copyPngToClipboard } from '../../../sticker-generator/utils/copy-image';
 import { downloadFile } from '../../../sticker-generator/utils/download-file';
-import { formatNumber } from '../../../sticker-generator/utils/path-data';
 import {
   DEFAULT_KEYCHAIN_SCALE_ID,
   DEFAULT_KEYCHAIN_TEXT_SCALE_ID,
   KEYCHAIN_SCALES,
   KEYCHAIN_TEXT_SCALES,
 } from '../../data/keychain-scales';
+import {
+  Dropdown,
+  dictionaryOptions,
+  type DropdownOption,
+} from '../../../../shared/ui/dropdown/dropdown';
 import { RENDER_BUSY_DELAY_MS } from '../../data/keychain-config';
-import { KEYCHAIN_FAMILY_LABELS, DEFAULT_KEYCHAIN_TYPE_ID, KEYCHAIN_TYPES } from '../../data/keychain-types';
+import {
+  KEYCHAIN_FAMILY_LABELS,
+  DEFAULT_KEYCHAIN_TYPE_ID,
+  KEYCHAIN_TYPES,
+  keychainSubtypeLabel,
+} from '../../data/keychain-types';
+import { GEMINI_APP_URL, GEMINI_PHOTO_PROMPT } from '../../data/gemini-photo-prompt';
 import { KEYCHAIN_MARKS } from '../../data/keychain-marks';
+import { designGroupOf, designsInGroup } from '../../data/keychain-designs';
 import { PHOTO_ACCEPTED_TYPES } from '../../data/photo-upload';
-import type { KeychainFamily, KeychainType, MarkVariantKind, VectorGraphic } from '../../models/keychain.model';
+import type {
+  KeychainFamily,
+  KeychainType,
+  MarkVariantKind,
+  VectorGraphic,
+} from '../../models/keychain.model';
+import type { KeychainDesign, DesignSlot } from '../../models/keychain-design.model';
 import { KeychainRenderer } from '../../services/keychain-renderer.service';
 import { MarkLibrary } from '../../services/mark-library.service';
 import { NO_INK_ERROR, PhotoTracer } from '../../services/photo-tracer.service';
 import { availableVariants, defaultVariant, MARK_VARIANT_LABELS } from '../../utils/mark-variants';
 import { exportArtworkSvg } from '../../utils/artwork-svg';
-import { isLightColor } from '../../utils/is-light-color';
-import { layoutArtwork, type ArtworkOrientation } from '../../utils/layout-artwork';
+import { layoutDesign, resolveSlots, slotsAccepting } from '../../utils/layout-design';
 import { buildTextGraphic } from '../../utils/text-graphic';
 import { validatePhoto } from '../../utils/validate-photo';
 
 const MAX_TEXT_LENGTH = 40;
 const COPIED_FEEDBACK_MS = 2000;
-function factorOf(scales: readonly { id: string; factor: number }[], id: string): number | undefined {
-  return scales.find((scale) => scale.id === id)?.factor;
+function factorOf(scales: readonly { id: string; factor: number }[], id: string): number {
+  return scales.find((scale) => scale.id === id)?.factor ?? 1;
 }
 
 function samePaths(left: readonly string[], right: readonly string[]): boolean {
@@ -45,7 +76,15 @@ const FAMILY_ORDER: readonly KeychainFamily[] = ['metal', 'subleather', 'leather
 
 @Component({
   selector: 'app-keychain-mockups',
-  imports: [ReactiveFormsModule, LucideCheck, LucideCopy, LucideDownload, LucideTrash2, LucideUpload],
+  imports: [
+    ReactiveFormsModule,
+    Dropdown,
+    LucideCheck,
+    LucideCopy,
+    LucideDownload,
+    LucideTrash2,
+    LucideUpload,
+  ],
   templateUrl: './keychain-mockups.html',
   styleUrl: './keychain-mockups.css',
 })
@@ -62,34 +101,39 @@ export class KeychainMockups {
   private renderInFlight = false;
   private copiedTimer: ReturnType<typeof setTimeout> | null = null;
 
-  protected readonly keychainGroups = FAMILY_ORDER.map((family) => ({
+  protected readonly keychainFamilyOptions: DropdownOption[] = FAMILY_ORDER.map((family) => ({
+    value: family,
     label: KEYCHAIN_FAMILY_LABELS[family],
-    types: KEYCHAIN_TYPES.filter((type) => type.family === family),
   }));
-  protected readonly marks = KEYCHAIN_MARKS;
-  protected readonly markVariantLabels = MARK_VARIANT_LABELS;
-  protected readonly fonts = STICKER_FONTS;
-  protected readonly imageScales = KEYCHAIN_SCALES;
-  protected readonly textScales = KEYCHAIN_TEXT_SCALES;
-  protected readonly orientations: readonly { id: ArtworkOrientation; label: string }[] = [
-    { id: 'horizontal', label: 'Горизонтально' },
-    { id: 'vertical', label: 'Вертикально (повернуто на 90°)' },
+  protected readonly keychainSubtypeOptions = computed<DropdownOption[]>(() =>
+    KEYCHAIN_TYPES.filter((type) => type.family === this.keychainType().family).map((type) => ({
+      value: type.id,
+      label: keychainSubtypeLabel(type),
+    })),
+  );
+  private readonly marks = KEYCHAIN_MARKS;
+  protected readonly markOptions: DropdownOption[] = [
+    { value: 'none', label: 'Без марки' },
+    ...dictionaryOptions(KEYCHAIN_MARKS),
   ];
+  protected readonly fontOptions = dictionaryOptions(STICKER_FONTS);
+  protected readonly imageScaleOptions = dictionaryOptions(KEYCHAIN_SCALES);
+  protected readonly textScaleOptions = dictionaryOptions(KEYCHAIN_TEXT_SCALES);
   protected readonly maxTextLength = MAX_TEXT_LENGTH;
   protected readonly acceptedPhotoTypes = PHOTO_ACCEPTED_TYPES.join(',');
 
   protected readonly form = this.fb.nonNullable.group({
     keychainTypeId: [DEFAULT_KEYCHAIN_TYPE_ID],
+    designId: [''],
     markId: ['none'],
     markVariantId: ['combined' as MarkVariantKind],
     markScaleId: [DEFAULT_KEYCHAIN_SCALE_ID],
-    markOrientation: ['horizontal' as ArtworkOrientation],
+    markZoneId: [''],
     photoScaleId: [DEFAULT_KEYCHAIN_SCALE_ID],
-    photoOrientation: ['horizontal' as ArtworkOrientation],
     text: [''],
     fontId: [STICKER_FONTS[0]?.id ?? ''],
     textScaleId: [DEFAULT_KEYCHAIN_TEXT_SCALE_ID],
-    textOrientation: ['horizontal' as ArtworkOrientation],
+    textZoneId: [''],
   });
 
   private readonly values = toSignal(
@@ -120,33 +164,67 @@ export class KeychainMockups {
   protected readonly renderError = signal<string | null>(null);
   protected readonly copied = signal(false);
   protected readonly actionError = signal<string | null>(null);
+  protected readonly geminiError = signal<string | null>(null);
 
   protected readonly keychainType = computed<KeychainType>(
-    () => KEYCHAIN_TYPES.find((type) => type.id === this.values().keychainTypeId) ?? (KEYCHAIN_TYPES[0] as KeychainType),
+    () =>
+      KEYCHAIN_TYPES.find((type) => type.id === this.values().keychainTypeId) ??
+      (KEYCHAIN_TYPES[0] as KeychainType),
   );
 
-  protected readonly selectedMark = computed(() => this.marks.find((mark) => mark.id === this.values().markId) ?? null);
-  protected readonly markVariantOptions = computed(() => availableVariants(this.selectedMark()));
+  protected readonly selectedMark = computed(
+    () => this.marks.find((mark) => mark.id === this.values().markId) ?? null,
+  );
+  protected readonly markVariantOptions = computed<DropdownOption[]>(() =>
+    availableVariants(this.selectedMark()).map((variant) => ({
+      value: variant,
+      label: MARK_VARIANT_LABELS[variant],
+    })),
+  );
 
   private readonly textResult = computed(() => {
     const glyphs = this.glyphs();
     const text = this.values().text.trim();
-    return glyphs && text ? buildTextGraphic(text, glyphs) : { graphic: null, missingCharacters: [] };
+    return glyphs && text
+      ? buildTextGraphic(text, glyphs)
+      : { graphic: null, missingCharacters: [] };
   });
 
   protected readonly missingCharacters = computed(() => this.textResult().missingCharacters);
 
+  protected readonly selectedGroup = computed(() => designGroupOf(this.keychainType()));
+  protected readonly groupDesigns = computed(() => designsInGroup(this.selectedGroup()));
+  protected readonly selectedDesign = computed<KeychainDesign>(() => {
+    const designs = this.groupDesigns();
+    return (
+      designs.find((design) => design.id === this.values().designId) ??
+      (designs[0] as KeychainDesign)
+    );
+  });
+  protected readonly photoEnabled = computed(() => this.selectedDesign().photo !== null);
+  protected readonly markSlots = computed(() => slotsAccepting(this.selectedDesign(), 'mark'));
+  protected readonly textSlots = computed(() => slotsAccepting(this.selectedDesign(), 'text'));
+  protected readonly markEnabled = computed(() => this.markSlots().length > 0);
+  protected readonly textEnabled = computed(() => this.textSlots().length > 0);
+  private readonly resolvedSlots = computed(() =>
+    resolveSlots(
+      this.selectedDesign(),
+      this.values().markZoneId || null,
+      this.values().textZoneId || null,
+    ),
+  );
+  protected readonly resolvedMarkSlotId = computed(() => this.resolvedSlots().mark?.id ?? '');
+  protected readonly resolvedTextSlotId = computed(() => this.resolvedSlots().text?.id ?? '');
+
   protected readonly artwork = computed(() =>
-    layoutArtwork({
+    layoutDesign({
+      design: this.selectedDesign(),
       area: this.keychainType().printArea,
       photo: this.tracedPhoto(),
       mark: this.markGraphic(),
       text: this.textResult().graphic,
-      orientations: {
-        photo: this.values().photoOrientation,
-        mark: this.values().markOrientation,
-        text: this.values().textOrientation,
-      },
+      markSlotId: this.values().markZoneId || null,
+      textSlotId: this.values().textZoneId || null,
       scales: {
         photo: factorOf(KEYCHAIN_SCALES, this.values().photoScaleId),
         mark: factorOf(KEYCHAIN_SCALES, this.values().markScaleId),
@@ -156,17 +234,14 @@ export class KeychainMockups {
   );
 
   private readonly artworkPaths = computed(() => this.artwork().paths, { equal: samePaths });
-  private readonly artworkEvenOddPaths = computed(() => this.artwork().evenOddPaths, { equal: samePaths });
-
-  protected readonly hasArtwork = computed(() => this.artworkPaths().length + this.artworkEvenOddPaths().length > 0);
-  protected readonly ink = computed(() => this.keychainType().inkColor);
-  protected readonly inkIsLight = computed(() => isLightColor(this.ink()));
-  protected readonly artworkViewBox = computed(() => {
-    const bounds = this.artwork().bounds;
-    return bounds
-      ? [bounds.minX, bounds.minY, bounds.maxX - bounds.minX, bounds.maxY - bounds.minY].map(formatNumber).join(' ')
-      : '';
+  private readonly artworkEvenOddPaths = computed(() => this.artwork().evenOddPaths, {
+    equal: samePaths,
   });
+
+  protected readonly hasArtwork = computed(
+    () => this.artworkPaths().length + this.artworkEvenOddPaths().length > 0,
+  );
+  protected readonly ink = computed(() => this.keychainType().inkColor);
   protected readonly canExport = computed(() => !this.rendering() && !this.renderError());
 
   constructor() {
@@ -178,6 +253,51 @@ export class KeychainMockups {
     this.watchMark();
     this.watchFont();
     this.watchRender();
+  }
+
+  protected async openGeminiPhoto(): Promise<void> {
+    this.geminiError.set(null);
+    const copy = this.copyGeminiPrompt();
+    const tab = window.open(GEMINI_APP_URL, '_blank');
+    if (tab) {
+      tab.opener = null;
+    } else {
+      this.geminiError.set(
+        'Браузер заблокував нову вкладку. Дозвольте спливаючі вікна для цього сайту.',
+      );
+    }
+    try {
+      await copy;
+    } catch {
+      this.geminiError.set('Не вдалося скопіювати текст промпту. Скопіюйте його вручну.');
+    }
+  }
+
+  private async copyGeminiPrompt(): Promise<void> {
+    await navigator.clipboard.writeText(GEMINI_PHOTO_PROMPT);
+  }
+
+  protected selectDesign(id: string): void {
+    this.form.controls.designId.setValue(id);
+  }
+
+  protected onMarkZoneChange(slotId: string): void {
+    this.form.controls.markZoneId.setValue(slotId);
+  }
+
+  protected onTextZoneChange(slotId: string): void {
+    this.form.controls.textZoneId.setValue(slotId);
+  }
+
+  protected slotOptions(slots: readonly DesignSlot[]): DropdownOption[] {
+    return slots.map((slot) => ({ value: slot.id, label: slot.label }));
+  }
+
+  protected onFamilyChange(family: string): void {
+    const first = KEYCHAIN_TYPES.find((type) => type.family === family);
+    if (first) {
+      this.form.controls.keychainTypeId.setValue(first.id);
+    }
   }
 
   protected selectPhoto(event: Event): void {
@@ -267,7 +387,11 @@ export class KeychainMockups {
     if (!this.hasArtwork()) {
       return;
     }
-    downloadFile('keychain-artwork.svg', exportArtworkSvg(this.artwork(), this.ink()), 'image/svg+xml');
+    downloadFile(
+      'keychain-artwork.svg',
+      exportArtworkSvg(this.artwork(), this.ink()),
+      'image/svg+xml',
+    );
   }
 
   private tracePhoto(file: File): void {
@@ -303,7 +427,9 @@ export class KeychainMockups {
         const variants = availableVariants(mark);
         const current = this.form.controls.markVariantId.value;
         if (!variants.includes(current)) {
-          this.form.controls.markVariantId.setValue(defaultVariant(mark) ?? 'combined', { emitEvent: false });
+          this.form.controls.markVariantId.setValue(defaultVariant(mark) ?? 'combined', {
+            emitEvent: false,
+          });
         }
       }),
     );
@@ -314,7 +440,9 @@ export class KeychainMockups {
           this.markGraphic.set(null);
         }),
         switchMap(() => {
-          const mark = this.marks.find((candidate) => candidate.id === this.form.controls.markId.value);
+          const mark = this.marks.find(
+            (candidate) => candidate.id === this.form.controls.markId.value,
+          );
           const variant = this.form.controls.markVariantId.value;
           if (!mark || !mark.variants[variant]) {
             return of(null);
@@ -390,7 +518,11 @@ export class KeychainMockups {
         this.renderError.set(error);
       };
       this.renderer
-        .render(canvas, { imageUrl: type.imageUrl, paths, evenOddPaths, ink, blend }, controller.signal)
+        .render(
+          canvas,
+          { imageUrl: type.imageUrl, paths, evenOddPaths, ink, blend },
+          controller.signal,
+        )
         .then(() => finish(null))
         .catch(() => finish('Не вдалося зібрати макет'));
     });

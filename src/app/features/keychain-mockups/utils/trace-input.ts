@@ -22,7 +22,8 @@ export function prepareTraceInput(image: RasterImage): RasterImage | null {
     const sourceY = box.minY + Math.min(cropHeight - 1, (row + 0.5) / scale - 0.5);
     for (let column = 0; column < width; column++) {
       const sourceX = box.minX + Math.min(cropWidth - 1, (column + 0.5) / scale - 0.5);
-      const value = sample(grey, image.width, image.height, sourceX, sourceY) < TRACE_THRESHOLD ? 0 : 255;
+      const value =
+        sample(grey, image.width, image.height, sourceX, sourceY) < TRACE_THRESHOLD ? 0 : 255;
       const offset = (row * width + column) * 4;
       data[offset] = value;
       data[offset + 1] = value;
@@ -37,7 +38,10 @@ function toGrey(image: RasterImage): Float32Array {
   const grey = new Float32Array(image.width * image.height);
   for (let index = 0; index < grey.length; index++) {
     const offset = index * 4;
-    const luminance = 0.299 * (image.data[offset] ?? 0) + 0.587 * (image.data[offset + 1] ?? 0) + 0.114 * (image.data[offset + 2] ?? 0);
+    const luminance =
+      0.299 * (image.data[offset] ?? 0) +
+      0.587 * (image.data[offset + 1] ?? 0) +
+      0.114 * (image.data[offset + 2] ?? 0);
     const alpha = (image.data[offset + 3] ?? 255) / 255;
     grey[index] = luminance * alpha + 255 * (1 - alpha);
   }

@@ -14,7 +14,12 @@ export function exportArtworkSvg(artwork: KeychainArtwork, ink: string): string 
     throw new Error('The ink colour must be a #rrggbb value');
   }
   const move = (path: string): string =>
-    transformPathData(path, FULL_RES_SCALE, -bounds.minX * FULL_RES_SCALE, -bounds.minY * FULL_RES_SCALE);
+    transformPathData(
+      path,
+      FULL_RES_SCALE,
+      -bounds.minX * FULL_RES_SCALE,
+      -bounds.minY * FULL_RES_SCALE,
+    );
   const paths = artwork.paths.map(move);
   const evenOddPaths = artwork.evenOddPaths.map(move);
   if ([...paths, ...evenOddPaths].some((path) => !PATH_DATA.test(path))) {

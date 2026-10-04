@@ -6,16 +6,23 @@ const MARK: KeychainMark = { id: 'bmw', label: 'BMW', variants: { icon: 'marks/b
 const COMBINED: KeychainMark = {
   id: 'honda',
   label: 'Honda',
-  variants: { icon: 'marks/honda/icon.svg', text: 'marks/honda/text.svg', combined: 'marks/honda/combined.svg' },
+  variants: {
+    icon: 'marks/honda/icon.svg',
+    text: 'marks/honda/text.svg',
+    combined: 'marks/honda/combined.svg',
+  },
 };
-const SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 50"><path d="M0 0L10 0L10 10Z"/></svg>';
+const SVG =
+  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 50"><path d="M0 0L10 0L10 10Z"/></svg>';
 
 describe('MarkLibrary', () => {
   let service: MarkLibrary;
   let fetchMock: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
-    fetchMock = vi.fn().mockResolvedValue({ ok: true, status: 200, text: () => Promise.resolve(SVG) });
+    fetchMock = vi
+      .fn()
+      .mockResolvedValue({ ok: true, status: 200, text: () => Promise.resolve(SVG) });
     vi.stubGlobal('fetch', fetchMock);
     TestBed.configureTestingModule({});
     service = TestBed.inject(MarkLibrary);
@@ -28,11 +35,18 @@ describe('MarkLibrary', () => {
   it('fetches the requested variant with the native fetch and a timeout, without going through HttpClient', async () => {
     await service.load(MARK, 'icon');
 
-    expect(fetchMock).toHaveBeenCalledWith('marks/bmw/icon.svg', { signal: expect.any(AbortSignal) });
+    expect(fetchMock).toHaveBeenCalledWith('marks/bmw/icon.svg', {
+      signal: expect.any(AbortSignal),
+    });
   });
 
   it('parses the SVG into a vector graphic', async () => {
-    expect(await service.load(MARK, 'icon')).toEqual({ width: 100, height: 50, paths: ['M0 0L10 0L10 10Z'], evenOddPaths: [] });
+    expect(await service.load(MARK, 'icon')).toEqual({
+      width: 100,
+      height: 50,
+      paths: ['M0 0L10 0L10 10Z'],
+      evenOddPaths: [],
+    });
   });
 
   it('fetches the right file for each variant of the same mark', async () => {

@@ -6,7 +6,9 @@ describe('potraceToPathData', () => {
   });
 
   it('converts relative cubic curves to absolute ones', () => {
-    expect(potraceToPathData(['M100 100 c10 0 20 10 30 30 z'], 50)).toBe('M10 40C11 40 12 39 13 37Z');
+    expect(potraceToPathData(['M100 100 c10 0 20 10 30 30 z'], 50)).toBe(
+      'M10 40C11 40 12 39 13 37Z',
+    );
   });
 
   it('continues implicit repeated curve and line segments', () => {
@@ -26,7 +28,9 @@ describe('potraceToPathData', () => {
   });
 
   it('accepts absolute commands too', () => {
-    expect(potraceToPathData(['M10 10 L20 20 C30 30 40 40 50 50 Z'], 10)).toBe('M1 9L2 8C3 7 4 6 5 5Z');
+    expect(potraceToPathData(['M10 10 L20 20 C30 30 40 40 50 50 Z'], 10)).toBe(
+      'M1 9L2 8C3 7 4 6 5 5Z',
+    );
   });
 
   it('handles negative and fractional numbers', () => {
@@ -47,7 +51,12 @@ describe('potraceToPathData', () => {
   });
 
   it('never emits NaN or relative commands', () => {
-    const result = potraceToPathData(['M290 571 c0 -25 -4 -29 -39 -35 -62 -10 -131 -63 -164 -126 z m87 -204 c38 -37 31 -125 -12 -153 z'], 60);
+    const result = potraceToPathData(
+      [
+        'M290 571 c0 -25 -4 -29 -39 -35 -62 -10 -131 -63 -164 -126 z m87 -204 c38 -37 31 -125 -12 -153 z',
+      ],
+      60,
+    );
 
     expect(result).not.toMatch(/NaN|[a-y]/);
     expect(result.startsWith('M29 ')).toBe(true);

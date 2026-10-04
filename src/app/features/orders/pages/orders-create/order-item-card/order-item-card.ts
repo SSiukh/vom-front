@@ -1,4 +1,4 @@
-import { DestroyRef, Component, type OnInit, effect, inject, input, output, signal } from '@angular/core';
+import { DestroyRef, Component, type OnInit, computed, effect, inject, input, output, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { LucideInfo, LucideTrash2 } from '@lucide/angular';
@@ -8,6 +8,7 @@ import type { Product } from '../../../../products/models/product.model';
 import type { PaginatedResponse } from '../../../../../shared/models/paginated-response.model';
 import type { ProductType } from '../../../../../shared/models/dictionary-item.model';
 import { SearchableSelect, type SelectOption } from '../../../../../shared/ui/searchable-select/searchable-select';
+import { Dropdown, dictionaryOptions, type DropdownOption } from '../../../../../shared/ui/dropdown/dropdown';
 import { computeItemSubtotal } from '../order-item-subtotal.util';
 
 export interface OrderItemFormControls {
@@ -25,7 +26,7 @@ const PRODUCTS_FETCH_PAGE_SIZE = 100;
 
 @Component({
   selector: 'app-order-item-card',
-  imports: [ReactiveFormsModule, SearchableSelect, LucideTrash2, LucideInfo],
+  imports: [ReactiveFormsModule, SearchableSelect, LucideTrash2, LucideInfo, Dropdown],
   templateUrl: './order-item-card.html',
   styleUrl: './order-item-card.css',
 })
@@ -42,6 +43,10 @@ export class OrderItemCard implements OnInit {
   readonly removed = output<void>();
   readonly productChange = output<Product | null>();
 
+  protected readonly typeOptions = computed<DropdownOption[]>(() => [
+    { value: '', label: 'Оберіть тип', disabled: true },
+    ...dictionaryOptions(this.productTypes()),
+  ]);
   protected readonly selectedProduct = signal<Product | null>(null);
   protected readonly productsLoading = signal(false);
   protected readonly productOptions = signal<SelectOption[]>([]);

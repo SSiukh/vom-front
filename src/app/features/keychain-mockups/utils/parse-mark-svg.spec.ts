@@ -5,7 +5,9 @@ const svg = (body: string, viewBox = '0 0 200 100') =>
 
 describe('parseMarkSvg', () => {
   it('reads the size from the viewBox and every path', () => {
-    const result = parseMarkSvg(svg('<path d="M0 0L10 0L10 10Z" fill="black"/><path d="M20 20L30 20L30 30Z" fill="black"/>'));
+    const result = parseMarkSvg(
+      svg('<path d="M0 0L10 0L10 10Z" fill="black"/><path d="M20 20L30 20L30 30Z" fill="black"/>'),
+    );
 
     expect(result.width).toBe(200);
     expect(result.height).toBe(100);
@@ -28,7 +30,9 @@ describe('parseMarkSvg', () => {
   });
 
   it('ignores elements other than paths', () => {
-    const result = parseMarkSvg(svg('<rect width="5" height="5"/><circle r="3"/><path d="M0 0L1 1Z"/><text>x</text>'));
+    const result = parseMarkSvg(
+      svg('<rect width="5" height="5"/><circle r="3"/><path d="M0 0L1 1Z"/><text>x</text>'),
+    );
 
     expect(result.paths).toEqual(['M0 0L1 1Z']);
   });
@@ -39,7 +43,9 @@ describe('parseMarkSvg', () => {
 
   it('puts paths with fill-rule="evenodd" (on the path or a parent) into the even-odd list', () => {
     const result = parseMarkSvg(
-      svg('<path d="M0 0L1 1Z"/><path d="M2 2L3 3Z" fill-rule="evenodd" clip-rule="evenodd"/><g fill-rule="evenodd"><path d="M4 4L5 5Z"/></g>'),
+      svg(
+        '<path d="M0 0L1 1Z"/><path d="M2 2L3 3Z" fill-rule="evenodd" clip-rule="evenodd"/><g fill-rule="evenodd"><path d="M4 4L5 5Z"/></g>',
+      ),
     );
 
     expect(result.paths).toEqual(['M0 0L1 1Z']);
@@ -62,7 +68,9 @@ describe('parseMarkSvg', () => {
 
   it('ignores paths inside defs, clip paths and masks', () => {
     const result = parseMarkSvg(
-      svg('<defs><path d="M9 9L9 9Z"/></defs><clipPath id="c"><path d="M8 8L8 8Z"/></clipPath><mask id="m"><path d="M7 7L7 7Z"/></mask><path d="M0 0L1 1Z"/>'),
+      svg(
+        '<defs><path d="M9 9L9 9Z"/></defs><clipPath id="c"><path d="M8 8L8 8Z"/></clipPath><mask id="m"><path d="M7 7L7 7Z"/></mask><path d="M0 0L1 1Z"/>',
+      ),
     );
 
     expect(result.paths).toEqual(['M0 0L1 1Z']);
@@ -70,23 +78,35 @@ describe('parseMarkSvg', () => {
 
   it('rejects text that is not an SVG', () => {
     expect(() => parseMarkSvg('<svg><path')).toThrow('The mark is not a valid SVG');
-    expect(() => parseMarkSvg('<html xmlns="http://www.w3.org/1999/xhtml"/>')).toThrow('The mark is not a valid SVG');
+    expect(() => parseMarkSvg('<html xmlns="http://www.w3.org/1999/xhtml"/>')).toThrow(
+      'The mark is not a valid SVG',
+    );
   });
 
   it('rejects a missing or broken viewBox', () => {
-    expect(() => parseMarkSvg('<svg xmlns="http://www.w3.org/2000/svg"><path d="M0 0Z"/></svg>')).toThrow(
+    expect(() =>
+      parseMarkSvg('<svg xmlns="http://www.w3.org/2000/svg"><path d="M0 0Z"/></svg>'),
+    ).toThrow('The mark has no usable viewBox');
+    expect(() => parseMarkSvg(svg('<path d="M0 0Z"/>', '0 0 abc 10'))).toThrow(
       'The mark has no usable viewBox',
     );
-    expect(() => parseMarkSvg(svg('<path d="M0 0Z"/>', '0 0 abc 10'))).toThrow('The mark has no usable viewBox');
-    expect(() => parseMarkSvg(svg('<path d="M0 0Z"/>', '0 0 0 10'))).toThrow('The mark has no usable viewBox');
+    expect(() => parseMarkSvg(svg('<path d="M0 0Z"/>', '0 0 0 10'))).toThrow(
+      'The mark has no usable viewBox',
+    );
   });
 
   it('rejects an SVG without any path', () => {
-    expect(() => parseMarkSvg(svg('<rect width="1" height="1"/>'))).toThrow('The mark has no paths');
+    expect(() => parseMarkSvg(svg('<rect width="1" height="1"/>'))).toThrow(
+      'The mark has no paths',
+    );
   });
 
   it('rejects path data with relative commands or arcs', () => {
-    expect(() => parseMarkSvg(svg('<path d="M0 0l10 10Z"/>'))).toThrow('Unsupported SVG path command');
-    expect(() => parseMarkSvg(svg('<path d="M0 0A5 5 0 0 1 10 10Z"/>'))).toThrow('Unsupported SVG path command');
+    expect(() => parseMarkSvg(svg('<path d="M0 0l10 10Z"/>'))).toThrow(
+      'Unsupported SVG path command',
+    );
+    expect(() => parseMarkSvg(svg('<path d="M0 0A5 5 0 0 1 10 10Z"/>'))).toThrow(
+      'Unsupported SVG path command',
+    );
   });
 });

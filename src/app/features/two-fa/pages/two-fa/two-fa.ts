@@ -9,8 +9,10 @@ import {
   inject,
   signal,
 } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
+import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
+import { map, startWith } from 'rxjs';
 import { LucideCopy } from '@lucide/angular';
 import { AUTH_ROUTES } from '../../../../core/auth/auth-routes.constants';
 import { AuthService } from '../../../../core/auth/auth.service';
@@ -20,9 +22,11 @@ import { Sidebar } from '../../../../core/layout/sidebar/sidebar';
 
 type TwoFaMode = 'setup' | 'verify';
 
+const CODE_LENGTH = 6;
+
 @Component({
   selector: 'app-two-fa',
-  imports: [LucideCopy, Footer, Header, Sidebar],
+  imports: [ReactiveFormsModule, LucideCopy, Footer, Header, Sidebar],
   templateUrl: './two-fa.html',
   styleUrl: './two-fa.css',
 })
@@ -30,6 +34,7 @@ export class TwoFa {
   protected readonly authService = inject(AuthService);
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly fb = inject(FormBuilder);
 
   @ViewChildren('digitCell') private digitCells!: QueryList<ElementRef<HTMLInputElement>>;
 
@@ -48,12 +53,24 @@ export class TwoFa {
   protected readonly qrCodeDataUrl = signal<string | null>(null);
   protected readonly secret = signal<string | null>(null);
   protected readonly recoveryCodes = signal<string[] | null>(null);
-  protected readonly digits = signal<string[]>(['', '', '', '', '', '']);
+  protected readonly codeForm = this.fb.nonNullable.group({
+    digits: this.fb.nonNullable.array(
+      Array.from({ length: CODE_LENGTH }, () => this.fb.nonNullable.control('')),
+    ),
+  });
   protected readonly submitting = signal(false);
   protected readonly errorMessage = signal<string | null>(null);
 
-  protected readonly code = computed(() => this.digits().join(''));
-  protected readonly isCodeComplete = computed(() => this.code().length === 6);
+  private readonly digitValues = toSignal(
+    this.codeForm.controls.digits.valueChanges.pipe(
+      startWith(null),
+      map(() => this.codeForm.controls.digits.getRawValue()),
+    ),
+    { requireSync: true },
+  );
+
+  protected readonly code = computed(() => this.digitValues().join(''));
+  protected readonly isCodeComplete = computed(() => this.code().length === CODE_LENGTH);
 
   constructor() {
     const mode = this.mode();
@@ -88,14 +105,9 @@ export class TwoFa {
     const input = event.target as HTMLInputElement;
     const value = input.value.replace(/\D/g, '').slice(-1);
     input.value = value;
+    this.codeForm.controls.digits.at(index).setValue(value);
 
-    this.digits.update((current) => {
-      const next = [...current];
-      next[index] = value;
-      return next;
-    });
-
-    if (value && index < 5) {
+    if (value && index < CODE_LENGTH - 1) {
       this.digitCells.get(index + 1)?.nativeElement.focus();
     }
   }
@@ -107,7 +119,17 @@ export class TwoFa {
     }
   }
 
-  confirmSetup(): void {
+  submitSetup(event: Event): void {
+    event.preventDefault();
+    this.confirmSetup();
+  }
+
+  submitVerify(event: Event): void {
+    event.preventDefault();
+    this.verify();
+  }
+
+  private confirmSetup(): void {
     if (!this.isCodeComplete() || this.submitting()) {
       return;
     }
@@ -129,7 +151,7 @@ export class TwoFa {
       });
   }
 
-  verify(): void {
+  private verify(): void {
     if (!this.isCodeComplete() || this.submitting()) {
       return;
     }

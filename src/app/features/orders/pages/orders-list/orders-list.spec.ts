@@ -5,10 +5,18 @@ import { provideRouter, Router } from '@angular/router';
 import { environment } from '../../../../../environments/environment';
 import { DictionariesService } from '../../../../core/dictionaries/dictionaries.service';
 import { OrdersList } from './orders-list';
+import { dropdownLabels, dropdownOptionValues, dropdownValue, pickDropdown } from '../../../../shared/ui/dropdown/dropdown-testing';
+import { pickDate } from '../../../../shared/ui/date-picker/date-picker-testing';
 
 describe('OrdersList', () => {
   let fixture: ComponentFixture<OrdersList>;
   let el: HTMLElement;
+  const pickPageSize = (size: string) => {
+    (el.querySelector('.pagination-size .dropdown__trigger') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    (el.querySelector(`[data-value="${size}"]`) as HTMLElement).click();
+    fixture.detectChanges();
+  };
   let httpMock: HttpTestingController;
   let router: Router;
   const baseUrl = `${environment.apiUrl}/orders`;
@@ -217,13 +225,10 @@ describe('OrdersList', () => {
     create();
     flushList([], 0);
 
-    const [fromInput, toInput] = Array.from(el.querySelectorAll('input[type="date"]')) as HTMLInputElement[];
-    fromInput.value = '2026-08-01';
-    fromInput.dispatchEvent(new Event('change'));
+    
+    pickDate(fixture, 'date-from', '2026-08-01');
     flushList([], 0, `${baseUrl}?page=1&pageSize=10&dateFrom=2026-08-01`);
-
-    toInput.value = '2026-08-22';
-    toInput.dispatchEvent(new Event('change'));
+    pickDate(fixture, 'date-to', '2026-08-22');
     flushList([], 0, `${baseUrl}?page=1&pageSize=10&dateFrom=2026-08-01&dateTo=2026-08-22`);
   });
 
@@ -232,9 +237,8 @@ describe('OrdersList', () => {
     flushList([], 0);
     expect(el.querySelector('.filters-row__reset')).toBeNull();
 
-    const [fromInput] = Array.from(el.querySelectorAll('input[type="date"]')) as HTMLInputElement[];
-    fromInput.value = '2026-08-01';
-    fromInput.dispatchEvent(new Event('change'));
+    
+    pickDate(fixture, 'date-from', '2026-08-01');
     flushList([], 0, `${baseUrl}?page=1&pageSize=10&dateFrom=2026-08-01`);
 
     const resetButton = el.querySelector('.filters-row__reset') as HTMLButtonElement;
@@ -307,9 +311,7 @@ describe('OrdersList', () => {
     vi.useFakeTimers();
     create();
     flushList([], 0);
-    const from = el.querySelector('#date-from') as HTMLInputElement;
-    from.value = '2026-08-01';
-    from.dispatchEvent(new Event('change'));
+    pickDate(fixture, 'date-from', '2026-08-01');
     flushList([], 0, `${baseUrl}?page=1&pageSize=10&dateFrom=2026-08-01`);
 
     typeSearch('ivan');
@@ -380,34 +382,66 @@ describe('OrdersList', () => {
     create();
     flushList([], 0);
 
-    const select = el.querySelector('#productTypeId') as HTMLSelectElement;
-    select.value = 't2';
-    select.dispatchEvent(new Event('change'));
+    pickDropdown(fixture, 'productTypeId', 't2');
     flushList([], 0, `${baseUrl}?page=1&pageSize=10&productTypeId=t2`);
 
     expect(el.querySelector('.filters-row__reset')).not.toBeNull();
+  });
+
+  it('offers "Усі статуси" and "Без статусу" alongside the real dictionary statuses', () => {
+    create();
+    flushList([], 0);
+
+    const labels = dropdownLabels(fixture, 'shipmentStatusId');
+    expect(labels).toEqual(['Усі статуси', 'Без статусу', 'Відправлено', 'Доставлено']);
+  });
+
+  it('refetches with shipmentStatusId when a real status is chosen, resetting to page 1', () => {
+    create();
+    flushList([], 0);
+
+    pickDropdown(fixture, 'shipmentStatusId', 'ss1');
+    flushList([], 0, `${baseUrl}?page=1&pageSize=10&shipmentStatusId=ss1`);
+
+    expect(el.querySelector('.filters-row__reset')).not.toBeNull();
+  });
+
+  it('sends the "none" sentinel when "Без статусу" is chosen', () => {
+    create();
+    flushList([], 0);
+
+    pickDropdown(fixture, 'shipmentStatusId', 'none');
+    flushList([order({ shipmentStatusId: null })], 1, `${baseUrl}?page=1&pageSize=10&shipmentStatusId=none`);
+
+    expect(el.querySelectorAll('tbody tr').length).toBe(1);
+  });
+
+  it('clears the shipment-status filter (and its select value) on reset', () => {
+    create();
+    flushList([], 0);
+
+    pickDropdown(fixture, 'shipmentStatusId', 'none');
+    flushList([], 0, `${baseUrl}?page=1&pageSize=10&shipmentStatusId=none`);
+
+    (el.querySelector('.filters-row__reset') as HTMLButtonElement).click();
+    flushList([], 0);
+
+    expect(dropdownValue(fixture, 'shipmentStatusId')).toBe('');
   });
 
   it('lists the senders from GET /senders?pageSize=100 after an "Усі відправники" option', () => {
     create();
     flushList([], 0);
 
-    const options = Array.from(el.querySelectorAll('#senderId option')) as HTMLOptionElement[];
-    expect(options.map((o) => o.textContent?.trim())).toEqual([
-      'Усі відправники',
-      'ФОП Волошин О.М.',
-      'ФОП Коваль І.П.',
-    ]);
-    expect(options.map((o) => o.value)).toEqual(['', 's1', 's2']);
+    expect(dropdownLabels(fixture, 'senderId')).toEqual(['Усі відправники', 'ФОП Волошин О.М.', 'ФОП Коваль І.П.']);
+    expect(dropdownOptionValues(fixture, 'senderId')).toEqual(['', 's1', 's2']);
   });
 
   it('refetches with senderId when a sender is chosen, resetting to page 1', () => {
     create();
     flushList([], 0);
 
-    const select = el.querySelector('#senderId') as HTMLSelectElement;
-    select.value = 's2';
-    select.dispatchEvent(new Event('change'));
+    pickDropdown(fixture, 'senderId', 's2');
     flushList([], 0, `${baseUrl}?page=1&pageSize=10&senderId=s2`);
 
     expect(el.querySelector('.filters-row__reset')).not.toBeNull();
@@ -417,13 +451,9 @@ describe('OrdersList', () => {
     create();
     flushList([], 0);
 
-    const select = el.querySelector('#senderId') as HTMLSelectElement;
-    select.value = 's1';
-    select.dispatchEvent(new Event('change'));
+    pickDropdown(fixture, 'senderId', 's1');
     flushList([], 0, `${baseUrl}?page=1&pageSize=10&senderId=s1`);
-
-    select.value = '';
-    select.dispatchEvent(new Event('change'));
+    pickDropdown(fixture, 'senderId', '');
     flushList([], 0);
   });
 
@@ -431,19 +461,14 @@ describe('OrdersList', () => {
     create();
     flushList([], 0);
 
-    const [fromInput] = Array.from(el.querySelectorAll('input[type="date"]')) as HTMLInputElement[];
-    fromInput.value = '2026-08-01';
-    fromInput.dispatchEvent(new Event('change'));
+    
+    pickDate(fixture, 'date-from', '2026-08-01');
     flushList([], 0, `${baseUrl}?page=1&pageSize=10&dateFrom=2026-08-01`);
 
-    const typeSelect = el.querySelector('#productTypeId') as HTMLSelectElement;
-    typeSelect.value = 't2';
-    typeSelect.dispatchEvent(new Event('change'));
+    pickDropdown(fixture, 'productTypeId', 't2');
     flushList([], 0, `${baseUrl}?page=1&pageSize=10&dateFrom=2026-08-01&productTypeId=t2`);
 
-    const senderSelect = el.querySelector('#senderId') as HTMLSelectElement;
-    senderSelect.value = 's1';
-    senderSelect.dispatchEvent(new Event('change'));
+    pickDropdown(fixture, 'senderId', 's1');
     flushList([], 0, `${baseUrl}?page=1&pageSize=10&dateFrom=2026-08-01&productTypeId=t2&senderId=s1`);
   });
 
@@ -455,9 +480,7 @@ describe('OrdersList', () => {
     (nextPage as HTMLElement).click();
     flushList([order()], 25, `${baseUrl}?page=2&pageSize=10`);
 
-    const select = el.querySelector('#senderId') as HTMLSelectElement;
-    select.value = 's1';
-    select.dispatchEvent(new Event('change'));
+    pickDropdown(fixture, 'senderId', 's1');
     flushList([], 0, `${baseUrl}?page=1&pageSize=10&senderId=s1`);
   });
 
@@ -465,23 +488,20 @@ describe('OrdersList', () => {
     create();
     flushList([], 0);
 
-    const select = el.querySelector('#senderId') as HTMLSelectElement;
-    select.value = 's1';
-    select.dispatchEvent(new Event('change'));
+    pickDropdown(fixture, 'senderId', 's1');
     flushList([], 0, `${baseUrl}?page=1&pageSize=10&senderId=s1`);
 
     (el.querySelector('.filters-row__reset') as HTMLButtonElement).click();
     flushList([], 0);
 
-    expect(select.value).toBe('');
+    expect(dropdownValue(fixture, 'senderId')).toBe('');
   });
 
   it('keeps the list working with only "Усі відправники" when the senders request fails', () => {
     create('error');
     flushList([order()], 1);
 
-    const options = Array.from(el.querySelectorAll('#senderId option')) as HTMLOptionElement[];
-    expect(options.map((o) => o.textContent?.trim())).toEqual(['Усі відправники']);
+    expect(dropdownLabels(fixture, 'senderId')).toEqual(['Усі відправники']);
     expect(el.querySelectorAll('tbody tr').length).toBe(1);
     expect(el.querySelector('.error-text')).toBeNull();
   });
@@ -490,15 +510,13 @@ describe('OrdersList', () => {
     create();
     flushList([], 0);
 
-    const select = el.querySelector('#productTypeId') as HTMLSelectElement;
-    select.value = 't2';
-    select.dispatchEvent(new Event('change'));
+    pickDropdown(fixture, 'productTypeId', 't2');
     flushList([], 0, `${baseUrl}?page=1&pageSize=10&productTypeId=t2`);
 
     (el.querySelector('.filters-row__reset') as HTMLButtonElement).click();
     flushList([], 0);
 
-    expect(select.value).toBe('');
+    expect(dropdownValue(fixture, 'productTypeId')).toBe('');
   });
 
   it('reverses the row order client-side when "Старі" sort is selected', () => {
@@ -538,9 +556,8 @@ describe('OrdersList', () => {
     create();
     flushList([], 0);
 
-    const [fromInput] = Array.from(el.querySelectorAll('input[type="date"]')) as HTMLInputElement[];
-    fromInput.value = '2026-08-01';
-    fromInput.dispatchEvent(new Event('change'));
+    
+    pickDate(fixture, 'date-from', '2026-08-01');
     httpMock.expectOne(`${baseUrl}?page=1&pageSize=10&dateFrom=2026-08-01`).flush({ items: [order()], total: 25 });
     fixture.detectChanges();
 
@@ -568,6 +585,43 @@ describe('OrdersList', () => {
 
     const labels = Array.from(el.querySelectorAll('.segmented-control__item')).map((b) => b.textContent?.trim());
     expect(labels).not.toContain('Старі');
+  });
+
+  it('refetches page 1 with the new page size when the page-size selector changes', () => {
+    create();
+    flushList(
+      Array.from({ length: 10 }, (_, i) => order({ id: `${i}` })),
+      25,
+    );
+
+    pickPageSize('30');
+
+    flushList(
+      Array.from({ length: 25 }, (_, i) => order({ id: `${i}` })),
+      25,
+      `${baseUrl}?page=1&pageSize=30`,
+    );
+
+    expect(el.querySelectorAll('tbody tr').length).toBe(25);
+    expect(el.querySelector('.pagination-pages')).toBeNull();
+  });
+
+  it('brings the sort toggle back once a larger page size makes everything fit on one page', () => {
+    create();
+    flushList(
+      Array.from({ length: 10 }, (_, i) => order({ id: `${i}` })),
+      25,
+    );
+
+    pickPageSize('30');
+    flushList(
+      Array.from({ length: 25 }, (_, i) => order({ id: `${i}` })),
+      25,
+      `${baseUrl}?page=1&pageSize=30`,
+    );
+
+    const labels = Array.from(el.querySelectorAll('.segmented-control__item')).map((b) => b.textContent?.trim());
+    expect(labels).toContain('Старі');
   });
 
   it('shows an error message when the list request fails', () => {

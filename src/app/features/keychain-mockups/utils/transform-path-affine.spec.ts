@@ -5,7 +5,9 @@ const ROTATE_CCW = [0, -1, 1, 0, 0, 100] as const;
 
 describe('transformPathAffine', () => {
   it('leaves a path unchanged under the identity matrix', () => {
-    expect(transformPathAffine('M1 2L3 4C5 6 7 8 9 10Q11 12 13 14Z', IDENTITY)).toBe('M1 2L3 4C5 6 7 8 9 10Q11 12 13 14Z');
+    expect(transformPathAffine('M1 2L3 4C5 6 7 8 9 10Q11 12 13 14Z', IDENTITY)).toBe(
+      'M1 2L3 4C5 6 7 8 9 10Q11 12 13 14Z',
+    );
   });
 
   it('scales and translates like transformPathData', () => {
@@ -26,7 +28,9 @@ describe('transformPathAffine', () => {
   });
 
   it('follows the current point through repeated arguments and after a close', () => {
-    expect(transformPathAffine('M0 0H10 20V5 8Z M50 50L60 60', IDENTITY)).toBe('M0 0L10 0L20 0L20 5L20 8ZM50 50L60 60');
+    expect(transformPathAffine('M0 0H10 20V5 8Z M50 50L60 60', IDENTITY)).toBe(
+      'M0 0L10 0L20 0L20 5L20 8ZM50 50L60 60',
+    );
   });
 
   it('treats extra coordinate pairs after M as lines', () => {
@@ -41,7 +45,9 @@ describe('transformPathAffine', () => {
       let sum = 0;
       for (let index = 0; index < points.length; index += 2) {
         const next = (index + 2) % points.length;
-        sum += (points[index] ?? 0) * (points[next + 1] ?? 0) - (points[next] ?? 0) * (points[index + 1] ?? 0);
+        sum +=
+          (points[index] ?? 0) * (points[next + 1] ?? 0) -
+          (points[next] ?? 0) * (points[index + 1] ?? 0);
       }
       return Math.sign(sum);
     };
@@ -51,7 +57,9 @@ describe('transformPathAffine', () => {
   });
 
   it('rejects relative commands, arcs and malformed data', () => {
-    expect(() => transformPathAffine('M0 0l1 1Z', IDENTITY)).toThrow('Unsupported SVG path command');
+    expect(() => transformPathAffine('M0 0l1 1Z', IDENTITY)).toThrow(
+      'Unsupported SVG path command',
+    );
     expect(() => transformPathAffine('M0 0L1Z', IDENTITY)).toThrow('Malformed SVG path data');
     expect(() => transformPathAffine('5 M0 0', IDENTITY)).toThrow('Malformed SVG path data');
     expect(() => transformPathAffine('M0 0 Z 5', IDENTITY)).toThrow('Malformed SVG path data');

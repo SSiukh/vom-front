@@ -21,21 +21,12 @@
   <form [formGroup]="form" (ngSubmit)="submit()" class="form-panel">
     <div class="field">
       <label class="field-label" for="typeId">Тип витрати</label>
-      <select id="typeId" class="text-input" formControlName="typeId">
-        <option value="" disabled>Оберіть тип</option>
-        @for (type of dictionaries.expenseTypes(); track type.id) {
-          <option [value]="type.id">{{ type.label }}</option>
-        }
-      </select>
+      <app-dropdown triggerId="typeId" formControlName="typeId" [options]="typeOptions()" />
     </div>
 
     <div class="field">
       <label class="field-label" for="brand">Група</label>
-      <select id="brand" class="text-input" formControlName="brand">
-        <option value="">Спільна</option>
-        <option value="vom">VOM</option>
-        <option value="m">M</option>
-      </select>
+      <app-dropdown triggerId="brand" formControlName="brand" [options]="brandOptions" />
     </div>
 
     @if (requiresName()) {

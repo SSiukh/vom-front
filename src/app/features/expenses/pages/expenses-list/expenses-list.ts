@@ -7,10 +7,8 @@ import { ExpensesApiService } from '../../../../core/api/expenses-api.service';
 import { DictionariesService } from '../../../../core/dictionaries/dictionaries.service';
 import { FEATURE_ROUTES } from '../../../../core/routes.constants';
 import { ConfirmDialog } from '../../../../shared/ui/confirm-dialog/confirm-dialog';
-import { Pagination } from '../../../../shared/ui/pagination/pagination';
+import { DEFAULT_PAGE_SIZE, Pagination } from '../../../../shared/ui/pagination/pagination';
 import type { Expense } from '../../models/expense.model';
-
-const PAGE_SIZE = 10;
 
 @Component({
   selector: 'app-expenses-list',
@@ -27,7 +25,7 @@ export class ExpensesList {
   protected readonly expenses = signal<Expense[]>([]);
   protected readonly total = signal(0);
   protected readonly page = signal(1);
-  protected readonly pageSize = PAGE_SIZE;
+  protected readonly pageSize = signal(DEFAULT_PAGE_SIZE);
   protected readonly loading = signal(false);
   protected readonly error = signal<string | null>(null);
   protected readonly pendingDeleteId = signal<string | null>(null);
@@ -52,6 +50,12 @@ export class ExpensesList {
 
   onPageChange(page: number): void {
     this.page.set(page);
+    this.load();
+  }
+
+  onPageSizeChange(pageSize: number): void {
+    this.pageSize.set(pageSize);
+    this.page.set(1);
     this.load();
   }
 
@@ -136,11 +140,11 @@ export class ExpensesList {
     this.loading.set(true);
     this.error.set(null);
     this.expensesApi
-      .list(this.page(), this.pageSize)
+      .list(this.page(), this.pageSize())
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (response) => {
-          const totalPages = Math.max(1, Math.ceil(response.total / this.pageSize));
+          const totalPages = Math.max(1, Math.ceil(response.total / this.pageSize()));
           if (this.page() > totalPages) {
             this.page.set(totalPages);
             this.load();

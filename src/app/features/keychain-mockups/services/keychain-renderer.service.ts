@@ -15,7 +15,11 @@ export class KeychainRenderer {
   private readonly loadImage = inject(IMAGE_LOADER);
   private readonly images = new Map<string, Promise<HTMLImageElement>>();
 
-  async render(canvas: HTMLCanvasElement, request: KeychainRenderRequest, signal: AbortSignal): Promise<void> {
+  async render(
+    canvas: HTMLCanvasElement,
+    request: KeychainRenderRequest,
+    signal: AbortSignal,
+  ): Promise<void> {
     const image = await this.image(request.imageUrl);
     if (signal.aborted) {
       return;

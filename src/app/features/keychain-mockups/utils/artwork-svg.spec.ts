@@ -21,7 +21,9 @@ describe('exportArtworkSvg', () => {
   });
 
   it('moves the artwork to the origin and doubles the coordinates', () => {
-    const paths = Array.from(parse(exportArtworkSvg(artwork, '#111111')).querySelectorAll('path')).map((path) => path.getAttribute('d'));
+    const paths = Array.from(
+      parse(exportArtworkSvg(artwork, '#111111')).querySelectorAll('path'),
+    ).map((path) => path.getAttribute('d'));
 
     expect(paths).toEqual(['M40 100L140 100L140 200Z', 'M60 300L120 300L120 340Z']);
   });
@@ -35,7 +37,9 @@ describe('exportArtworkSvg', () => {
 
   it('contains only svg, g and path elements and no NaN', () => {
     const svg = exportArtworkSvg(artwork, '#111111');
-    const tags = new Set(Array.from(parse(svg).querySelectorAll('*')).map((element) => element.tagName));
+    const tags = new Set(
+      Array.from(parse(svg).querySelectorAll('*')).map((element) => element.tagName),
+    );
 
     expect(Array.from(tags).sort()).toEqual(['g', 'path', 'svg']);
     expect(svg).not.toMatch(/NaN|Infinity/);
@@ -46,7 +50,16 @@ describe('exportArtworkSvg', () => {
   });
 
   it('marks even-odd paths with fill-rule="evenodd" and leaves the others on the default rule', () => {
-    const doc = parse(exportArtworkSvg({ ...artwork, paths: ['M120 300L170 300L170 350Z'], evenOddPaths: ['M130 400L160 400L160 420Z'] }, '#111111'));
+    const doc = parse(
+      exportArtworkSvg(
+        {
+          ...artwork,
+          paths: ['M120 300L170 300L170 350Z'],
+          evenOddPaths: ['M130 400L160 400L160 420Z'],
+        },
+        '#111111',
+      ),
+    );
     const paths = Array.from(doc.querySelectorAll('g#art path'));
 
     expect(paths.map((path) => path.getAttribute('fill-rule'))).toEqual([null, 'evenodd']);
@@ -54,23 +67,36 @@ describe('exportArtworkSvg', () => {
   });
 
   it('exports an artwork made only of even-odd paths', () => {
-    const svg = exportArtworkSvg({ ...artwork, paths: [], evenOddPaths: ['M120 300L170 300L170 350Z'] }, '#111111');
+    const svg = exportArtworkSvg(
+      { ...artwork, paths: [], evenOddPaths: ['M120 300L170 300L170 350Z'] },
+      '#111111',
+    );
 
     expect(parse(svg).querySelectorAll('g#art path')).toHaveLength(1);
   });
 
   it('rejects unsafe even-odd path data too', () => {
-    expect(() => exportArtworkSvg({ ...artwork, evenOddPaths: ['M0 0"/><script>'] }, '#111111')).toThrow();
+    expect(() =>
+      exportArtworkSvg({ ...artwork, evenOddPaths: ['M0 0"/><script>'] }, '#111111'),
+    ).toThrow();
   });
 
   it('refuses to export an empty artwork', () => {
-    expect(() => exportArtworkSvg({ paths: [], evenOddPaths: [], bounds: null }, '#111111')).toThrow('There is no artwork to export');
-    expect(() => exportArtworkSvg({ paths: [], evenOddPaths: [], bounds: artwork.bounds }, '#111111')).toThrow('There is no artwork to export');
+    expect(() =>
+      exportArtworkSvg({ paths: [], evenOddPaths: [], bounds: null }, '#111111'),
+    ).toThrow('There is no artwork to export');
+    expect(() =>
+      exportArtworkSvg({ paths: [], evenOddPaths: [], bounds: artwork.bounds }, '#111111'),
+    ).toThrow('There is no artwork to export');
   });
 
   it('rejects an ink colour that is not #rrggbb', () => {
-    expect(() => exportArtworkSvg(artwork, 'red')).toThrow('The ink colour must be a #rrggbb value');
-    expect(() => exportArtworkSvg(artwork, '#111" onload="x')).toThrow('The ink colour must be a #rrggbb value');
+    expect(() => exportArtworkSvg(artwork, 'red')).toThrow(
+      'The ink colour must be a #rrggbb value',
+    );
+    expect(() => exportArtworkSvg(artwork, '#111" onload="x')).toThrow(
+      'The ink colour must be a #rrggbb value',
+    );
   });
 
   it('rejects path data that could break out of the attribute', () => {

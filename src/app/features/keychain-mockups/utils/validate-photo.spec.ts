@@ -17,6 +17,8 @@ describe('validatePhoto', () => {
 
   it('accepts a file of exactly 10 MB and rejects anything larger', () => {
     expect(validatePhoto(file('image/png', 10 * 1024 * 1024))).toBeNull();
-    expect(validatePhoto(file('image/png', 10 * 1024 * 1024 + 1))).toBe('Файл завеликий, максимум 10 МБ');
+    expect(validatePhoto(file('image/png', 10 * 1024 * 1024 + 1))).toBe(
+      'Файл завеликий, максимум 10 МБ',
+    );
   });
 });

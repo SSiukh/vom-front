@@ -645,6 +645,12 @@ fieldset.field legend {
   padding: 0 4px;
 }
 
+.pagination-size {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
 .segmented-control {
   display: flex;
   gap: 6px;
@@ -696,34 +702,7 @@ fieldset.field legend {
   color: var(--color-text-meta);
 }
 
-.date-field__input {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  border: 1px solid var(--color-border-inner);
-  background: var(--color-bg-panel-nested);
-  border-radius: var(--radius-sm);
-  padding: 6px 9px;
-  color: var(--color-text-muted);
-}
-
-.date-field__input input {
-  border: none;
-  background: none;
-  color: var(--color-text-secondary);
-  font-family: var(--font-body);
-  font-size: 12px;
-  width: 118px;
-  max-width: 100%;
-}
-
-.date-field__input input:focus {
-  outline: none;
-}
-
 .filter-select {
-  padding: 6px 9px;
-  font-size: 12px;
   width: 150px;
 }
 

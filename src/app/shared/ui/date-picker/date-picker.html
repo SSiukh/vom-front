@@ -1,0 +1,64 @@
+<button
+  type="button"
+  class="date-picker__trigger"
+  aria-haspopup="dialog"
+  [id]="triggerId()"
+  [attr.aria-label]="ariaLabel() || null"
+  [attr.aria-expanded]="isOpen()"
+  [attr.data-value]="value()"
+  [disabled]="isDisabled()"
+  (click)="toggle()"
+>
+  <svg lucideCalendar [size]="13" [strokeWidth]="1.5" class="date-picker__icon"></svg>
+  <span class="date-picker__value" [class.date-picker__value--placeholder]="!displayValue()">
+    {{ displayValue() || 'дд.мм.рррр' }}
+  </span>
+</button>
+
+@if (isOpen()) {
+  <div
+    class="date-picker__panel"
+    [class.date-picker__panel--up]="openUpward()"
+    role="dialog"
+    aria-label="Календар"
+    (mousedown)="$event.preventDefault()"
+  >
+    <div class="date-picker__header">
+      <button type="button" class="date-picker__nav" aria-label="Попередній місяць" (click)="shiftMonth(-1)">
+        <svg lucideChevronLeft [size]="14" [strokeWidth]="1.5"></svg>
+      </button>
+      <span class="date-picker__month" [attr.data-month]="monthKey()">{{ monthLabel() }}</span>
+      <button type="button" class="date-picker__nav" aria-label="Наступний місяць" (click)="shiftMonth(1)">
+        <svg lucideChevronRight [size]="14" [strokeWidth]="1.5"></svg>
+      </button>
+    </div>
+
+    <div class="date-picker__grid">
+      @for (weekday of weekdays; track weekday) {
+        <span class="date-picker__weekday">{{ weekday }}</span>
+      }
+      @for (week of weeks(); track $index) {
+        @for (cell of week; track $index) {
+          @if (cell) {
+            <button
+              type="button"
+              class="date-picker__day"
+              [class.date-picker__day--selected]="cell.iso === value()"
+              [class.date-picker__day--today]="cell.iso === todayIso"
+              [attr.data-date]="cell.iso"
+              (click)="select(cell.iso)"
+            >
+              {{ cell.day }}
+            </button>
+          } @else {
+            <span class="date-picker__empty"></span>
+          }
+        }
+      }
+    </div>
+
+    <div class="date-picker__footer">
+      <button type="button" class="date-picker__clear" (click)="select('')">Очистити</button>
+    </div>
+  </div>
+}

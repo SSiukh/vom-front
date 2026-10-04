@@ -12,7 +12,8 @@ export function transformPathAffine(pathData: string, matrix: AffineMatrix): str
     throw new Error('Unsupported SVG path command');
   }
   const [a, b, c, d, e, f] = matrix;
-  const point = (x: number, y: number): string => `${formatNumber(a * x + c * y + e)} ${formatNumber(b * x + d * y + f)}`;
+  const point = (x: number, y: number): string =>
+    `${formatNumber(a * x + c * y + e)} ${formatNumber(b * x + d * y + f)}`;
   const output: string[] = [];
   let consumed = 0;
   let currentX = 0;
@@ -25,7 +26,10 @@ export function transformPathAffine(pathData: string, matrix: AffineMatrix): str
     consumed += segment[0].length;
     const numbers = (args.match(NUMBER) ?? []).map(Number);
     const count = ARGUMENT_COUNT[command] ?? 0;
-    if (args.replace(NUMBER, '').replace(/[\s,]/g, '') !== '' || (count === 0 ? numbers.length > 0 : numbers.length === 0 || numbers.length % count !== 0)) {
+    if (
+      args.replace(NUMBER, '').replace(/[\s,]/g, '') !== '' ||
+      (count === 0 ? numbers.length > 0 : numbers.length === 0 || numbers.length % count !== 0)
+    ) {
       throw new Error('Malformed SVG path data');
     }
     if (command === 'Z') {
@@ -58,12 +62,16 @@ export function transformPathAffine(pathData: string, matrix: AffineMatrix): str
           output.push(`L${point(currentX, currentY)}`);
           break;
         case 'C':
-          output.push(`C${point(values[0] ?? 0, values[1] ?? 0)} ${point(values[2] ?? 0, values[3] ?? 0)} ${point(values[4] ?? 0, values[5] ?? 0)}`);
+          output.push(
+            `C${point(values[0] ?? 0, values[1] ?? 0)} ${point(values[2] ?? 0, values[3] ?? 0)} ${point(values[4] ?? 0, values[5] ?? 0)}`,
+          );
           currentX = values[4] ?? 0;
           currentY = values[5] ?? 0;
           break;
         default:
-          output.push(`Q${point(values[0] ?? 0, values[1] ?? 0)} ${point(values[2] ?? 0, values[3] ?? 0)}`);
+          output.push(
+            `Q${point(values[0] ?? 0, values[1] ?? 0)} ${point(values[2] ?? 0, values[3] ?? 0)}`,
+          );
           currentX = values[2] ?? 0;
           currentY = values[3] ?? 0;
       }

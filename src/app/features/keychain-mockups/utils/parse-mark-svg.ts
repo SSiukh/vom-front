@@ -7,9 +7,17 @@ export function parseMarkSvg(text: string): VectorGraphic {
   if (document.querySelector('parsererror') || root.tagName.toLowerCase() !== 'svg') {
     throw new Error('The mark is not a valid SVG');
   }
-  const box = (root.getAttribute('viewBox') ?? '').trim().split(/[\s,]+/).map(Number);
+  const box = (root.getAttribute('viewBox') ?? '')
+    .trim()
+    .split(/[\s,]+/)
+    .map(Number);
   const [minX, minY, width, height] = box;
-  if (box.length !== 4 || box.some((value) => !Number.isFinite(value)) || (width ?? 0) <= 0 || (height ?? 0) <= 0) {
+  if (
+    box.length !== 4 ||
+    box.some((value) => !Number.isFinite(value)) ||
+    (width ?? 0) <= 0 ||
+    (height ?? 0) <= 0
+  ) {
     throw new Error('The mark has no usable viewBox');
   }
   const nonZero: string[] = [];

@@ -33,9 +33,14 @@ describe('keychain scales', () => {
   });
 
   it('keeps the standard text a little smaller than the standard image and mark', () => {
-    const factor = (scales: typeof KEYCHAIN_SCALES, id: string) => scales.find((scale) => scale.id === id)?.factor ?? 0;
+    const factor = (scales: typeof KEYCHAIN_SCALES, id: string) =>
+      scales.find((scale) => scale.id === id)?.factor ?? 0;
 
-    expect(factor(KEYCHAIN_TEXT_SCALES, DEFAULT_KEYCHAIN_TEXT_SCALE_ID)).toBeLessThan(factor(KEYCHAIN_SCALES, DEFAULT_KEYCHAIN_SCALE_ID));
-    expect(KEYCHAIN_TEXT_SCALES.map((scale) => scale.factor)).toEqual([...KEYCHAIN_TEXT_SCALES.map((scale) => scale.factor)].sort((a, b) => a - b));
+    expect(factor(KEYCHAIN_TEXT_SCALES, DEFAULT_KEYCHAIN_TEXT_SCALE_ID)).toBeLessThan(
+      factor(KEYCHAIN_SCALES, DEFAULT_KEYCHAIN_SCALE_ID),
+    );
+    expect(KEYCHAIN_TEXT_SCALES.map((scale) => scale.factor)).toEqual(
+      [...KEYCHAIN_TEXT_SCALES.map((scale) => scale.factor)].sort((a, b) => a - b),
+    );
   });
 });

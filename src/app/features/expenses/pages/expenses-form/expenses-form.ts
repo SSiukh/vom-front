@@ -10,12 +10,13 @@ import { ExpensesApiService } from '../../../../core/api/expenses-api.service';
 import { FEATURE_ROUTES } from '../../../../core/routes.constants';
 import type { ProductBrand } from '../../../../shared/models/product-brand.model';
 import type { CreateExpensePayload } from '../../models/expense.model';
+import { Dropdown, dictionaryOptions, type DropdownOption } from '../../../../shared/ui/dropdown/dropdown';
 
 type BrandFormValue = '' | ProductBrand;
 
 @Component({
   selector: 'app-expenses-form',
-  imports: [ReactiveFormsModule, LucideChevronLeft, LucideSave],
+  imports: [ReactiveFormsModule, LucideChevronLeft, LucideSave, Dropdown],
   templateUrl: './expenses-form.html',
   styleUrl: './expenses-form.css',
 })
@@ -37,6 +38,15 @@ export class ExpensesForm {
     brand: ['' as BrandFormValue],
   });
 
+  protected readonly typeOptions = computed<DropdownOption[]>(() => [
+    { value: '', label: 'Оберіть тип', disabled: true },
+    ...dictionaryOptions(this.dictionaries.expenseTypes()),
+  ]);
+  protected readonly brandOptions: DropdownOption[] = [
+    { value: '', label: 'Спільна' },
+    { value: 'vom', label: 'VOM' },
+    { value: 'm', label: 'M' },
+  ];
   protected readonly loading = signal(false);
   protected readonly saving = signal(false);
   protected readonly errorMessage = signal<string | null>(null);
