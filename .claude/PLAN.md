@@ -2602,3 +2602,30 @@ are read-only views built last since they aggregate everything else).
       `-3` designs have two zones (v-2/h-2 have one). Open: hint when the
       mark silently wins over the text, keyboard navigation of the gallery,
       ICON zone approximated from the nub.
+
+## Mark types per zone and loop icon on the metal cap (2026-10-04)
+
+- [x] **Each mark zone gets its own mark type; loop ICON lands on the metal cap.**
+      Mark card: zone checkboxes (mark in several zones at once), a "Тип марки"
+      select per checked zone (all variants loaded when the mark is chosen).
+      Loop designs stretch their container (cap plus strap) over leather print
+      areas that now include the cap, measured from the three photos. Tests,
+      lint and build green. Visual check on the real page still pending.
+
+- [x] **Metal cap icon: black, own default size, on the cap.** ICON slot is
+      `metal: true` (black ink in its own layer, `scaleFactor` 0.6); ICON rect
+      moved onto the cap and the loop main zone limited to the strap in the
+      design data (an earlier edit had not applied). Verified by rendering the
+      loop designs over the real leather photos.
+
+- [x] **Mark card per zone (loop: icon card plus optional main-zone card).**
+      Each mark zone has its own card with mark, type and size; zone captions
+      in the titles; checkboxes removed. Verified by rendering the loop with
+      icon, main mark and text over the real leather photos. Open: the main
+      zone is shared by the text, so a main-zone mark hides the text (mark wins).
+
+- [x] **Centring by ink, zone-bounded sizes, loop strap aligned to the photo.**
+      Graphics are centred by their ink bounds; the scale factor is relative to
+      the zone (XL fills it, never beyond); the loop strap zone starts where the
+      strap starts on the photo. Checked on all three leather photos with icon,
+      main mark, text and tall/wide marks.

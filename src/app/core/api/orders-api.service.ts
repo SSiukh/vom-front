@@ -30,7 +30,11 @@ export class OrdersApiService {
   private readonly http = inject(HttpClient);
   private readonly baseUrl = `${environment.apiUrl}/orders`;
 
-  list(page: number, pageSize: number, filters: OrdersListFilters): Observable<PaginatedResponse<Order>> {
+  list(
+    page: number,
+    pageSize: number,
+    filters: OrdersListFilters,
+  ): Observable<PaginatedResponse<Order>> {
     let params = new HttpParams().set('page', page).set('pageSize', pageSize);
     if (filters.dateFrom) {
       params = params.set('dateFrom', filters.dateFrom);

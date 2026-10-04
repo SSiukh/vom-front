@@ -10,7 +10,11 @@ export class DashboardApiService {
   private readonly http = inject(HttpClient);
   private readonly baseUrl = `${environment.apiUrl}/dashboard`;
 
-  getSummary(dateFrom: string | null, dateTo: string | null, brand: ProductBrand | null): Observable<DashboardSummary> {
+  getSummary(
+    dateFrom: string | null,
+    dateTo: string | null,
+    brand: ProductBrand | null,
+  ): Observable<DashboardSummary> {
     let params = new HttpParams();
     if (dateFrom) {
       params = params.set('dateFrom', dateFrom);

@@ -4,10 +4,12 @@ import type { DesignGroup, DesignSlot, KeychainDesign } from '../models/keychain
 const MAIN_SLOT = 'main';
 const SMALL_SLOT = 'small';
 const ICON_SLOT = 'icon';
+const METAL_ICON_SCALE = 0.6;
 
 const ECO_CONTAINER = { x: 34, y: 208, width: 99, height: 269 };
 const ECO_ROUND_CONTAINER = { x: 0, y: 158, width: 284, height: 317 };
-const LOOP_CONTAINER = { x: 43, y: 254, width: 91, height: 226 };
+const LOOP_CONTAINER = { x: 35, y: 192, width: 106, height: 288 };
+const LOOP_STRAP = { x: 43, y: 230, width: 91, height: 250 };
 const METAL_CONTAINER = { x: 27, y: 254, width: 117, height: 202 };
 
 function mainSlot(rect: DesignSlot['rect'], rotated: boolean): DesignSlot {
@@ -22,6 +24,7 @@ const KEYCHAIN_DESIGNS: readonly KeychainDesign[] = [
     container: ECO_CONTAINER,
     photo: null,
     photoRotated: false,
+    fit: 'contain',
     slots: [mainSlot(ECO_CONTAINER, true)],
   },
   {
@@ -31,6 +34,7 @@ const KEYCHAIN_DESIGNS: readonly KeychainDesign[] = [
     container: ECO_CONTAINER,
     photo: null,
     photoRotated: false,
+    fit: 'contain',
     slots: [mainSlot(ECO_CONTAINER, false)],
   },
   {
@@ -40,6 +44,7 @@ const KEYCHAIN_DESIGNS: readonly KeychainDesign[] = [
     container: ECO_ROUND_CONTAINER,
     photo: null,
     photoRotated: false,
+    fit: 'contain',
     slots: [mainSlot(ECO_ROUND_CONTAINER, true)],
   },
   {
@@ -49,6 +54,7 @@ const KEYCHAIN_DESIGNS: readonly KeychainDesign[] = [
     container: ECO_ROUND_CONTAINER,
     photo: null,
     photoRotated: false,
+    fit: 'contain',
     slots: [mainSlot(ECO_ROUND_CONTAINER, false)],
   },
   {
@@ -58,15 +64,18 @@ const KEYCHAIN_DESIGNS: readonly KeychainDesign[] = [
     container: LOOP_CONTAINER,
     photo: null,
     photoRotated: false,
+    fit: 'stretch',
     slots: [
       {
         id: ICON_SLOT,
         label: 'Іконка',
         accepts: ['mark'],
-        rect: { x: 42, y: 202, width: 92, height: 38 },
+        rect: { x: 42, y: 196, width: 92, height: 30 },
         rotated: false,
+        metal: true,
+        scaleFactor: METAL_ICON_SCALE,
       },
-      mainSlot(LOOP_CONTAINER, true),
+      mainSlot(LOOP_STRAP, true),
     ],
   },
   {
@@ -76,7 +85,8 @@ const KEYCHAIN_DESIGNS: readonly KeychainDesign[] = [
     container: LOOP_CONTAINER,
     photo: null,
     photoRotated: false,
-    slots: [mainSlot(LOOP_CONTAINER, true)],
+    fit: 'stretch',
+    slots: [mainSlot(LOOP_STRAP, true)],
   },
   {
     id: 'metal-v-2',
@@ -85,6 +95,7 @@ const KEYCHAIN_DESIGNS: readonly KeychainDesign[] = [
     container: METAL_CONTAINER,
     photo: { x: 30, y: 262, width: 111, height: 128 },
     photoRotated: false,
+    fit: 'contain',
     slots: [mainSlot({ x: 30, y: 392, width: 111, height: 58 }, false)],
   },
   {
@@ -94,6 +105,7 @@ const KEYCHAIN_DESIGNS: readonly KeychainDesign[] = [
     container: METAL_CONTAINER,
     photo: { x: 30, y: 262, width: 111, height: 120 },
     photoRotated: false,
+    fit: 'contain',
     slots: [
       mainSlot({ x: 30, y: 386, width: 111, height: 24 }, false),
       {
@@ -112,6 +124,7 @@ const KEYCHAIN_DESIGNS: readonly KeychainDesign[] = [
     container: METAL_CONTAINER,
     photo: { x: 30, y: 262, width: 111, height: 190 },
     photoRotated: true,
+    fit: 'contain',
     slots: [],
   },
   {
@@ -121,6 +134,7 @@ const KEYCHAIN_DESIGNS: readonly KeychainDesign[] = [
     container: METAL_CONTAINER,
     photo: { x: 30, y: 334, width: 110, height: 120 },
     photoRotated: true,
+    fit: 'contain',
     slots: [mainSlot({ x: 114, y: 266, width: 20, height: 64 }, true)],
   },
   {
@@ -130,6 +144,7 @@ const KEYCHAIN_DESIGNS: readonly KeychainDesign[] = [
     container: METAL_CONTAINER,
     photo: { x: 30, y: 334, width: 110, height: 120 },
     photoRotated: true,
+    fit: 'contain',
     slots: [
       mainSlot({ x: 118, y: 266, width: 18, height: 64 }, true),
       {
@@ -148,6 +163,7 @@ const KEYCHAIN_DESIGNS: readonly KeychainDesign[] = [
     container: METAL_CONTAINER,
     photo: null,
     photoRotated: false,
+    fit: 'contain',
     slots: [mainSlot(METAL_CONTAINER, true)],
   },
   {
@@ -157,6 +173,7 @@ const KEYCHAIN_DESIGNS: readonly KeychainDesign[] = [
     container: METAL_CONTAINER,
     photo: null,
     photoRotated: false,
+    fit: 'contain',
     slots: [mainSlot(METAL_CONTAINER, false)],
   },
   {
@@ -166,6 +183,7 @@ const KEYCHAIN_DESIGNS: readonly KeychainDesign[] = [
     container: METAL_CONTAINER,
     photo: { x: 30, y: 262, width: 111, height: 190 },
     photoRotated: false,
+    fit: 'contain',
     slots: [],
   },
 ];

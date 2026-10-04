@@ -20,13 +20,20 @@ import { DictionariesService } from '../../../../core/dictionaries/dictionaries.
 import { FEATURE_ROUTES } from '../../../../core/routes.constants';
 import type { Product } from '../../../products/models/product.model';
 import type { Sender, SenderAddress } from '../../../senders/models/sender.model';
-import { SearchableSelect, type SelectOption } from '../../../../shared/ui/searchable-select/searchable-select';
+import {
+  SearchableSelect,
+  type SelectOption,
+} from '../../../../shared/ui/searchable-select/searchable-select';
 import { normalizeUaPhone } from '../../../../shared/utils/phone-format.util';
 import type { CreateOrderPayload } from '../../models/order.model';
 import { buildOrderItemPayload, createOrderItemFormGroup } from '../../order-item-form.util';
 import { OrderItemCard, type OrderItemFormGroup } from './order-item-card/order-item-card';
 import { computeItemSubtotal } from './order-item-subtotal.util';
-import { Dropdown, dictionaryOptions, type DropdownOption } from '../../../../shared/ui/dropdown/dropdown';
+import {
+  Dropdown,
+  dictionaryOptions,
+  type DropdownOption,
+} from '../../../../shared/ui/dropdown/dropdown';
 
 type WizardStep = 1 | 2;
 type DeliveryMethod = 'warehouse' | 'postomat';
@@ -44,7 +51,8 @@ type DeliveryMethod = 'warehouse' | 'postomat';
     LucideBuilding,
     LucideLock,
     LucideTriangleAlert,
-    LucideX, Dropdown,
+    LucideX,
+    Dropdown,
   ],
   templateUrl: './orders-create.html',
   styleUrl: './orders-create.css',
@@ -75,9 +83,20 @@ export class OrdersCreate {
   protected readonly sendersLoading = signal(false);
   protected readonly senderNoticeDismissed = signal(false);
   protected readonly activeSender = signal<Sender | null>(null);
+  private readonly senders = signal<Sender[]>([]);
+  protected readonly chosenSender = signal<Sender | null>(null);
+  protected readonly senderPickerOpen = signal(false);
+  protected readonly orderSender = computed<Sender | null>(
+    () => this.chosenSender() ?? this.activeSender(),
+  );
+  protected readonly senderOptions = computed<DropdownOption[]>(() =>
+    this.senders().map((sender) => ({ value: sender.id, label: sender.fullName })),
+  );
   protected readonly senderAddresses = signal<SenderAddress[]>([]);
   protected readonly senderAddressesLoading = signal(false);
-  protected readonly senderAddress = computed<SenderAddress | null>(() => this.senderAddresses()[0] ?? null);
+  protected readonly senderAddress = computed<SenderAddress | null>(
+    () => this.senderAddresses()[0] ?? null,
+  );
 
   protected readonly citiesLoading = signal(false);
   protected readonly cityOptions = signal<SelectOption[]>([]);
@@ -103,7 +122,10 @@ export class OrdersCreate {
     items: this.fb.array<OrderItemFormGroup>([createOrderItemFormGroup(this.fb)]),
     senderAddressRef: this.fb.nonNullable.control('', Validators.required),
     recipient: this.fb.group({
-      phone: this.fb.nonNullable.control('', [Validators.required, Validators.pattern(/^\+380\d{9}$/)]),
+      phone: this.fb.nonNullable.control('', [
+        Validators.required,
+        Validators.pattern(/^\+380\d{9}$/),
+      ]),
       lastName: this.fb.nonNullable.control('', Validators.required),
       firstName: this.fb.nonNullable.control('', Validators.required),
       middleName: this.fb.nonNullable.control(''),
@@ -128,12 +150,16 @@ export class OrdersCreate {
       }
     });
 
-    this.form.controls.paymentTypeId.valueChanges.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((id) => {
-      this.onPaymentTypeChange(id);
-    });
-    this.form.controls.deliveryTypeId.valueChanges.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((id) => {
-      this.onDeliveryTypeChange(id);
-    });
+    this.form.controls.paymentTypeId.valueChanges
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((id) => {
+        this.onPaymentTypeChange(id);
+      });
+    this.form.controls.deliveryTypeId.valueChanges
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((id) => {
+        this.onDeliveryTypeChange(id);
+      });
 
     this.loadActiveSender();
   }
@@ -173,7 +199,10 @@ export class OrdersCreate {
   }
 
   orderTotal(): number {
-    return this.items.controls.reduce((sum, group, index) => sum + this.itemSubtotal(group, index), 0);
+    return this.items.controls.reduce(
+      (sum, group, index) => sum + this.itemSubtotal(group, index),
+      0,
+    );
   }
 
   orderQuantity(): number {
@@ -183,7 +212,13 @@ export class OrdersCreate {
   itemSubtotal(group: OrderItemFormGroup, index: number): number {
     const raw = group.getRawValue();
     const type = this.dictionaries.productTypes().find((t) => t.id === raw.productTypeId);
-    return computeItemSubtotal(raw.quantity, raw.price, raw.isPromo, type?.isCustom ?? false, this.itemProducts()[index] ?? null);
+    return computeItemSubtotal(
+      raw.quantity,
+      raw.price,
+      raw.isPromo,
+      type?.isCustom ?? false,
+      this.itemProducts()[index] ?? null,
+    );
   }
 
   addItem(): void {
@@ -218,7 +253,7 @@ export class OrdersCreate {
       this.form.controls.recipient.valid &&
       this.form.controls.deliveryTypeId.valid &&
       this.form.controls.deliveryDetails.valid &&
-      this.activeSender() !== null
+      this.orderSender() !== null
     );
   }
 
@@ -307,8 +342,8 @@ export class OrdersCreate {
     if (!this.isStep1Valid() || !this.isStep2Valid() || this.saving()) {
       return;
     }
-    const activeSender = this.activeSender();
-    if (!activeSender) {
+    const orderSender = this.orderSender();
+    if (!orderSender) {
       return;
     }
     this.saving.set(true);
@@ -321,8 +356,10 @@ export class OrdersCreate {
       ...(this.paymentTypeCode() === 'partial' && raw.partialAmount !== null
         ? { partialAmount: raw.partialAmount }
         : {}),
-      items: this.items.controls.map((group) => buildOrderItemPayload(group, this.dictionaries.productTypes())),
-      senderId: activeSender.id,
+      items: this.items.controls.map((group) =>
+        buildOrderItemPayload(group, this.dictionaries.productTypes()),
+      ),
+      senderId: orderSender.id,
       senderAddressRef: raw.senderAddressRef,
       recipient: {
         phone: raw.recipient.phone,
@@ -393,6 +430,29 @@ export class OrdersCreate {
     this.senderNoticeDismissed.set(true);
   }
 
+  protected toggleSenderPicker(): void {
+    this.senderPickerOpen.update((open) => !open);
+  }
+
+  protected chooseSender(senderId: string): void {
+    const sender = this.senders().find((candidate) => candidate.id === senderId);
+    if (!sender) {
+      return;
+    }
+    this.chosenSender.set(sender);
+    this.senderPickerOpen.set(false);
+    this.loadSenderAddresses(sender.id);
+  }
+
+  protected resetSender(): void {
+    this.chosenSender.set(null);
+    this.senderPickerOpen.set(false);
+    const active = this.activeSender();
+    if (active) {
+      this.loadSenderAddresses(active.id);
+    }
+  }
+
   private loadActiveSender(): void {
     this.sendersLoading.set(true);
     this.sendersApi
@@ -401,6 +461,7 @@ export class OrdersCreate {
       .subscribe({
         next: (response) => {
           this.sendersLoading.set(false);
+          this.senders.set(response.items);
           const active = response.items.find((s) => s.isActive) ?? null;
           this.activeSender.set(active);
           if (active) {

@@ -44,7 +44,9 @@ describe('NovaPoshtaApiService', () => {
 
   it('includes the query when searching streets', () => {
     service.getStreets('city-1', 'Хрещатик').subscribe();
-    const req = httpMock.expectOne(`${baseUrl}/streets?cityRef=city-1&query=%D0%A5%D1%80%D0%B5%D1%89%D0%B0%D1%82%D0%B8%D0%BA`);
+    const req = httpMock.expectOne(
+      `${baseUrl}/streets?cityRef=city-1&query=%D0%A5%D1%80%D0%B5%D1%89%D0%B0%D1%82%D0%B8%D0%BA`,
+    );
     expect(req.request.method).toBe('GET');
     req.flush([]);
   });

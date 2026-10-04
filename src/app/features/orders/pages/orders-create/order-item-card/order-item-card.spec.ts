@@ -97,14 +97,20 @@ describe('OrderItemCard', () => {
     fixture.componentInstance.form().controls.productTypeId.setValue('t1');
     fixture.detectChanges();
 
-    httpMock
-      .expectOne(`${baseUrl}?page=1&pageSize=100&typeId=t1`)
-      .flush({
-        items: [
-          { id: 'p1', typeId: 't1', name: 'Кіт', photoUrl: '', price: 100, promoPrice: null, stockQuantity: 5 },
-        ],
-        total: 1,
-      });
+    httpMock.expectOne(`${baseUrl}?page=1&pageSize=100&typeId=t1`).flush({
+      items: [
+        {
+          id: 'p1',
+          typeId: 't1',
+          name: 'Кіт',
+          photoUrl: '',
+          price: 100,
+          promoPrice: null,
+          stockQuantity: 5,
+        },
+      ],
+      total: 1,
+    });
     fixture.detectChanges();
 
     expect(fixture.componentInstance['productOptions']()).toEqual([{ value: 'p1', label: 'Кіт' }]);
@@ -115,7 +121,17 @@ describe('OrderItemCard', () => {
     fixture.componentInstance.form().controls.productTypeId.setValue('t1');
     fixture.detectChanges();
     httpMock.expectOne(`${baseUrl}?page=1&pageSize=100&typeId=t1`).flush({
-      items: [{ id: 'p1', typeId: 't1', name: 'Кіт', photoUrl: '', price: 100, promoPrice: 80, stockQuantity: 5 }],
+      items: [
+        {
+          id: 'p1',
+          typeId: 't1',
+          name: 'Кіт',
+          photoUrl: '',
+          price: 100,
+          promoPrice: 80,
+          stockQuantity: 5,
+        },
+      ],
       total: 1,
     });
     fixture.detectChanges();
@@ -132,7 +148,17 @@ describe('OrderItemCard', () => {
     fixture.componentInstance.form().controls.productTypeId.setValue('t1');
     fixture.detectChanges();
     httpMock.expectOne(`${baseUrl}?page=1&pageSize=100&typeId=t1`).flush({
-      items: [{ id: 'p1', typeId: 't1', name: 'Кіт', photoUrl: '', price: 100, promoPrice: 80, stockQuantity: 5 }],
+      items: [
+        {
+          id: 'p1',
+          typeId: 't1',
+          name: 'Кіт',
+          photoUrl: '',
+          price: 100,
+          promoPrice: 80,
+          stockQuantity: 5,
+        },
+      ],
       total: 1,
     });
     fixture.detectChanges();
@@ -155,7 +181,17 @@ describe('OrderItemCard', () => {
     fixture.componentInstance.form().controls.productTypeId.setValue('t1');
     fixture.detectChanges();
     httpMock.expectOne(`${baseUrl}?page=1&pageSize=100&typeId=t1`).flush({
-      items: [{ id: 'p1', typeId: 't1', name: 'Кіт', photoUrl: '', price: 100, promoPrice: null, stockQuantity: 5 }],
+      items: [
+        {
+          id: 'p1',
+          typeId: 't1',
+          name: 'Кіт',
+          photoUrl: '',
+          price: 100,
+          promoPrice: null,
+          stockQuantity: 5,
+        },
+      ],
       total: 1,
     });
     fixture.detectChanges();
@@ -187,7 +223,17 @@ describe('OrderItemCard', () => {
     form.controls.productTypeId.setValue('t1');
     fixture.detectChanges();
     httpMock.expectOne(`${baseUrl}?page=1&pageSize=100&typeId=t1`).flush({
-      items: [{ id: 'p1', typeId: 't1', name: 'Кіт', photoUrl: '', price: 100, promoPrice: null, stockQuantity: 9 }],
+      items: [
+        {
+          id: 'p1',
+          typeId: 't1',
+          name: 'Кіт',
+          photoUrl: '',
+          price: 100,
+          promoPrice: null,
+          stockQuantity: 9,
+        },
+      ],
       total: 1,
     });
     fixture.detectChanges();
@@ -204,7 +250,17 @@ describe('OrderItemCard', () => {
     fixture.componentInstance.form().controls.productTypeId.setValue('t1');
     fixture.detectChanges();
     httpMock.expectOne(`${baseUrl}?page=1&pageSize=100&typeId=t1`).flush({
-      items: [{ id: 'p1', typeId: 't1', name: 'Кіт', photoUrl: '', price: 100, promoPrice: null, stockQuantity: 5 }],
+      items: [
+        {
+          id: 'p1',
+          typeId: 't1',
+          name: 'Кіт',
+          photoUrl: '',
+          price: 100,
+          promoPrice: null,
+          stockQuantity: 5,
+        },
+      ],
       total: 1,
     });
     fixture.detectChanges();
@@ -213,12 +269,24 @@ describe('OrderItemCard', () => {
     fixture.detectChanges();
 
     httpMock.expectOne(`${baseUrl}?page=1&pageSize=100&typeId=t1&name=barracuda`).flush({
-      items: [{ id: 'p99', typeId: 't1', name: 'Барракуда', photoUrl: '', price: 40, promoPrice: null, stockQuantity: 1 }],
+      items: [
+        {
+          id: 'p99',
+          typeId: 't1',
+          name: 'Барракуда',
+          photoUrl: '',
+          price: 40,
+          promoPrice: null,
+          stockQuantity: 1,
+        },
+      ],
       total: 1,
     });
     fixture.detectChanges();
 
-    expect(fixture.componentInstance['productOptions']()).toEqual([{ value: 'p99', label: 'Барракуда' }]);
+    expect(fixture.componentInstance['productOptions']()).toEqual([
+      { value: 'p99', label: 'Барракуда' },
+    ]);
   });
 
   it('re-fetches the default (unfiltered) page when the search term is cleared', () => {
@@ -226,7 +294,17 @@ describe('OrderItemCard', () => {
     fixture.componentInstance.form().controls.productTypeId.setValue('t1');
     fixture.detectChanges();
     httpMock.expectOne(`${baseUrl}?page=1&pageSize=100&typeId=t1`).flush({
-      items: [{ id: 'p1', typeId: 't1', name: 'Кіт', photoUrl: '', price: 100, promoPrice: null, stockQuantity: 5 }],
+      items: [
+        {
+          id: 'p1',
+          typeId: 't1',
+          name: 'Кіт',
+          photoUrl: '',
+          price: 100,
+          promoPrice: null,
+          stockQuantity: 5,
+        },
+      ],
       total: 1,
     });
     fixture.detectChanges();
@@ -235,7 +313,17 @@ describe('OrderItemCard', () => {
     fixture.detectChanges();
 
     httpMock.expectOne(`${baseUrl}?page=1&pageSize=100&typeId=t1`).flush({
-      items: [{ id: 'p1', typeId: 't1', name: 'Кіт', photoUrl: '', price: 100, promoPrice: null, stockQuantity: 5 }],
+      items: [
+        {
+          id: 'p1',
+          typeId: 't1',
+          name: 'Кіт',
+          photoUrl: '',
+          price: 100,
+          promoPrice: null,
+          stockQuantity: 5,
+        },
+      ],
       total: 1,
     });
     expect(fixture.componentInstance['productOptions']()).toEqual([{ value: 'p1', label: 'Кіт' }]);
@@ -252,12 +340,24 @@ describe('OrderItemCard', () => {
 
     expect(initialRequest.cancelled).toBe(true);
     httpMock.expectOne(`${baseUrl}?page=1&pageSize=100&typeId=t1&name=barracuda`).flush({
-      items: [{ id: 'p99', typeId: 't1', name: 'Барракуда', photoUrl: '', price: 40, promoPrice: null, stockQuantity: 1 }],
+      items: [
+        {
+          id: 'p99',
+          typeId: 't1',
+          name: 'Барракуда',
+          photoUrl: '',
+          price: 40,
+          promoPrice: null,
+          stockQuantity: 1,
+        },
+      ],
       total: 1,
     });
     fixture.detectChanges();
 
-    expect(fixture.componentInstance['productOptions']()).toEqual([{ value: 'p99', label: 'Барракуда' }]);
+    expect(fixture.componentInstance['productOptions']()).toEqual([
+      { value: 'p99', label: 'Барракуда' },
+    ]);
   });
 
   it('hydrates a pre-filled catalog item from initialProduct without wiping productId, fetching a fresh product list for search', () => {
@@ -281,13 +381,20 @@ describe('OrderItemCard', () => {
     expect(el.querySelector('.item-card__subtotal')?.textContent?.trim()).toBe('240 ₴');
     expect(el.querySelector('.item-card__photo img')).not.toBeNull();
 
-    httpMock.expectOne(`${baseUrl}?page=1&pageSize=100&typeId=t1`).flush({ items: [initialProduct], total: 1 });
+    httpMock
+      .expectOne(`${baseUrl}?page=1&pageSize=100&typeId=t1`)
+      .flush({ items: [initialProduct], total: 1 });
     expect(fixture.componentInstance['productOptions']()).toEqual([{ value: 'p1', label: 'Кіт' }]);
   });
 
   it('hydrates a pre-filled custom item from its saved name/price without touching them', () => {
     const form = createForm();
-    form.patchValue({ productTypeId: 't2', name: 'Кастомна наклейка «Пес»', price: 65, quantity: 2 });
+    form.patchValue({
+      productTypeId: 't2',
+      name: 'Кастомна наклейка «Пес»',
+      price: 65,
+      quantity: 2,
+    });
 
     createHydrated(form, null);
 
@@ -330,7 +437,17 @@ describe('OrderItemCard', () => {
 
     createHydrated(form, null);
     httpMock.expectOne(`${baseUrl}?page=1&pageSize=100&typeId=t1`).flush({
-      items: [{ id: 'p2', typeId: 't1', name: 'Собака', photoUrl: '', price: 50, promoPrice: null, stockQuantity: 3 }],
+      items: [
+        {
+          id: 'p2',
+          typeId: 't1',
+          name: 'Собака',
+          photoUrl: '',
+          price: 50,
+          promoPrice: null,
+          stockQuantity: 3,
+        },
+      ],
       total: 1,
     });
     fixture.detectChanges();

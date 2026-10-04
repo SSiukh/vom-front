@@ -56,7 +56,9 @@ describe('ProductsApiService', () => {
 
   it('includes both typeId and name when both filters are active', () => {
     service.list(1, 10, 't1', 'кіт').subscribe();
-    const req = httpMock.expectOne(`${baseUrl}?page=1&pageSize=10&typeId=t1&name=%D0%BA%D1%96%D1%82`);
+    const req = httpMock.expectOne(
+      `${baseUrl}?page=1&pageSize=10&typeId=t1&name=%D0%BA%D1%96%D1%82`,
+    );
     expect(req.request.method).toBe('GET');
     req.flush({ items: [], total: 0 });
   });

@@ -81,15 +81,24 @@ export class OrdersDetail {
   }
 
   shipmentTypeLabel(): string {
-    return this.dictionaries.shipmentTypes().find((t) => t.id === this.order()?.shipmentTypeId)?.label ?? '';
+    return (
+      this.dictionaries.shipmentTypes().find((t) => t.id === this.order()?.shipmentTypeId)?.label ??
+      ''
+    );
   }
 
   paymentTypeLabel(): string {
-    return this.dictionaries.paymentTypes().find((t) => t.id === this.order()?.paymentTypeId)?.label ?? '';
+    return (
+      this.dictionaries.paymentTypes().find((t) => t.id === this.order()?.paymentTypeId)?.label ??
+      ''
+    );
   }
 
   deliveryTypeLabel(): string {
-    return this.dictionaries.deliveryTypes().find((t) => t.id === this.order()?.deliveryTypeId)?.label ?? '';
+    return (
+      this.dictionaries.deliveryTypes().find((t) => t.id === this.order()?.deliveryTypeId)?.label ??
+      ''
+    );
   }
 
   productTypeLabel(productTypeId: string): string {
@@ -156,7 +165,9 @@ export class OrdersDetail {
     if (restockItems.length === 0) {
       return waybillPart;
     }
-    const restockList = restockItems.map((item) => `${item.nameSnapshot} +${item.quantity} шт`).join(', ');
+    const restockList = restockItems
+      .map((item) => `${item.nameSnapshot} +${item.quantity} шт`)
+      .join(', ');
     return `${waybillPart} Товари повернуться на склад: ${restockList}.`;
   }
 

@@ -32,7 +32,7 @@ describe('KeychainRenderer', () => {
   ) =>
     renderer.render(
       asCanvas(),
-      { imageUrl: 'keychains/metal-white.jpg', paths, evenOddPaths, ink, blend },
+      { imageUrl: 'keychains/metal-white.jpg', paths, evenOddPaths, ink, blend, opacity: 1 },
       signal,
     );
 
@@ -181,6 +181,7 @@ describe('KeychainRenderer', () => {
           evenOddPaths: [],
           ink: '#111111',
           blend: 'multiply' as const,
+          opacity: 1,
         },
         new AbortController().signal,
       ),
@@ -193,6 +194,7 @@ describe('KeychainRenderer', () => {
         evenOddPaths: [],
         ink: '#111111',
         blend: 'multiply' as const,
+        opacity: 1,
       },
       new AbortController().signal,
     );

@@ -5,7 +5,12 @@ import { provideRouter, Router } from '@angular/router';
 import { environment } from '../../../../../environments/environment';
 import { DictionariesService } from '../../../../core/dictionaries/dictionaries.service';
 import { OrdersList } from './orders-list';
-import { dropdownLabels, dropdownOptionValues, dropdownValue, pickDropdown } from '../../../../shared/ui/dropdown/dropdown-testing';
+import {
+  dropdownLabels,
+  dropdownOptionValues,
+  dropdownValue,
+  pickDropdown,
+} from '../../../../shared/ui/dropdown/dropdown-testing';
 import { pickDate } from '../../../../shared/ui/date-picker/date-picker-testing';
 
 describe('OrdersList', () => {
@@ -40,14 +45,27 @@ describe('OrdersList', () => {
     items: [{ productId: 'p1', productTypeId: 't1', nameSnapshot: 'Наклейка «Кіт»', quantity: 3 }],
     senderId: 's1',
     senderAddressRef: 'addr-1',
-    recipient: { phone: '+380501234567', lastName: 'Коваленко', firstName: 'Ірина', middleName: null },
+    recipient: {
+      phone: '+380501234567',
+      lastName: 'Коваленко',
+      firstName: 'Ірина',
+      middleName: null,
+    },
     deliveryTypeId: 'dt1',
-    deliveryDetails: { cityRef: 'c1', warehouseRef: 'w1', streetRef: null, house: null, apartment: null, postomatRef: null },
+    deliveryDetails: {
+      cityRef: 'c1',
+      warehouseRef: 'w1',
+      streetRef: null,
+      house: null,
+      apartment: null,
+      postomatRef: null,
+    },
     npWaybillNumber: '20450182773641',
     npWaybillRef: null,
     shipmentStatusId: null,
     isPacked: false,
     isOutOfStock: false,
+    isSettled: false,
     createdAt: '2026-08-22T10:00:00.000Z',
     updatedAt: '2026-08-22T10:00:00.000Z',
     ...overrides,
@@ -86,7 +104,10 @@ describe('OrdersList', () => {
     el = fixture.nativeElement as HTMLElement;
     const sendersReq = httpMock.expectOne(sendersUrl);
     if (sendersResponse === 'ok') {
-      sendersReq.flush({ items: [sender('s1', 'ФОП Волошин О.М.'), sender('s2', 'ФОП Коваль І.П.')], total: 2 });
+      sendersReq.flush({
+        items: [sender('s1', 'ФОП Волошин О.М.'), sender('s2', 'ФОП Коваль І.П.')],
+        total: 2,
+      });
     } else {
       sendersReq.flush('boom', { status: 500, statusText: 'Server Error' });
     }
@@ -126,7 +147,9 @@ describe('OrdersList', () => {
     create();
     flushList([], 0);
 
-    expect(el.querySelector('.empty-state__title')?.textContent?.trim()).toBe('Замовлень поки немає');
+    expect(el.querySelector('.empty-state__title')?.textContent?.trim()).toBe(
+      'Замовлень поки немає',
+    );
   });
 
   it('renders waybill, recipient, phone, items summary, payment and total', () => {
@@ -134,7 +157,9 @@ describe('OrdersList', () => {
     flushList([order()], 1);
 
     const row = el.querySelector('tbody tr') as HTMLElement;
-    const cells = Array.from(row.querySelectorAll('td')).map((td) => td.textContent?.replace(/\s+/g, ' ').trim());
+    const cells = Array.from(row.querySelectorAll('td')).map((td) =>
+      td.textContent?.replace(/\s+/g, ' ').trim(),
+    );
     expect(cells[0]).toBe('20450182773641');
     expect(cells[2]).toBe('Коваленко Ірина');
     expect(cells[3]).toBe('+380501234567');
@@ -157,6 +182,14 @@ describe('OrdersList', () => {
     const badge = el.querySelector('.col-flags .status-badge--success');
     expect(badge?.getAttribute('title')).toBe('Спаковано');
     expect(el.querySelector('.col-flags .status-badge--danger')).toBeNull();
+  });
+
+  it('shows the settled badge when isSettled is true', () => {
+    create();
+    flushList([order({ isSettled: true })], 1);
+
+    const badge = el.querySelector('.col-flags .status-badge--success[title="Розраховано"]');
+    expect(badge?.getAttribute('aria-label')).toBe('Розраховано');
   });
 
   it('shows the out-of-stock badge when isOutOfStock is true', () => {
@@ -208,7 +241,9 @@ describe('OrdersList', () => {
     const firstStatusCell = rows[0].querySelectorAll('td')[7];
     const secondStatusCell = rows[1].querySelectorAll('td')[7];
     expect(firstStatusCell.querySelector('.status-badge')?.textContent?.trim()).toBe('Доставлено');
-    expect(firstStatusCell.querySelector('.status-badge')?.classList.contains('status-badge--delivered')).toBe(true);
+    expect(
+      firstStatusCell.querySelector('.status-badge')?.classList.contains('status-badge--delivered'),
+    ).toBe(true);
     expect(secondStatusCell.querySelector('.dash')?.textContent?.trim()).toBe('—');
   });
 
@@ -225,7 +260,6 @@ describe('OrdersList', () => {
     create();
     flushList([], 0);
 
-    
     pickDate(fixture, 'date-from', '2026-08-01');
     flushList([], 0, `${baseUrl}?page=1&pageSize=10&dateFrom=2026-08-01`);
     pickDate(fixture, 'date-to', '2026-08-22');
@@ -237,7 +271,6 @@ describe('OrdersList', () => {
     flushList([], 0);
     expect(el.querySelector('.filters-row__reset')).toBeNull();
 
-    
     pickDate(fixture, 'date-from', '2026-08-01');
     flushList([], 0, `${baseUrl}?page=1&pageSize=10&dateFrom=2026-08-01`);
 
@@ -252,7 +285,9 @@ describe('OrdersList', () => {
     create();
     flushList([], 0);
 
-    expect(searchField().getAttribute('placeholder')).toBe("Пошук: № накладної, прізвище, ім'я, по батькові");
+    expect(searchField().getAttribute('placeholder')).toBe(
+      "Пошук: № накладної, прізвище, ім'я, по батькові",
+    );
     expect(searchField().getAttribute('maxlength')).toBe('100');
   });
 
@@ -260,7 +295,9 @@ describe('OrdersList', () => {
     vi.useFakeTimers();
     create();
     flushList([order()], 25);
-    const nextPage = Array.from(el.querySelectorAll('.pagination-box')).find((b) => b.textContent?.trim() === '2');
+    const nextPage = Array.from(el.querySelectorAll('.pagination-box')).find(
+      (b) => b.textContent?.trim() === '2',
+    );
     (nextPage as HTMLElement).click();
     flushList([order()], 25, `${baseUrl}?page=2&pageSize=10`);
 
@@ -270,7 +307,9 @@ describe('OrdersList', () => {
     httpMock.expectNone(() => true);
     vi.advanceTimersByTime(1);
 
-    const request = httpMock.expectOne((candidate) => candidate.params.get('search') === 'Іваненко Іван');
+    const request = httpMock.expectOne(
+      (candidate) => candidate.params.get('search') === 'Іваненко Іван',
+    );
     expect(request.request.params.get('page')).toBe('1');
     request.flush({ items: [], total: 0 });
   });
@@ -341,7 +380,9 @@ describe('OrdersList', () => {
     typeSearch('nobody');
     flushList([], 0, `${baseUrl}?page=1&pageSize=10&search=nobody`);
 
-    expect(el.querySelector('.empty-state__text')?.textContent).toContain('пошуком нічого не знайдено');
+    expect(el.querySelector('.empty-state__text')?.textContent).toContain(
+      'пошуком нічого не знайдено',
+    );
     expect(el.querySelector('.empty-state__title')?.textContent?.trim()).toBe('Нічого не знайдено');
   });
 
@@ -411,7 +452,11 @@ describe('OrdersList', () => {
     flushList([], 0);
 
     pickDropdown(fixture, 'shipmentStatusId', 'none');
-    flushList([order({ shipmentStatusId: null })], 1, `${baseUrl}?page=1&pageSize=10&shipmentStatusId=none`);
+    flushList(
+      [order({ shipmentStatusId: null })],
+      1,
+      `${baseUrl}?page=1&pageSize=10&shipmentStatusId=none`,
+    );
 
     expect(el.querySelectorAll('tbody tr').length).toBe(1);
   });
@@ -433,7 +478,11 @@ describe('OrdersList', () => {
     create();
     flushList([], 0);
 
-    expect(dropdownLabels(fixture, 'senderId')).toEqual(['Усі відправники', 'ФОП Волошин О.М.', 'ФОП Коваль І.П.']);
+    expect(dropdownLabels(fixture, 'senderId')).toEqual([
+      'Усі відправники',
+      'ФОП Волошин О.М.',
+      'ФОП Коваль І.П.',
+    ]);
     expect(dropdownOptionValues(fixture, 'senderId')).toEqual(['', 's1', 's2']);
   });
 
@@ -461,7 +510,6 @@ describe('OrdersList', () => {
     create();
     flushList([], 0);
 
-    
     pickDate(fixture, 'date-from', '2026-08-01');
     flushList([], 0, `${baseUrl}?page=1&pageSize=10&dateFrom=2026-08-01`);
 
@@ -469,14 +517,20 @@ describe('OrdersList', () => {
     flushList([], 0, `${baseUrl}?page=1&pageSize=10&dateFrom=2026-08-01&productTypeId=t2`);
 
     pickDropdown(fixture, 'senderId', 's1');
-    flushList([], 0, `${baseUrl}?page=1&pageSize=10&dateFrom=2026-08-01&productTypeId=t2&senderId=s1`);
+    flushList(
+      [],
+      0,
+      `${baseUrl}?page=1&pageSize=10&dateFrom=2026-08-01&productTypeId=t2&senderId=s1`,
+    );
   });
 
   it('resets to page 1 when the sender changes while on a later page', () => {
     create();
     flushList([order()], 25);
 
-    const nextPage = Array.from(el.querySelectorAll('.pagination-box')).find((b) => b.textContent?.trim() === '2');
+    const nextPage = Array.from(el.querySelectorAll('.pagination-box')).find(
+      (b) => b.textContent?.trim() === '2',
+    );
     (nextPage as HTMLElement).click();
     flushList([order()], 25, `${baseUrl}?page=2&pageSize=10`);
 
@@ -521,14 +575,23 @@ describe('OrdersList', () => {
 
   it('reverses the row order client-side when "Старі" sort is selected', () => {
     create();
-    flushList([order({ id: '1', npWaybillNumber: 'EN-1' }), order({ id: '2', npWaybillNumber: 'EN-2' })], 2);
+    flushList(
+      [order({ id: '1', npWaybillNumber: 'EN-1' }), order({ id: '2', npWaybillNumber: 'EN-2' })],
+      2,
+    );
 
-    const sortButtons = Array.from(el.querySelectorAll('.segmented-control__item')) as HTMLButtonElement[];
-    const oldestButton = sortButtons.find((b) => b.textContent?.trim() === 'Старі') as HTMLButtonElement;
+    const sortButtons = Array.from(
+      el.querySelectorAll('.segmented-control__item'),
+    ) as HTMLButtonElement[];
+    const oldestButton = sortButtons.find(
+      (b) => b.textContent?.trim() === 'Старі',
+    ) as HTMLButtonElement;
     oldestButton.click();
     fixture.detectChanges();
 
-    const waybills = Array.from(el.querySelectorAll('.waybill-number')).map((n) => n.textContent?.trim());
+    const waybills = Array.from(el.querySelectorAll('.waybill-number')).map((n) =>
+      n.textContent?.trim(),
+    );
     expect(waybills).toEqual(['EN-2', 'EN-1']);
   });
 
@@ -556,9 +619,10 @@ describe('OrdersList', () => {
     create();
     flushList([], 0);
 
-    
     pickDate(fixture, 'date-from', '2026-08-01');
-    httpMock.expectOne(`${baseUrl}?page=1&pageSize=10&dateFrom=2026-08-01`).flush({ items: [order()], total: 25 });
+    httpMock
+      .expectOne(`${baseUrl}?page=1&pageSize=10&dateFrom=2026-08-01`)
+      .flush({ items: [order()], total: 25 });
     fixture.detectChanges();
 
     const pageThreeButton = Array.from(el.querySelectorAll('.pagination-box')).find(
@@ -570,7 +634,9 @@ describe('OrdersList', () => {
       .flush({ items: [order()], total: 5 });
     fixture.detectChanges();
 
-    httpMock.expectOne(`${baseUrl}?page=1&pageSize=10&dateFrom=2026-08-01`).flush({ items: [order()], total: 5 });
+    httpMock
+      .expectOne(`${baseUrl}?page=1&pageSize=10&dateFrom=2026-08-01`)
+      .flush({ items: [order()], total: 5 });
     fixture.detectChanges();
 
     expect(el.querySelectorAll('tbody tr').length).toBe(1);
@@ -583,7 +649,9 @@ describe('OrdersList', () => {
       25,
     );
 
-    const labels = Array.from(el.querySelectorAll('.segmented-control__item')).map((b) => b.textContent?.trim());
+    const labels = Array.from(el.querySelectorAll('.segmented-control__item')).map((b) =>
+      b.textContent?.trim(),
+    );
     expect(labels).not.toContain('Старі');
   });
 
@@ -620,16 +688,22 @@ describe('OrdersList', () => {
       `${baseUrl}?page=1&pageSize=30`,
     );
 
-    const labels = Array.from(el.querySelectorAll('.segmented-control__item')).map((b) => b.textContent?.trim());
+    const labels = Array.from(el.querySelectorAll('.segmented-control__item')).map((b) =>
+      b.textContent?.trim(),
+    );
     expect(labels).toContain('Старі');
   });
 
   it('shows an error message when the list request fails', () => {
     create();
-    httpMock.expectOne(`${baseUrl}?page=1&pageSize=10`).flush('boom', { status: 500, statusText: 'Server Error' });
+    httpMock
+      .expectOne(`${baseUrl}?page=1&pageSize=10`)
+      .flush('boom', { status: 500, statusText: 'Server Error' });
     fixture.detectChanges();
 
-    expect(el.querySelector('.error-text')?.textContent?.trim()).toBe('Не вдалося завантажити список замовлень');
+    expect(el.querySelector('.error-text')?.textContent?.trim()).toBe(
+      'Не вдалося завантажити список замовлень',
+    );
   });
 
   it('syncs all statuses and shows a result summary, then reloads the list', () => {
@@ -637,12 +711,16 @@ describe('OrdersList', () => {
     flushList([order()], 1);
 
     const syncButtons = Array.from(el.querySelectorAll('.btn-ghost')) as HTMLButtonElement[];
-    const syncButton = syncButtons.find((b) => b.textContent?.includes('Синхронізувати статуси')) as HTMLButtonElement;
+    const syncButton = syncButtons.find((b) =>
+      b.textContent?.includes('Синхронізувати статуси'),
+    ) as HTMLButtonElement;
     syncButton.click();
     fixture.detectChanges();
 
     expect(syncButton.disabled).toBe(true);
-    httpMock.expectOne(`${baseUrl}/sync-statuses`).flush({ totalOrders: 10, updatedCount: 4, unmappedCount: 1 });
+    httpMock
+      .expectOne(`${baseUrl}/sync-statuses`)
+      .flush({ totalOrders: 10, updatedCount: 4, unmappedCount: 1 });
     flushList([order()], 1);
 
     expect(el.querySelector('.success-banner')?.textContent?.trim()).toBe(
@@ -656,12 +734,18 @@ describe('OrdersList', () => {
     flushList([order()], 1);
 
     const syncButtons = Array.from(el.querySelectorAll('.btn-ghost')) as HTMLButtonElement[];
-    const syncButton = syncButtons.find((b) => b.textContent?.includes('Синхронізувати статуси')) as HTMLButtonElement;
+    const syncButton = syncButtons.find((b) =>
+      b.textContent?.includes('Синхронізувати статуси'),
+    ) as HTMLButtonElement;
     syncButton.click();
-    httpMock.expectOne(`${baseUrl}/sync-statuses`).flush('err', { status: 429, statusText: 'Too Many Requests' });
+    httpMock
+      .expectOne(`${baseUrl}/sync-statuses`)
+      .flush('err', { status: 429, statusText: 'Too Many Requests' });
     fixture.detectChanges();
 
-    expect(el.querySelector('.error-text')?.textContent?.trim()).toBe('Забагато спроб — спробуйте пізніше');
+    expect(el.querySelector('.error-text')?.textContent?.trim()).toBe(
+      'Забагато спроб — спробуйте пізніше',
+    );
   });
 
   it('ignores a second sync click while one is already in flight', () => {
@@ -669,11 +753,15 @@ describe('OrdersList', () => {
     flushList([order()], 1);
 
     const syncButtons = Array.from(el.querySelectorAll('.btn-ghost')) as HTMLButtonElement[];
-    const syncButton = syncButtons.find((b) => b.textContent?.includes('Синхронізувати статуси')) as HTMLButtonElement;
+    const syncButton = syncButtons.find((b) =>
+      b.textContent?.includes('Синхронізувати статуси'),
+    ) as HTMLButtonElement;
     syncButton.click();
     syncButton.click();
 
-    httpMock.expectOne(`${baseUrl}/sync-statuses`).flush({ totalOrders: 0, updatedCount: 0, unmappedCount: 0 });
+    httpMock
+      .expectOne(`${baseUrl}/sync-statuses`)
+      .flush({ totalOrders: 0, updatedCount: 0, unmappedCount: 0 });
     flushList([order()], 1);
   });
 });

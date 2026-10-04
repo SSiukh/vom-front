@@ -2,7 +2,11 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import type { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
-import type { CreateExpensePayload, Expense, UpdateExpensePayload } from '../../features/expenses/models/expense.model';
+import type {
+  CreateExpensePayload,
+  Expense,
+  UpdateExpensePayload,
+} from '../../features/expenses/models/expense.model';
 import type { PaginatedResponse } from '../../shared/models/paginated-response.model';
 
 @Injectable({ providedIn: 'root' })

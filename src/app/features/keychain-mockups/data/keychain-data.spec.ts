@@ -71,7 +71,7 @@ describe('keychain data', () => {
       ).toBe(true);
     });
 
-    it('prints white on the black metal, black on the other metals and medium brown on leather and eco-leather', () => {
+    it('prints white on the black metal, black on the other metals, black on the brown, gray and round eco leather, and 9D906C at 80% on the black leather', () => {
       const ink = (id: string) => {
         const type = KEYCHAIN_TYPES.find((candidate) => candidate.id === id);
         return [type?.inkColor, type?.inkBlend];
@@ -81,8 +81,21 @@ describe('keychain data', () => {
       for (const id of ['metal-glossy', 'metal-mat', 'metal-white']) {
         expect(ink(id)).toEqual(['#000000', 'multiply']);
       }
-      for (const type of KEYCHAIN_TYPES.filter((candidate) => candidate.family !== 'metal')) {
-        expect(type.inkColor).toBe('#6f4a2b');
+      expect(KEYCHAIN_TYPES.find((candidate) => candidate.id === 'leather-black')).toMatchObject({
+        inkColor: '#9d906c',
+        inkOpacity: 0.8,
+      });
+      for (const id of ['leather-brown', 'leather-gray', 'subleather-circle']) {
+        expect(ink(id)).toEqual(['#000000', 'multiply']);
+      }
+      for (const id of [
+        'subleather-black',
+        'subleather-green',
+        'subleather-mint',
+        'subleather-pink',
+        'subleather-yellow',
+      ]) {
+        expect(KEYCHAIN_TYPES.find((candidate) => candidate.id === id)?.inkColor).toBe('#6f4a2b');
       }
     });
 

@@ -79,7 +79,14 @@ describe('SendersApiService', () => {
     const req = httpMock.expectOne(`${baseUrl}/1/refresh`);
     expect(req.request.method).toBe('PATCH');
     expect(req.request.body).toEqual({});
-    req.flush({ id: '1', fullName: 'a', phone: 'b', isActive: false, createdAt: '', updatedAt: '' });
+    req.flush({
+      id: '1',
+      fullName: 'a',
+      phone: 'b',
+      isActive: false,
+      createdAt: '',
+      updatedAt: '',
+    });
   });
 
   it('deactivates /senders/:id (DELETE verb, soft-deactivates server-side)', () => {

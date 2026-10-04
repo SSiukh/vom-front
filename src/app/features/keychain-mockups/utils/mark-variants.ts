@@ -19,3 +19,7 @@ export function defaultVariant(mark: KeychainMark | null): MarkVariantKind | nul
   const variants = availableVariants(mark);
   return variants.includes('combined') ? 'combined' : (variants[0] ?? null);
 }
+
+export function isMarkVariant(value: string): value is MarkVariantKind {
+  return (MARK_VARIANT_ORDER as readonly string[]).includes(value);
+}

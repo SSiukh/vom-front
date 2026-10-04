@@ -17,11 +17,12 @@
   <div class="warning-banner">
     <svg lucideTriangleAlert [size]="14" [strokeWidth]="1.5"></svg>
     <span>
-      Відправника, адресу відправки, отримувача та адресу доставки редагувати неможливо — API не підтримує зміну цих
-      полів після створення замовлення. Доступні для редагування: тип відправки, тип оплати, часткова вартість та
-      товари.
+      Відправника, адресу відправки, отримувача та адресу доставки редагувати неможливо — API не
+      підтримує зміну цих полів після створення замовлення. Доступні для редагування: тип відправки,
+      тип оплати, часткова вартість та товари.
       @if (order.npWaybillNumber) {
-        Оскільки замовлення вже має ЕН, зміна типу відправки чи товарів також оновить дані ЕН у Новій Пошті.
+        Оскільки замовлення вже має ЕН, зміна типу відправки чи товарів також оновить дані ЕН у
+        Новій Пошті.
       }
     </span>
   </div>
@@ -31,7 +32,11 @@
       <div class="order-edit-main">
         <div class="field">
           <label class="field-label" for="shipmentTypeId">Тип відправки</label>
-          <app-dropdown triggerId="shipmentTypeId" formControlName="shipmentTypeId" [options]="shipmentTypeOptions()" />
+          <app-dropdown
+            triggerId="shipmentTypeId"
+            formControlName="shipmentTypeId"
+            [options]="shipmentTypeOptions()"
+          />
         </div>
 
         @for (itemForm of items.controls; track itemForm; let i = $index) {
@@ -56,7 +61,11 @@
 
           <div class="field">
             <label class="field-label" for="paymentTypeId">Тип оплати</label>
-            <app-dropdown triggerId="paymentTypeId" formControlName="paymentTypeId" [options]="paymentTypeOptions()" />
+            <app-dropdown
+              triggerId="paymentTypeId"
+              formControlName="paymentTypeId"
+              [options]="paymentTypeOptions()"
+            />
           </div>
 
           @if (paymentTypeCode() === 'partial') {
@@ -90,7 +99,8 @@
           <span class="field-label">Отримувач та доставка</span>
           <div class="locked-field">
             <span>
-              {{ order.recipient.lastName }} {{ order.recipient.firstName }} {{ order.recipient.middleName ?? '' }}
+              {{ order.recipient.lastName }} {{ order.recipient.firstName }}
+              {{ order.recipient.middleName ?? '' }}
             </span>
             <svg lucideLock [size]="13" [strokeWidth]="1.5"></svg>
           </div>
@@ -99,14 +109,20 @@
             <svg lucideLock [size]="13" [strokeWidth]="1.5"></svg>
           </div>
           <div class="locked-field">
-            <span>{{ order.deliveryDetails.warehouseRef ?? order.deliveryDetails.postomatRef ?? order.deliveryDetails.cityRef }}</span>
+            <span>{{
+              order.deliveryDetails.warehouseRef ??
+                order.deliveryDetails.postomatRef ??
+                order.deliveryDetails.cityRef
+            }}</span>
             <svg lucideLock [size]="13" [strokeWidth]="1.5"></svg>
           </div>
         </div>
 
         <div class="order-edit-nav">
           <button type="button" class="btn-ghost" (click)="goBack()">Скасувати</button>
-          <button type="submit" class="btn-primary" [disabled]="!isFormValid() || saving()">Зберегти</button>
+          <button type="submit" class="btn-primary" [disabled]="!isFormValid() || saving()">
+            Зберегти
+          </button>
         </div>
       </div>
     </div>

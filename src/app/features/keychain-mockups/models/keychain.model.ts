@@ -17,6 +17,7 @@ export interface KeychainType {
   printArea: PrintArea;
   inkColor: string;
   inkBlend: InkBlend;
+  inkOpacity?: number;
 }
 
 export type MarkVariantKind = 'icon' | 'text' | 'combined';
@@ -51,5 +52,7 @@ export interface ArtworkBounds {
 export interface KeychainArtwork {
   paths: string[];
   evenOddPaths: string[];
+  metalPaths?: string[];
+  metalEvenOddPaths?: string[];
   bounds: ArtworkBounds | null;
 }

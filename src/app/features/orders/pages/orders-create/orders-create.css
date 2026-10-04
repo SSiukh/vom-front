@@ -269,3 +269,17 @@
   padding: 20px;
   gap: 8px;
 }
+
+.sender-notice__change {
+  align-self: flex-start;
+  margin-top: 4px;
+}
+
+.sender-picker {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 8px;
+  max-width: 320px;
+}

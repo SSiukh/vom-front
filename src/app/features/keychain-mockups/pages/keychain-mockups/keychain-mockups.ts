@@ -1,3 +1,4 @@
+import { NgTemplateOutlet } from '@angular/common';
 import {
   Component,
   DestroyRef,
@@ -17,7 +18,7 @@ import {
   LucideTrash2,
   LucideUpload,
 } from '@lucide/angular';
-import { catchError, from, map, merge, of, startWith, switchMap, tap } from 'rxjs';
+import { catchError, forkJoin, from, map, of, startWith, switchMap, tap } from 'rxjs';
 import { STICKER_FONTS } from '../../../sticker-generator/data/sticker-fonts';
 import type { GlyphSource } from '../../../sticker-generator/models/glyph-source.model';
 import { FontLibraryService } from '../../../sticker-generator/services/font-library.service';
@@ -48,6 +49,7 @@ import { designGroupOf, designsInGroup } from '../../data/keychain-designs';
 import { PHOTO_ACCEPTED_TYPES } from '../../data/photo-upload';
 import type {
   KeychainFamily,
+  KeychainMark,
   KeychainType,
   MarkVariantKind,
   VectorGraphic,
@@ -56,9 +58,19 @@ import type { KeychainDesign, DesignSlot } from '../../models/keychain-design.mo
 import { KeychainRenderer } from '../../services/keychain-renderer.service';
 import { MarkLibrary } from '../../services/mark-library.service';
 import { NO_INK_ERROR, PhotoTracer } from '../../services/photo-tracer.service';
-import { availableVariants, defaultVariant, MARK_VARIANT_LABELS } from '../../utils/mark-variants';
+import {
+  availableVariants,
+  defaultVariant,
+  isMarkVariant,
+  MARK_VARIANT_LABELS,
+} from '../../utils/mark-variants';
 import { exportArtworkSvg } from '../../utils/artwork-svg';
-import { layoutDesign, resolveSlots, slotsAccepting } from '../../utils/layout-design';
+import {
+  layoutDesign,
+  resolveTextSlot,
+  slotsAccepting,
+  type MarkPlacement,
+} from '../../utils/layout-design';
 import { buildTextGraphic } from '../../utils/text-graphic';
 import { validatePhoto } from '../../utils/validate-photo';
 
@@ -68,15 +80,33 @@ function factorOf(scales: readonly { id: string; factor: number }[], id: string)
   return scales.find((scale) => scale.id === id)?.factor ?? 1;
 }
 
+function zoneFactorOf(scales: readonly { id: string; factor: number }[], id: string): number {
+  return factorOf(scales, id) / Math.max(...scales.map((scale) => scale.factor));
+}
+
 function samePaths(left: readonly string[], right: readonly string[]): boolean {
   return left.length === right.length && left.every((path, index) => path === right[index]);
 }
 
 const FAMILY_ORDER: readonly KeychainFamily[] = ['metal', 'subleather', 'leather'];
 
+const MARK_CARD_KEYS = ['main', 'small', 'icon'] as const;
+type MarkCardKey = (typeof MARK_CARD_KEYS)[number];
+
+interface MarkCardItem {
+  key: MarkCardKey;
+  title: string;
+  beforeText: boolean;
+}
+
+function isMarkCardKey(id: string): id is MarkCardKey {
+  return (MARK_CARD_KEYS as readonly string[]).includes(id);
+}
+
 @Component({
   selector: 'app-keychain-mockups',
   imports: [
+    NgTemplateOutlet,
     ReactiveFormsModule,
     Dropdown,
     LucideCheck,
@@ -125,10 +155,11 @@ export class KeychainMockups {
   protected readonly form = this.fb.nonNullable.group({
     keychainTypeId: [DEFAULT_KEYCHAIN_TYPE_ID],
     designId: [''],
-    markId: ['none'],
-    markVariantId: ['combined' as MarkVariantKind],
-    markScaleId: [DEFAULT_KEYCHAIN_SCALE_ID],
-    markZoneId: [''],
+    markCards: this.fb.nonNullable.group({
+      main: this.markCardGroup(),
+      small: this.markCardGroup(),
+      icon: this.markCardGroup(),
+    }),
     photoScaleId: [DEFAULT_KEYCHAIN_SCALE_ID],
     text: [''],
     fontId: [STICKER_FONTS[0]?.id ?? ''],
@@ -152,7 +183,9 @@ export class KeychainMockups {
   protected readonly traceError = signal<string | null>(null);
   private readonly tracedPhoto = signal<VectorGraphic | null>(null);
 
-  private readonly markGraphic = signal<VectorGraphic | null>(null);
+  private readonly markGraphics = signal<
+    Record<MarkCardKey, Partial<Record<MarkVariantKind, VectorGraphic>>>
+  >({ main: {}, small: {}, icon: {} });
   protected readonly markLoading = signal(false);
   protected readonly markError = signal<string | null>(null);
 
@@ -172,15 +205,28 @@ export class KeychainMockups {
       (KEYCHAIN_TYPES[0] as KeychainType),
   );
 
-  protected readonly selectedMark = computed(
-    () => this.marks.find((mark) => mark.id === this.values().markId) ?? null,
-  );
-  protected readonly markVariantOptions = computed<DropdownOption[]>(() =>
-    availableVariants(this.selectedMark()).map((variant) => ({
+  private markCardGroup() {
+    return this.fb.nonNullable.group({
+      markId: ['none'],
+      variantId: [''],
+      scaleId: [DEFAULT_KEYCHAIN_SCALE_ID],
+    });
+  }
+
+  protected markCardOf(key: MarkCardKey) {
+    return this.form.controls.markCards.controls[key];
+  }
+
+  protected selectedMarkFor(key: MarkCardKey): KeychainMark | null {
+    return this.marks.find((mark) => mark.id === this.values().markCards[key].markId) ?? null;
+  }
+
+  protected markVariantOptionsFor(key: MarkCardKey): DropdownOption[] {
+    return availableVariants(this.selectedMarkFor(key)).map((variant) => ({
       value: variant,
       label: MARK_VARIANT_LABELS[variant],
-    })),
-  );
+    }));
+  }
 
   private readonly textResult = computed(() => {
     const glyphs = this.glyphs();
@@ -206,40 +252,76 @@ export class KeychainMockups {
   protected readonly textSlots = computed(() => slotsAccepting(this.selectedDesign(), 'text'));
   protected readonly markEnabled = computed(() => this.markSlots().length > 0);
   protected readonly textEnabled = computed(() => this.textSlots().length > 0);
-  private readonly resolvedSlots = computed(() =>
-    resolveSlots(
-      this.selectedDesign(),
-      this.values().markZoneId || null,
-      this.values().textZoneId || null,
-    ),
+  protected readonly markCards = computed<MarkCardItem[]>(() => {
+    const slots = this.markSlots();
+    return slots.flatMap((slot, index) =>
+      isMarkCardKey(slot.id)
+        ? [
+            {
+              key: slot.id,
+              title: slots.length > 1 ? `Марка · ${slot.label}` : 'Марка',
+              beforeText: index === 0 || slot.metal === true,
+            },
+          ]
+        : [],
+    );
+  });
+  protected readonly resolvedTextSlotId = computed(
+    () => resolveTextSlot(this.selectedDesign(), this.values().textZoneId || null)?.id ?? '',
   );
-  protected readonly resolvedMarkSlotId = computed(() => this.resolvedSlots().mark?.id ?? '');
-  protected readonly resolvedTextSlotId = computed(() => this.resolvedSlots().text?.id ?? '');
+  private readonly placedMarks = computed<Partial<Record<string, MarkPlacement>>>(() => {
+    const graphics = this.markGraphics();
+    const placed: Partial<Record<string, MarkPlacement>> = {};
+    for (const slot of this.markSlots()) {
+      if (!isMarkCardKey(slot.id)) {
+        continue;
+      }
+      const card = this.values().markCards[slot.id];
+      const variant = this.variantFor(slot.id);
+      const graphic = variant ? graphics[slot.id][variant] : undefined;
+      if (graphic && card.markId !== 'none') {
+        placed[slot.id] = { graphic, factor: zoneFactorOf(KEYCHAIN_SCALES, card.scaleId) };
+      }
+    }
+    return placed;
+  });
 
   protected readonly artwork = computed(() =>
     layoutDesign({
       design: this.selectedDesign(),
       area: this.keychainType().printArea,
       photo: this.tracedPhoto(),
-      mark: this.markGraphic(),
+      marks: this.placedMarks(),
       text: this.textResult().graphic,
-      markSlotId: this.values().markZoneId || null,
       textSlotId: this.values().textZoneId || null,
       scales: {
-        photo: factorOf(KEYCHAIN_SCALES, this.values().photoScaleId),
-        mark: factorOf(KEYCHAIN_SCALES, this.values().markScaleId),
-        text: factorOf(KEYCHAIN_TEXT_SCALES, this.values().textScaleId),
+        photo: zoneFactorOf(KEYCHAIN_SCALES, this.values().photoScaleId),
+        text: zoneFactorOf(KEYCHAIN_TEXT_SCALES, this.values().textScaleId),
       },
     }),
   );
 
   private readonly artworkPaths = computed(() => this.artwork().paths, { equal: samePaths });
+  private readonly artworkMetalPaths = computed(() => this.artwork().metalPaths ?? [], {
+    equal: samePaths,
+  });
+  private readonly artworkMetalEvenOddPaths = computed(
+    () => this.artwork().metalEvenOddPaths ?? [],
+    {
+      equal: samePaths,
+    },
+  );
   private readonly artworkEvenOddPaths = computed(() => this.artwork().evenOddPaths, {
     equal: samePaths,
   });
 
   protected readonly hasArtwork = computed(
-    () => this.artworkPaths().length + this.artworkEvenOddPaths().length > 0,
+    () =>
+      this.artworkPaths().length +
+        this.artworkEvenOddPaths().length +
+        this.artworkMetalPaths().length +
+        this.artworkMetalEvenOddPaths().length >
+      0,
   );
   protected readonly ink = computed(() => this.keychainType().inkColor);
   protected readonly canExport = computed(() => !this.rendering() && !this.renderError());
@@ -250,7 +332,9 @@ export class KeychainMockups {
       this.releasePhotoUrl();
       this.clearCopiedTimer();
     });
-    this.watchMark();
+    for (const key of MARK_CARD_KEYS) {
+      this.watchMark(key);
+    }
     this.watchFont();
     this.watchRender();
   }
@@ -281,8 +365,10 @@ export class KeychainMockups {
     this.form.controls.designId.setValue(id);
   }
 
-  protected onMarkZoneChange(slotId: string): void {
-    this.form.controls.markZoneId.setValue(slotId);
+  protected setMarkVariant(key: MarkCardKey, value: string): void {
+    if (isMarkVariant(value)) {
+      this.markCardOf(key).controls.variantId.setValue(value);
+    }
   }
 
   protected onTextZoneChange(slotId: string): void {
@@ -389,7 +475,7 @@ export class KeychainMockups {
     }
     downloadFile(
       'keychain-artwork.svg',
-      exportArtworkSvg(this.artwork(), this.ink()),
+      exportArtworkSvg(this.artwork(), this.ink(), this.keychainType().inkOpacity ?? 1),
       'image/svg+xml',
     );
   }
@@ -419,48 +505,62 @@ export class KeychainMockups {
       });
   }
 
-  private watchMark(): void {
-    const markIdChanges = this.form.controls.markId.valueChanges.pipe(
-      startWith(this.form.controls.markId.value),
-      tap((id) => {
-        const mark = this.marks.find((candidate) => candidate.id === id) ?? null;
-        const variants = availableVariants(mark);
-        const current = this.form.controls.markVariantId.value;
-        if (!variants.includes(current)) {
-          this.form.controls.markVariantId.setValue(defaultVariant(mark) ?? 'combined', {
-            emitEvent: false,
-          });
-        }
-      }),
-    );
-    merge(markIdChanges, this.form.controls.markVariantId.valueChanges)
+  private watchMark(key: MarkCardKey): void {
+    const markId = this.markCardOf(key).controls.markId;
+    markId.valueChanges
       .pipe(
+        startWith(markId.value),
         tap(() => {
           this.markError.set(null);
-          this.markGraphic.set(null);
+          this.setMarkGraphics(key, {});
         }),
         switchMap(() => {
-          const mark = this.marks.find(
-            (candidate) => candidate.id === this.form.controls.markId.value,
-          );
-          const variant = this.form.controls.markVariantId.value;
-          if (!mark || !mark.variants[variant]) {
-            return of(null);
+          const mark = this.marks.find((candidate) => candidate.id === markId.value);
+          const variants = availableVariants(mark ?? null);
+          if (!mark || variants.length === 0) {
+            return of({});
           }
           this.markLoading.set(true);
-          return from(this.markLibrary.load(mark, variant)).pipe(
+          return forkJoin(
+            variants.map((variant) =>
+              from(this.markLibrary.load(mark, variant)).pipe(
+                map((graphic) => [variant, graphic] as const),
+              ),
+            ),
+          ).pipe(
+            map(
+              (entries) =>
+                Object.fromEntries(entries) as Partial<Record<MarkVariantKind, VectorGraphic>>,
+            ),
             catchError(() => {
               this.markError.set('Не вдалося завантажити марку');
-              return of(null);
+              return of({});
             }),
           );
         }),
         takeUntilDestroyed(this.destroyRef),
       )
-      .subscribe((graphic) => {
+      .subscribe((graphics) => {
         this.markLoading.set(false);
-        this.markGraphic.set(graphic);
+        this.setMarkGraphics(key, graphics);
       });
+  }
+
+  private setMarkGraphics(
+    key: MarkCardKey,
+    graphics: Partial<Record<MarkVariantKind, VectorGraphic>>,
+  ): void {
+    this.markGraphics.update((current) => ({ ...current, [key]: graphics }));
+  }
+
+  protected variantFor(key: MarkCardKey): MarkVariantKind | null {
+    const mark = this.selectedMarkFor(key);
+    const variants = availableVariants(mark);
+    const explicit = this.values().markCards[key].variantId;
+    if (isMarkVariant(explicit) && variants.includes(explicit)) {
+      return explicit;
+    }
+    return defaultVariant(mark);
   }
 
   private watchFont(): void {
@@ -495,8 +595,11 @@ export class KeychainMockups {
       const type = this.keychainType();
       const paths = this.artworkPaths();
       const evenOddPaths = this.artworkEvenOddPaths();
+      const metalPaths = this.artworkMetalPaths();
+      const metalEvenOddPaths = this.artworkMetalEvenOddPaths();
       const ink = type.inkColor;
       const blend = type.inkBlend;
+      const opacity = type.inkOpacity ?? 1;
       if (!canvas) {
         return;
       }
@@ -520,7 +623,16 @@ export class KeychainMockups {
       this.renderer
         .render(
           canvas,
-          { imageUrl: type.imageUrl, paths, evenOddPaths, ink, blend },
+          {
+            imageUrl: type.imageUrl,
+            paths,
+            evenOddPaths,
+            ink,
+            blend,
+            opacity,
+            metalPaths,
+            metalEvenOddPaths,
+          },
           controller.signal,
         )
         .then(() => finish(null))

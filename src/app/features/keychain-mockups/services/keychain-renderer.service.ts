@@ -8,7 +8,12 @@ export interface KeychainRenderRequest {
   evenOddPaths: readonly string[];
   ink: string;
   blend: InkBlend;
+  opacity: number;
+  metalPaths?: readonly string[];
+  metalEvenOddPaths?: readonly string[];
 }
+
+const METAL_INK = '#000000';
 
 @Injectable({ providedIn: 'root' })
 export class KeychainRenderer {
@@ -35,16 +40,33 @@ export class KeychainRenderer {
       canvas.height = image.naturalHeight;
     }
     context.drawImage(image, 0, 0, image.naturalWidth, image.naturalHeight);
-    if (request.paths.length + request.evenOddPaths.length === 0) {
+    const metalPaths = request.metalPaths ?? [];
+    const metalEvenOddPaths = request.metalEvenOddPaths ?? [];
+    if (
+      request.paths.length +
+        request.evenOddPaths.length +
+        metalPaths.length +
+        metalEvenOddPaths.length ===
+      0
+    ) {
       return;
     }
     context.save();
     context.globalCompositeOperation = request.blend;
     context.fillStyle = request.ink;
+    context.globalAlpha = request.opacity;
     for (const path of request.paths) {
       context.fill(new Path2D(path));
     }
     for (const path of request.evenOddPaths) {
+      context.fill(new Path2D(path), 'evenodd');
+    }
+    context.fillStyle = METAL_INK;
+    context.globalAlpha = 1;
+    for (const path of metalPaths) {
+      context.fill(new Path2D(path));
+    }
+    for (const path of metalEvenOddPaths) {
       context.fill(new Path2D(path), 'evenodd');
     }
     context.restore();
