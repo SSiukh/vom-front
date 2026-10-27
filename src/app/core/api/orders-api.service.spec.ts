@@ -195,6 +195,17 @@ describe('OrdersApiService', () => {
     req.flush(order({ isPacked: true }));
   });
 
+  it('gets /orders/:id/label as a blob', () => {
+    let received: Blob | undefined;
+    service.getLabel('1').subscribe((blob) => (received = blob));
+    const req = httpMock.expectOne(`${baseUrl}/1/label`);
+    expect(req.request.method).toBe('GET');
+    expect(req.request.responseType).toBe('blob');
+    const pdf = new Blob(['%PDF-1.4'], { type: 'application/pdf' });
+    req.flush(pdf);
+    expect(received).toBe(pdf);
+  });
+
   it('patches /orders/sync-statuses with no body and a longer request-timeout budget', () => {
     service.syncAllStatuses().subscribe();
     const req = httpMock.expectOne(`${baseUrl}/sync-statuses`);

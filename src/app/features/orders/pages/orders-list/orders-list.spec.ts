@@ -1,7 +1,7 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { provideRouter, Router } from '@angular/router';
+import { ActivatedRoute, convertToParamMap, provideRouter, Router } from '@angular/router';
 import { environment } from '../../../../../environments/environment';
 import { DictionariesService } from '../../../../core/dictionaries/dictionaries.service';
 import { OrdersList } from './orders-list';
@@ -86,7 +86,10 @@ describe('OrdersList', () => {
     ],
   };
 
-  const create = (sendersResponse: 'ok' | 'error' = 'ok') => {
+  const create = (
+    sendersResponse: 'ok' | 'error' = 'ok',
+    queryParams: Record<string, string> = {},
+  ) => {
     TestBed.configureTestingModule({
       imports: [OrdersList],
       providers: [
@@ -94,11 +97,16 @@ describe('OrdersList', () => {
         provideHttpClientTesting(),
         provideRouter([]),
         { provide: DictionariesService, useValue: dictionariesStub },
+        {
+          provide: ActivatedRoute,
+          useValue: { snapshot: { queryParamMap: convertToParamMap(queryParams) } },
+        },
       ],
     });
     httpMock = TestBed.inject(HttpTestingController);
     router = TestBed.inject(Router);
     vi.spyOn(router, 'navigateByUrl').mockResolvedValue(true);
+    vi.spyOn(router, 'navigate').mockResolvedValue(true);
     fixture = TestBed.createComponent(OrdersList);
     fixture.detectChanges();
     el = fixture.nativeElement as HTMLElement;
@@ -763,5 +771,124 @@ describe('OrdersList', () => {
       .expectOne(`${baseUrl}/sync-statuses`)
       .flush({ totalOrders: 0, updatedCount: 0, unmappedCount: 0 });
     flushList([order()], 1);
+  });
+});
+
+describe('OrdersList query param persistence', () => {
+  let fixture: ComponentFixture<OrdersList>;
+  let el: HTMLElement;
+  let httpMock: HttpTestingController;
+  let router: Router;
+  const baseUrl = `${environment.apiUrl}/orders`;
+  const sendersUrl = `${environment.apiUrl}/senders?page=1&pageSize=100`;
+
+  const dictionariesStub = {
+    paymentTypes: () => [],
+    shipmentStatuses: () => [{ id: 'ss1', code: 'shipped', label: 'Відправлено' }],
+    productTypes: () => [{ id: 't1', code: 'sticker', label: 'Наклейка', isCustom: false, brand: 'm' }],
+  };
+
+  const create = (queryParams: Record<string, string> = {}) => {
+    TestBed.configureTestingModule({
+      imports: [OrdersList],
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        provideRouter([]),
+        { provide: DictionariesService, useValue: dictionariesStub },
+        {
+          provide: ActivatedRoute,
+          useValue: { snapshot: { queryParamMap: convertToParamMap(queryParams) } },
+        },
+      ],
+    });
+    httpMock = TestBed.inject(HttpTestingController);
+    router = TestBed.inject(Router);
+    vi.spyOn(router, 'navigate').mockResolvedValue(true);
+    fixture = TestBed.createComponent(OrdersList);
+    fixture.detectChanges();
+    el = fixture.nativeElement as HTMLElement;
+    httpMock
+      .expectOne(sendersUrl)
+      .flush({ items: [{ id: 's1', fullName: 'ФОП Волошин О.М.', phone: '', isActive: true, createdAt: '', updatedAt: '' }], total: 1 });
+    fixture.detectChanges();
+  };
+
+  afterEach(() => httpMock.verify());
+
+  it('restores the page and filters from the URL and requests the matching page', () => {
+    create({
+      page: '2',
+      pageSize: '20',
+      dateFrom: '2026-08-01',
+      senderId: 's1',
+      shipmentStatusId: 'ss1',
+      search: 'ivan',
+    });
+
+    httpMock
+      .expectOne(
+        `${baseUrl}?page=2&pageSize=20&dateFrom=2026-08-01&senderId=s1&shipmentStatusId=ss1&search=ivan`,
+      )
+      .flush({ items: [], total: 50 });
+    fixture.detectChanges();
+
+    expect((el.querySelector('app-search-input input') as HTMLInputElement).value).toBe('ivan');
+    expect(dropdownValue(fixture, 'senderId')).toBe('s1');
+  });
+
+  it('restores the sort order from the URL', () => {
+    create({ sort: 'oldest' });
+
+    httpMock.expectOne(`${baseUrl}?page=1&pageSize=10`).flush({ items: [], total: 1 });
+    fixture.detectChanges();
+
+    const oldestButton = Array.from(el.querySelectorAll('.segmented-control__item')).find(
+      (b) => b.textContent?.trim() === 'Старі',
+    ) as HTMLButtonElement;
+    expect(oldestButton.classList.contains('segmented-control__item--active')).toBe(true);
+  });
+
+  it('writes the current filters to the URL (replacing, not pushing a new entry) when a filter changes', () => {
+    create();
+    httpMock.expectOne(`${baseUrl}?page=1&pageSize=10`).flush({ items: [], total: 0 });
+    fixture.detectChanges();
+
+    pickDropdown(fixture, 'senderId', 's1');
+    httpMock.expectOne(`${baseUrl}?page=1&pageSize=10&senderId=s1`).flush({ items: [], total: 0 });
+
+    expect(router.navigate).toHaveBeenLastCalledWith(
+      [],
+      expect.objectContaining({
+        replaceUrl: true,
+        queryParams: expect.objectContaining({ senderId: 's1', page: null }),
+      }),
+    );
+  });
+
+  it('omits default values (page 1, the default page size, newest sort) from the synced query params', () => {
+    create({ senderId: 's1' });
+    httpMock.expectOne(`${baseUrl}?page=1&pageSize=10&senderId=s1`).flush({ items: [], total: 0 });
+    fixture.detectChanges();
+
+    (el.querySelector('.filters-row__reset') as HTMLButtonElement).click();
+    httpMock.expectOne(`${baseUrl}?page=1&pageSize=10`).flush({ items: [], total: 0 });
+
+    expect(router.navigate).toHaveBeenLastCalledWith(
+      [],
+      expect.objectContaining({
+        queryParams: {
+          page: null,
+          pageSize: null,
+          dateFrom: null,
+          dateTo: null,
+          productTypeId: null,
+          senderId: null,
+          shipmentStatusId: null,
+          search: null,
+          sort: null,
+        },
+      }),
+    );
   });
 });

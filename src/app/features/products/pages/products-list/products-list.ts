@@ -1,13 +1,14 @@
 import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { LucidePencil, LucidePlus, LucideSearch, LucideTrash2 } from '@lucide/angular';
-import { Subject, debounceTime, distinctUntilChanged } from 'rxjs';
+import { Subject, Subscription, debounceTime, distinctUntilChanged } from 'rxjs';
 import { DictionariesService } from '../../../../core/dictionaries/dictionaries.service';
 import { ProductsApiService } from '../../../../core/api/products-api.service';
 import { FEATURE_ROUTES } from '../../../../core/routes.constants';
 import { ConfirmDialog } from '../../../../shared/ui/confirm-dialog/confirm-dialog';
 import { DEFAULT_PAGE_SIZE, Pagination } from '../../../../shared/ui/pagination/pagination';
+import { queryParamNumber, queryParamString } from '../../../../shared/utils/query-params.util';
 import type { Product } from '../../models/product.model';
 
 const SEARCH_DEBOUNCE_MS = 300;
@@ -22,6 +23,7 @@ export class ProductsList {
   private readonly productsApi = inject(ProductsApiService);
   protected readonly dictionaries = inject(DictionariesService);
   private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
   private readonly destroyRef = inject(DestroyRef);
 
   protected readonly products = signal<Product[]>([]);
@@ -37,6 +39,7 @@ export class ProductsList {
   protected readonly deleting = signal(false);
 
   private readonly searchTermChanges = new Subject<string>();
+  private loadSubscription: Subscription | null = null;
 
   protected readonly filterableTypes = computed(() => this.dictionaries.productTypes().filter((t) => !t.isCustom));
 
@@ -58,12 +61,14 @@ export class ProductsList {
   });
 
   constructor() {
+    this.restoreFromQueryParams();
     this.load();
     this.searchTermChanges
       .pipe(debounceTime(SEARCH_DEBOUNCE_MS), distinctUntilChanged(), takeUntilDestroyed(this.destroyRef))
       .subscribe((term) => {
         this.searchTerm.set(term);
         this.page.set(1);
+        this.syncQueryParams();
         this.load();
       });
   }
@@ -78,6 +83,7 @@ export class ProductsList {
     }
     this.selectedTypeId.set(typeId);
     this.page.set(1);
+    this.syncQueryParams();
     this.load();
   }
 
@@ -87,17 +93,20 @@ export class ProductsList {
     }
     this.stockSortOrder.set(order);
     this.page.set(1);
+    this.syncQueryParams();
     this.load();
   }
 
   onPageChange(page: number): void {
     this.page.set(page);
+    this.syncQueryParams();
     this.load();
   }
 
   onPageSizeChange(pageSize: number): void {
     this.pageSize.set(pageSize);
     this.page.set(1);
+    this.syncQueryParams();
     this.load();
   }
 
@@ -179,10 +188,37 @@ export class ProductsList {
       });
   }
 
+  private restoreFromQueryParams(): void {
+    const params = this.route.snapshot.queryParamMap;
+    this.page.set(queryParamNumber(params, 'page', 1));
+    this.pageSize.set(queryParamNumber(params, 'pageSize', DEFAULT_PAGE_SIZE));
+    this.selectedTypeId.set(queryParamString(params, 'typeId'));
+    this.searchTerm.set(queryParamString(params, 'search') ?? '');
+    const stockSort = queryParamString(params, 'stockSort');
+    if (stockSort === 'asc' || stockSort === 'desc') {
+      this.stockSortOrder.set(stockSort);
+    }
+  }
+
+  private syncQueryParams(): void {
+    void this.router.navigate([], {
+      relativeTo: this.route,
+      replaceUrl: true,
+      queryParams: {
+        page: this.page() > 1 ? this.page() : null,
+        pageSize: this.pageSize() !== DEFAULT_PAGE_SIZE ? this.pageSize() : null,
+        typeId: this.selectedTypeId(),
+        search: this.searchTerm().trim() || null,
+        stockSort: this.stockSortOrder(),
+      },
+    });
+  }
+
   private load(): void {
     this.loading.set(true);
     this.error.set(null);
-    this.productsApi
+    this.loadSubscription?.unsubscribe();
+    this.loadSubscription = this.productsApi
       .list(
         this.page(),
         this.pageSize(),
@@ -196,6 +232,7 @@ export class ProductsList {
           const totalPages = Math.max(1, Math.ceil(response.total / this.pageSize()));
           if (this.page() > totalPages) {
             this.page.set(totalPages);
+            this.syncQueryParams();
             this.load();
             return;
           }

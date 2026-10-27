@@ -40,3 +40,67 @@
   display: flex;
   gap: 20px;
 }
+
+.label-preview-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 8, 4, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  z-index: 100;
+}
+
+.label-preview-card {
+  width: 640px;
+  max-width: 100%;
+  height: 80vh;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--color-border-outer);
+  background: var(--color-bg-panel);
+  border-radius: var(--radius-lg);
+  padding: 16px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+}
+
+.label-preview-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: var(--color-text-primary);
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 12px;
+}
+
+.label-preview-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.label-preview-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  padding: 4px;
+  border-radius: var(--radius-sm);
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.label-preview-close:hover {
+  color: var(--color-accent);
+}
+
+.label-preview-frame {
+  flex: 1;
+  width: 100%;
+  border: 1px solid var(--color-border-inner);
+  border-radius: var(--radius-sm);
+  background: #fff;
+}

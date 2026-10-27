@@ -1,4 +1,4 @@
-import { downloadFile } from './download-file';
+import { downloadFile } from './download-file.util';
 
 describe('downloadFile', () => {
   let createObjectURL: ReturnType<typeof vi.fn>;

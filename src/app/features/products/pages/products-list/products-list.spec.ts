@@ -1,7 +1,7 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { provideRouter, Router } from '@angular/router';
+import { ActivatedRoute, convertToParamMap, provideRouter, Router } from '@angular/router';
 import { DictionariesService } from '../../../../core/dictionaries/dictionaries.service';
 import { environment } from '../../../../../environments/environment';
 import { ProductsList } from './products-list';
@@ -340,5 +340,95 @@ describe('ProductsList', () => {
     fixture.detectChanges();
 
     expect(el.querySelector('.error-text')?.textContent?.trim()).toBe('Не вдалося завантажити список товарів');
+  });
+});
+
+describe('ProductsList query param persistence', () => {
+  let fixture: ComponentFixture<ProductsList>;
+  let el: HTMLElement;
+  let httpMock: HttpTestingController;
+  let router: Router;
+  const baseUrl = `${environment.apiUrl}/products`;
+
+  const dictionariesStub = {
+    productTypes: () => [{ id: 't1', code: 'sticker', label: 'Наклейка', isCustom: false }],
+  };
+
+  const create = (queryParams: Record<string, string> = {}) => {
+    TestBed.configureTestingModule({
+      imports: [ProductsList],
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        provideRouter([]),
+        { provide: DictionariesService, useValue: dictionariesStub },
+        {
+          provide: ActivatedRoute,
+          useValue: { snapshot: { queryParamMap: convertToParamMap(queryParams) } },
+        },
+      ],
+    });
+    httpMock = TestBed.inject(HttpTestingController);
+    router = TestBed.inject(Router);
+    vi.spyOn(router, 'navigate').mockResolvedValue(true);
+    fixture = TestBed.createComponent(ProductsList);
+    fixture.detectChanges();
+    el = fixture.nativeElement as HTMLElement;
+  };
+
+  afterEach(() => httpMock.verify());
+
+  it('restores the page, filters and sort from the URL and requests the matching page', () => {
+    create({ page: '2', pageSize: '20', typeId: 't1', search: 'кіт', stockSort: 'asc' });
+
+    httpMock
+      .expectOne(`${baseUrl}?page=2&pageSize=20&typeId=t1&name=%D0%BA%D1%96%D1%82&sortOrder=asc`)
+      .flush({ items: [], total: 50 });
+    fixture.detectChanges();
+
+    expect((el.querySelector('.search-field input') as HTMLInputElement).value).toBe('кіт');
+    const activeType = Array.from(el.querySelectorAll('.segmented-control__item')).find((b) =>
+      b.classList.contains('segmented-control__item--active'),
+    ) as HTMLButtonElement;
+    expect(activeType.textContent?.trim()).toBe('Наклейка');
+  });
+
+  it('writes the current filters to the URL (replacing, not pushing a new entry) when the type filter changes', () => {
+    create();
+    httpMock.expectOne(`${baseUrl}?page=1&pageSize=10`).flush({ items: [], total: 0 });
+    fixture.detectChanges();
+
+    const typeButton = Array.from(el.querySelectorAll('.segmented-control__item')).find(
+      (b) => b.textContent?.trim() === 'Наклейка',
+    ) as HTMLButtonElement;
+    typeButton.click();
+    httpMock.expectOne(`${baseUrl}?page=1&pageSize=10&typeId=t1`).flush({ items: [], total: 0 });
+
+    expect(router.navigate).toHaveBeenLastCalledWith(
+      [],
+      expect.objectContaining({
+        replaceUrl: true,
+        queryParams: expect.objectContaining({ typeId: 't1', page: null }),
+      }),
+    );
+  });
+
+  it('omits default values (page 1 and the default page size) from the synced query params', () => {
+    create();
+    httpMock.expectOne(`${baseUrl}?page=1&pageSize=10`).flush({ items: [], total: 0 });
+    fixture.detectChanges();
+
+    const typeButton = Array.from(el.querySelectorAll('.segmented-control__item')).find(
+      (b) => b.textContent?.trim() === 'Наклейка',
+    ) as HTMLButtonElement;
+    typeButton.click();
+    httpMock.expectOne(`${baseUrl}?page=1&pageSize=10&typeId=t1`).flush({ items: [], total: 0 });
+
+    expect(router.navigate).toHaveBeenLastCalledWith(
+      [],
+      expect.objectContaining({
+        queryParams: expect.objectContaining({ page: null, pageSize: null }),
+      }),
+    );
   });
 });

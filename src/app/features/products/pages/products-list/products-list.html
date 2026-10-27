@@ -31,7 +31,12 @@
   </div>
   <div class="search-field">
     <svg lucideSearch [size]="13" [strokeWidth]="1.5"></svg>
-    <input type="text" placeholder="Пошук за назвою…" (input)="onSearchTermChange($event)" />
+    <input
+      type="text"
+      placeholder="Пошук за назвою…"
+      [value]="searchTerm()"
+      (input)="onSearchTermChange($event)"
+    />
   </div>
   <div class="date-field">
     <span class="date-field__label">Кількість</span>

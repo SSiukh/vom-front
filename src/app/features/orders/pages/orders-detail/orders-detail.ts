@@ -1,9 +1,10 @@
 import { DatePipe } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, DestroyRef, inject, signal } from '@angular/core';
+import { DomSanitizer, type SafeResourceUrl } from '@angular/platform-browser';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
-import { LucideChevronLeft, LucidePencil, LucideTrash2 } from '@lucide/angular';
+import { LucideChevronLeft, LucideDownload, LucidePencil, LucideTrash2, LucideX } from '@lucide/angular';
 import { catchError, of, switchMap } from 'rxjs';
 import { OrdersApiService } from '../../../../core/api/orders-api.service';
 import { SendersApiService } from '../../../../core/api/senders-api.service';
@@ -12,6 +13,7 @@ import { FEATURE_ROUTES } from '../../../../core/routes.constants';
 import type { Sender } from '../../../senders/models/sender.model';
 import { ConfirmDialog } from '../../../../shared/ui/confirm-dialog/confirm-dialog';
 import { CopyableText } from '../../../../shared/ui/copyable-text/copyable-text';
+import { downloadFile } from '../../../../shared/utils/download-file.util';
 import { shipmentStatusBadgeClass } from '../../../../shared/utils/shipment-status-badge.util';
 import type { Order, SetOrderStatusFlagsPayload } from '../../models/order.model';
 
@@ -21,7 +23,16 @@ const SENDERS_FETCH_PAGE_SIZE = 100;
 
 @Component({
   selector: 'app-orders-detail',
-  imports: [DatePipe, ConfirmDialog, CopyableText, LucideChevronLeft, LucidePencil, LucideTrash2],
+  imports: [
+    DatePipe,
+    ConfirmDialog,
+    CopyableText,
+    LucideChevronLeft,
+    LucidePencil,
+    LucideTrash2,
+    LucideDownload,
+    LucideX,
+  ],
   templateUrl: './orders-detail.html',
   styleUrl: './orders-detail.css',
 })
@@ -32,6 +43,7 @@ export class OrdersDetail {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly sanitizer = inject(DomSanitizer);
 
   private orderId = '';
 
@@ -46,7 +58,14 @@ export class OrdersDetail {
   protected readonly senderInfo = signal<Sender | null>(null);
   protected readonly senderAddressLabel = signal<string | null>(null);
 
+  protected readonly labelLoading = signal(false);
+  protected readonly labelError = signal<string | null>(null);
+  protected readonly labelPreviewUrl = signal<SafeResourceUrl | null>(null);
+  private labelBlob: Blob | null = null;
+  private labelObjectUrl: string | null = null;
+
   constructor() {
+    this.destroyRef.onDestroy(() => this.revokeLabelPreview());
     this.route.paramMap
       .pipe(
         switchMap((params) => {
@@ -117,6 +136,65 @@ export class OrdersDetail {
     const id = this.order()?.shipmentStatusId;
     const code = this.dictionaries.shipmentStatuses().find((s) => s.id === id)?.code;
     return shipmentStatusBadgeClass(code);
+  }
+
+  previewLabel(): void {
+    if (this.labelLoading()) {
+      return;
+    }
+    this.revokeLabelPreview();
+    this.labelLoading.set(true);
+    this.labelError.set(null);
+    this.ordersApi
+      .getLabel(this.orderId)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (blob) => {
+          this.labelLoading.set(false);
+          this.labelBlob = blob;
+          this.labelObjectUrl = URL.createObjectURL(blob);
+          this.labelPreviewUrl.set(
+            this.sanitizer.bypassSecurityTrustResourceUrl(this.labelObjectUrl),
+          );
+        },
+        error: (error: unknown) => {
+          this.labelLoading.set(false);
+          this.labelError.set(this.resolveLabelErrorMessage(error));
+        },
+      });
+  }
+
+  downloadLabel(): void {
+    const blob = this.labelBlob;
+    const waybillNumber = this.order()?.npWaybillNumber;
+    if (!blob || !waybillNumber) {
+      return;
+    }
+    downloadFile(`waybill-${waybillNumber}.pdf`, blob, 'application/pdf');
+  }
+
+  closeLabelPreview(): void {
+    this.revokeLabelPreview();
+    this.labelError.set(null);
+  }
+
+  private revokeLabelPreview(): void {
+    this.labelPreviewUrl.set(null);
+    this.labelBlob = null;
+    if (this.labelObjectUrl) {
+      URL.revokeObjectURL(this.labelObjectUrl);
+      this.labelObjectUrl = null;
+    }
+  }
+
+  private resolveLabelErrorMessage(error: unknown): string {
+    if (error instanceof HttpErrorResponse && error.status === 429) {
+      return 'Забагато спроб — спробуйте пізніше';
+    }
+    if (error instanceof HttpErrorResponse && error.status === 502) {
+      return 'Нова Пошта не повернула накладну — спробуйте пізніше';
+    }
+    return 'Не вдалося завантажити накладну';
   }
 
   toggleFlag(flag: StatusFlag, event: Event): void {

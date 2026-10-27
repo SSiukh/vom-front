@@ -225,6 +225,7 @@ document, with Nova Poshta waybill creation/update/deletion kept in sync.
 | `POST /orders` | 20/min | `CreateOrderDto` | `OrderResponseDto` |
 | `GET /orders` | default | `?page&pageSize&dateFrom&dateTo&productTypeId&senderId&shipmentStatusId&search` | `ListOrdersResponseDto` |
 | `GET /orders/:id` | default | — | `OrderResponseDto` |
+| `GET /orders/:id/label` | 20/min | — | Nova Poshta waybill label, 100x100mm sticker PDF (`Content-Type: application/pdf`, binary body) |
 | `PATCH /orders/:id` | 20/min | `UpdateOrderDto` (all fields optional) | `OrderResponseDto` |
 | `PATCH /orders/:id/sync-status` | 20/min | — | `OrderResponseDto` (manual Nova Poshta status pull, no polling) |
 | `PATCH /orders/sync-statuses` | 20/min | — | `BulkSyncStatusResponseDto {totalOrders, updatedCount, unmappedCount}` (syncs every order with a waybill, grouped by sender) |
@@ -248,6 +249,25 @@ name. It is split on whitespace and **every** word must match somewhere
 regardless of field order; regex metacharacters are matched literally.
 Combinable with all other filters (AND). The identical `search` param exists
 on `GET /crm/table` (§8).
+
+**`GET /orders/:id/label`** proxies a Nova Poshta waybill label (100x100mm
+sticker PDF containing the barcode and waybill number — the same barcode
+shown in the Nova Poshta app) for printing. 400 if the order has no waybill yet
+(`npWaybillNumber` is `null`) or if its sender no longer exists. This is NOT
+a JSON `calledMethod` on `api.novaposhta.ua/v2.0/json/` like the rest of
+this integration — Nova Poshta's label printing is a separate mechanism, an
+authenticated GET to `my.novaposhta.ua` with the decrypted sender apiKey
+embedded directly in the URL path, confirmed live against a real account.
+Because that apiKey must never reach the frontend, this endpoint fetches
+the PDF server-side and streams the bytes back
+(`StreamableFile`, `inline` disposition) rather than returning a redirect
+link or the apiKey itself. Nova Poshta does not signal errors via HTTP
+status on that mechanism (an invalid key silently returns its business-
+cabinet HTML with `200`, an unknown waybill number returns an empty `200`
+body), so the backend validates the response by content-type and non-empty
+body and raises a `502` (`BadGatewayException`) if that check fails —
+treat a `502` from this endpoint as "Nova Poshta's label service didn't
+return a usable PDF," not as this backend being down.
 
 `shipmentStatusId` (optional) filters to orders with that shipment status.
 Besides a Mongo id from `GET /dictionaries/shipment-statuses`, it also

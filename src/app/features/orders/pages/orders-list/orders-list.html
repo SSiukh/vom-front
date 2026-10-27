@@ -21,6 +21,7 @@
 <div class="filters-row">
   <app-search-input
     placeholder="Пошук: № накладної, прізвище, ім'я, по батькові"
+    [initialValue]="search() ?? ''"
     (searchChange)="onSearchChange($event)"
   />
   <div class="date-field">
@@ -168,7 +169,9 @@
               {{ order.recipient.middleName ?? '' }}
             </td>
             <td>{{ order.recipient.phone }}</td>
-            <td class="items-summary">{{ itemsSummary(order) }}</td>
+            <td class="items-summary" [appTooltip]="itemsSummaryTooltip(order)">
+              {{ itemsSummary(order) }}
+            </td>
             <td>{{ paymentTypeLabelById().get(order.paymentTypeId) ?? '—' }}</td>
             <td class="col-num">{{ order.totalAmount }} ₴</td>
             <td>

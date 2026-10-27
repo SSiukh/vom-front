@@ -2629,3 +2629,94 @@ are read-only views built last since they aggregate everything else).
       the zone (XL fills it, never beyond); the loop strap zone starts where the
       strap starts on the photo. Checked on all three leather photos with icon,
       main mark, text and tall/wide marks.
+
+## Three fixes: products tooltip, filter persistence, waybill label (2026-10-27)
+
+- [x] **Products-column hover tooltip on orders-list (truncated by ellipsis).**
+      New `shared/directives/tooltip.directive.ts` (`appTooltip`): portals a
+      panel to `document.body` on hover/focus so it isn't clipped by the
+      table's horizontal-scroll wrapper, positioned from the host's bounding
+      rect with viewport-edge flipping, only shown when the cell is actually
+      truncated (`scrollWidth > clientWidth`), hidden on scroll/resize.
+      Applied to orders-list's and crm-table's `.items-summary` cells (both
+      have the same truncation).
+- [x] **Persist list filters across navigation.** Sync filter/page/sort state
+      to the URL query params (`Router.navigate([], { relativeTo: route,
+      queryParams, replaceUrl: true })`, restored from
+      `ActivatedRoute.snapshot.queryParamMap` in the constructor) so
+      back/forward and a direct link restore them — standard Angular
+      pattern, no new library. New `shared/utils/query-params.util.ts`
+      (`queryParamString`/`queryParamNumber`) shared by all three pages.
+      Applied to orders-list, crm-table, products-list — **expenses-list
+      deliberately skipped**, it has no filters at all (only pagination),
+      so it's out of scope for a request specifically about filters
+      resetting on back-navigation.
+      Also fixed `shared/ui/search-input`'s missing seed-from-URL path
+      (needed an `initialValue` input) — surfaced a real Angular timing
+      trap: a `signal(this.initialValue())` eager field-initializer reads
+      the input's default before Angular's update pass binds the real
+      template value, for *every* instantiation path, not just a test
+      artifact. Fixed with `linkedSignal(this.initialValue)` (lazy
+      evaluation). Worth remembering for any future "seed local editable
+      state from a bound input" need in this codebase.
+      Also relocated `downloadFile` (sticker-generator-local, already
+      cross-imported by keychain-mockups) to `shared/utils/download-file
+      .util.ts` once orders-detail needed it too — a third consumer is
+      what the `angular-project-structure` skill treats as the line for
+      promoting something out of a feature folder.
+- [x] **Waybill label (barcode PDF) in order details.** Backend added
+      `GET /orders/:id/label` (`application/pdf`, 20/min, 400 if no waybill
+      or sender gone) — confirmed against the real `vom-back` commit adding
+      it, already documented in this project's `API_REFERENCE.md` copy.
+      `OrdersApiService.getLabel()` fetches it as a blob (typed HTTP
+      boundary). orders-detail shows a "Переглянути ЕН" action (only when
+      `order.npWaybillNumber` is set) that fetches the blob, previews it
+      inline via `DomSanitizer.bypassSecurityTrustResourceUrl` on an object
+      URL in an `<iframe>`, with a download button (reusing the shared
+      `downloadFile` util) and a close button that revokes the object URL.
+      429 → "Забагато спроб", other errors → generic message, matching the
+      rest of this page's existing error-handling convention.
+      **Test-environment gotcha worth remembering:** rendering a real
+      `<iframe [src]>` bound to a blob: URL in this project's jsdom-based
+      test runner can throw an unrelated-looking `SecurityError:
+      localStorage is not available for opaque origins` as an unhandled,
+      stack-trace-less async error — reproduced consistently when
+      `URL.createObjectURL` was mocked/spied-on (both full replacement and
+      `vi.spyOn` with call-through), never when left real/unmocked. Root
+      cause not fully nailed down (jsdom's blob-URL registry lookup during
+      iframe navigation apparently needs the *real* registration, not a
+      wrapped one), but the fix is simple and now verified stable across
+      repeated runs: don't mock `createObjectURL` for a test that actually
+      renders the iframe — let it run for real and assert the resulting
+      `src` loosely (`toMatch(/^blob:/)`) instead of a literal mocked
+      string. Separately, flushing an error response (`TestRequest.flush`)
+      for a `responseType: 'blob'` request needs a `Blob` body, not a plain
+      string — Angular's testing harness can't auto-convert a string to a
+      Blob (`Automatic conversion to Blob is not supported for response
+      type.`); use `.flush(new Blob(['err']), { status, statusText })`.
+      Reviewed twice across the whole batch. First pass: 2 should-fix
+      (tooltip's `(focus)`/`(blur)` bindings were dead code on real
+      `<td>` hosts with no `tabindex`, so keyboard users could never
+      trigger them, and the portalled panel had no `id`/`aria-describedby`
+      link — fixed by adding `tabindex: '0'` to the directive's own host
+      metadata and wiring `aria-describedby`; `previewLabel()` didn't
+      revoke a still-live object URL before creating a new one, relying
+      entirely on the overlay's CSS blocking a second trigger rather than
+      its own invariant — fixed, it now revokes first) + 2 nits
+      (`products-list.ts`'s `load()` was missing the stale-request
+      `unsubscribe()` guard that `orders-list.ts`/`crm-table.ts` both have
+      — added; the label fetch's error handling didn't distinguish the
+      backend's documented 502 case, unlike the delete flow on the same
+      page — added a matching message). Second pass confirmed all four
+      fixes correct, no regressions, 1101/1101 green. **One accepted
+      trade-off surfaced by the second pass, not fixed:** giving every
+      `[appTooltip]` host its own `tabindex="0"` means the `.items-summary`
+      `<td>` is now a second Tab stop inside orders-list/crm-table's
+      already-focusable `<tr>` row — keyboard users Tab twice per row
+      instead of once. Functionally nothing breaks (Enter/Space on the
+      cell still bubbles to the row's own navigation handler), and the
+      row and the cell serve two different purposes (navigate vs. reveal
+      truncated content), so this is being kept as-is rather than adding
+      complexity to collapse it back to one stop — worth knowing if a
+      future tab-order complaint traces back here.
+      1101/1101 tests passing, clean lint/build.

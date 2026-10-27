@@ -517,4 +517,119 @@ describe('OrdersDetail', () => {
     expect(staleReq.cancelled).toBe(true);
     expect(el.querySelector('.page-title')?.textContent).toContain('EN-10');
   });
+
+  const findButton = (text: string) =>
+    Array.from(el.querySelectorAll('.detail-actions button')).find((b) =>
+      b.textContent?.includes(text),
+    ) as HTMLButtonElement;
+
+  it('offers no "Переглянути ЕН" action when the order has no waybill', () => {
+    create();
+    flushOrder({ npWaybillNumber: null });
+    flushSenderLookups();
+
+    expect(findButton('Переглянути ЕН')).toBeUndefined();
+  });
+
+  it('fetches the label as a blob and previews it inline on "Переглянути ЕН"', () => {
+    create();
+    flushOrder();
+    flushSenderLookups();
+
+    findButton('Переглянути ЕН').click();
+    const req = httpMock.expectOne(`${ordersUrl}/9/label`);
+    expect(req.request.method).toBe('GET');
+    expect(req.request.responseType).toBe('blob');
+    const pdf = new Blob(['%PDF-1.4'], { type: 'application/pdf' });
+    req.flush(pdf);
+    fixture.detectChanges();
+
+    const frame = el.querySelector('.label-preview-frame') as HTMLIFrameElement;
+    expect(frame.getAttribute('src')).toMatch(/^blob:/);
+  });
+
+  it('shows a rate-limit message when the label request is throttled (429)', () => {
+    create();
+    flushOrder();
+    flushSenderLookups();
+
+    findButton('Переглянути ЕН').click();
+    httpMock
+      .expectOne(`${ordersUrl}/9/label`)
+      .flush(new Blob(['err']), { status: 429, statusText: 'Too Many Requests' });
+    fixture.detectChanges();
+
+    expect(el.querySelector('.label-preview-overlay .error-text')?.textContent?.trim()).toBe(
+      'Забагато спроб — спробуйте пізніше',
+    );
+  });
+
+  it('shows a generic error for any other failure', () => {
+    create();
+    flushOrder();
+    flushSenderLookups();
+
+    findButton('Переглянути ЕН').click();
+    httpMock
+      .expectOne(`${ordersUrl}/9/label`)
+      .flush(new Blob(['err']), { status: 400, statusText: 'Bad Request' });
+    fixture.detectChanges();
+
+    expect(el.querySelector('.label-preview-overlay .error-text')?.textContent?.trim()).toBe(
+      'Не вдалося завантажити накладну',
+    );
+  });
+
+  it('downloads the previewed PDF named after the waybill number', () => {
+    create();
+    flushOrder();
+    flushSenderLookups();
+    Object.assign(URL, { createObjectURL: vi.fn().mockReturnValue('blob:preview-2'), revokeObjectURL: vi.fn() });
+    const clickedAnchors: HTMLAnchorElement[] = [];
+    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (this: HTMLAnchorElement) {
+      clickedAnchors.push(this);
+    });
+
+    findButton('Переглянути ЕН').click();
+    httpMock
+      .expectOne(`${ordersUrl}/9/label`)
+      .flush(new Blob(['%PDF-1.4'], { type: 'application/pdf' }));
+    fixture.detectChanges();
+    (el.querySelector('.label-preview-actions .btn-ghost') as HTMLButtonElement).click();
+
+    expect(clickedAnchors).toHaveLength(1);
+    expect(clickedAnchors[0]?.download).toBe('waybill-20450182773641.pdf');
+  });
+
+  it('closes the preview, revokes the object URL and clears the error on close', () => {
+    create();
+    flushOrder();
+    flushSenderLookups();
+    const revokeObjectURL = vi.fn();
+    Object.assign(URL, { createObjectURL: vi.fn().mockReturnValue('blob:preview-3'), revokeObjectURL });
+
+    findButton('Переглянути ЕН').click();
+    httpMock
+      .expectOne(`${ordersUrl}/9/label`)
+      .flush(new Blob(['%PDF-1.4'], { type: 'application/pdf' }));
+    fixture.detectChanges();
+    (el.querySelector('.label-preview-close') as HTMLButtonElement).click();
+    fixture.detectChanges();
+
+    expect(revokeObjectURL).toHaveBeenCalledWith('blob:preview-3');
+    expect(el.querySelector('.label-preview-overlay')).toBeNull();
+  });
+
+  it('ignores a second click on "Переглянути ЕН" while a request is already in flight', () => {
+    create();
+    flushOrder();
+    flushSenderLookups();
+
+    findButton('Переглянути ЕН').click();
+    findButton('Переглянути ЕН').click();
+
+    httpMock
+      .expectOne(`${ordersUrl}/9/label`)
+      .flush(new Blob(['%PDF-1.4'], { type: 'application/pdf' }));
+  });
 });

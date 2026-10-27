@@ -77,6 +77,10 @@ export class OrdersApiService {
     return this.http.patch<Order>(`${this.baseUrl}/${id}/status-flags`, payload);
   }
 
+  getLabel(id: string): Observable<Blob> {
+    return this.http.get(`${this.baseUrl}/${id}/label`, { responseType: 'blob' });
+  }
+
   syncAllStatuses(): Observable<BulkSyncStatusResult> {
     return this.http.patch<BulkSyncStatusResult>(`${this.baseUrl}/sync-statuses`, null, {
       context: new HttpContext().set(REQUEST_TIMEOUT_MS, SYNC_ALL_STATUSES_TIMEOUT_MS),

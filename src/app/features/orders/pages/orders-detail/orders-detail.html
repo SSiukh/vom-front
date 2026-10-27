@@ -31,6 +31,17 @@
         <svg lucidePencil [size]="14" [strokeWidth]="1.5"></svg>
         Редагувати
       </button>
+      @if (order.npWaybillNumber) {
+        <button
+          type="button"
+          class="btn-ghost"
+          [disabled]="labelLoading()"
+          (click)="previewLabel()"
+        >
+          <svg lucideDownload [size]="14" [strokeWidth]="1.5"></svg>
+          {{ labelLoading() ? 'Завантаження…' : 'Переглянути ЕН' }}
+        </button>
+      }
       <button type="button" class="btn-outline-danger" (click)="requestDelete()">
         <svg lucideTrash2 [size]="14" [strokeWidth]="1.5"></svg>
         Видалити
@@ -203,3 +214,34 @@
   (confirmed)="confirmDelete()"
   (cancelled)="cancelDelete()"
 />
+
+@if (labelError() || labelPreviewUrl()) {
+  <div class="label-preview-overlay">
+    <div class="label-preview-card">
+      <div class="label-preview-header">
+        <span>Накладна (ЕН)</span>
+        <div class="label-preview-actions">
+          @if (labelPreviewUrl()) {
+            <button type="button" class="btn-ghost" (click)="downloadLabel()">
+              <svg lucideDownload [size]="14" [strokeWidth]="1.5"></svg>
+              Завантажити
+            </button>
+          }
+          <button
+            type="button"
+            class="label-preview-close"
+            aria-label="Закрити"
+            (click)="closeLabelPreview()"
+          >
+            <svg lucideX [size]="16" [strokeWidth]="1.5"></svg>
+          </button>
+        </div>
+      </div>
+      @if (labelError(); as error) {
+        <div class="error-text">{{ error }}</div>
+      } @else if (labelPreviewUrl(); as url) {
+        <iframe class="label-preview-frame" [src]="url" title="Накладна (ЕН), PDF"></iframe>
+      }
+    </div>
+  </div>
+}

@@ -17,7 +17,7 @@ import { FontLibraryService } from '../../services/font-library.service';
 import { MockupRenderer } from '../../services/mockup-renderer.service';
 import { MIN_READABLE_CONTRAST, contrastRatio } from '../../utils/contrast';
 import { copyPngToClipboard } from '../../utils/copy-image';
-import { downloadFile } from '../../utils/download-file';
+import { downloadFile } from '../../../../shared/utils/download-file.util';
 import { buildFileName } from '../../utils/file-name';
 import { layoutSticker } from '../../utils/layout-sticker';
 import { exportSvg } from '../../utils/svg-export';

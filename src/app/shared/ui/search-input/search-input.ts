@@ -1,4 +1,4 @@
-import { Component, DestroyRef, inject, input, output, signal } from '@angular/core';
+import { Component, DestroyRef, inject, input, linkedSignal, output } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { LucideSearch } from '@lucide/angular';
 import { EMPTY, Subject, map, switchMap, timer } from 'rxjs';
@@ -14,9 +14,10 @@ const SEARCH_DEBOUNCE_MS = 350;
 export class SearchInput {
   readonly placeholder = input.required<string>();
   readonly maxLength = input(100);
+  readonly initialValue = input('');
   readonly searchChange = output<string>();
 
-  protected readonly text = signal('');
+  protected readonly text = linkedSignal(this.initialValue);
 
   private readonly typed = new Subject<string | null>();
 

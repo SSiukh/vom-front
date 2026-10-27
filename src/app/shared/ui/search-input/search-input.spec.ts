@@ -1,5 +1,12 @@
+import { Component } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { SearchInput } from './search-input';
+
+@Component({
+  imports: [SearchInput],
+  template: `<app-search-input placeholder="Пошук" initialValue="Іваненко" />`,
+})
+class SeededHost {}
 
 describe('SearchInput', () => {
   let fixture: ComponentFixture<SearchInput>;
@@ -26,6 +33,16 @@ describe('SearchInput', () => {
 
   afterEach(() => {
     vi.useRealTimers();
+  });
+
+  it('seeds the field from initialValue (bound in a parent template) without emitting', () => {
+    const seeded = TestBed.createComponent(SeededHost);
+    seeded.detectChanges();
+    const seededInput = (seeded.nativeElement as HTMLElement).querySelector(
+      'input',
+    ) as HTMLInputElement;
+
+    expect(seededInput.value).toBe('Іваненко');
   });
 
   it('shows the placeholder and uses it as the accessible name', () => {

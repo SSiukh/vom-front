@@ -24,7 +24,7 @@ import type { GlyphSource } from '../../../sticker-generator/models/glyph-source
 import { FontLibraryService } from '../../../sticker-generator/services/font-library.service';
 import { MockupRenderer } from '../../../sticker-generator/services/mockup-renderer.service';
 import { copyPngToClipboard } from '../../../sticker-generator/utils/copy-image';
-import { downloadFile } from '../../../sticker-generator/utils/download-file';
+import { downloadFile } from '../../../../shared/utils/download-file.util';
 import {
   DEFAULT_KEYCHAIN_SCALE_ID,
   DEFAULT_KEYCHAIN_TEXT_SCALE_ID,

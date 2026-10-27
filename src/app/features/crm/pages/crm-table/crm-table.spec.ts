@@ -1,7 +1,7 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { provideRouter, Router } from '@angular/router';
+import { ActivatedRoute, convertToParamMap, provideRouter, Router } from '@angular/router';
 import { environment } from '../../../../../environments/environment';
 import { DictionariesService } from '../../../../core/dictionaries/dictionaries.service';
 import { CrmTable } from './crm-table';
@@ -326,5 +326,104 @@ describe('CrmTable', () => {
     expect(stale.cancelled).toBe(true);
     flushList([row()], 1, 300, `${baseUrl}?page=1&pageSize=10&sortOrder=desc&search=ivan`);
     expect(el.querySelectorAll('tbody tr').length).toBe(1);
+  });
+});
+
+describe('CrmTable query param persistence', () => {
+  let fixture: ComponentFixture<CrmTable>;
+  let el: HTMLElement;
+  let httpMock: HttpTestingController;
+  let router: Router;
+  const baseUrl = `${environment.apiUrl}/crm/table`;
+
+  const dictionariesStub = {
+    paymentTypes: () => [],
+    productTypes: () => [{ id: 'prt1', code: 'sticker', label: 'Наклейка', isCustom: false }],
+    shipmentStatuses: () => [{ id: 'ss1', code: 'shipped', label: 'Відправлено' }],
+  };
+
+  const create = (queryParams: Record<string, string> = {}) => {
+    TestBed.configureTestingModule({
+      imports: [CrmTable],
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        provideRouter([]),
+        { provide: DictionariesService, useValue: dictionariesStub },
+        {
+          provide: ActivatedRoute,
+          useValue: { snapshot: { queryParamMap: convertToParamMap(queryParams) } },
+        },
+      ],
+    });
+    httpMock = TestBed.inject(HttpTestingController);
+    router = TestBed.inject(Router);
+    vi.spyOn(router, 'navigate').mockResolvedValue(true);
+    fixture = TestBed.createComponent(CrmTable);
+    fixture.detectChanges();
+    el = fixture.nativeElement as HTMLElement;
+  };
+
+  afterEach(() => httpMock.verify());
+
+  it('restores the page, filters and sort order from the URL and requests the matching page', () => {
+    create({
+      page: '2',
+      pageSize: '20',
+      productTypeId: 'prt1',
+      shipmentStatusId: 'ss1',
+      search: 'ivan',
+      sort: 'asc',
+    });
+
+    httpMock
+      .expectOne(
+        `${baseUrl}?page=2&pageSize=20&sortOrder=asc&productTypeId=prt1&shipmentStatusId=ss1&search=ivan`,
+      )
+      .flush({ items: [], total: 50, totalAmountSum: 0 });
+    fixture.detectChanges();
+
+    expect((el.querySelector('app-search-input input') as HTMLInputElement).value).toBe('ivan');
+    const oldestButton = Array.from(el.querySelectorAll('.segmented-control__item')).find(
+      (b) => b.textContent?.trim() === 'Старі',
+    ) as HTMLButtonElement;
+    expect(oldestButton.classList.contains('segmented-control__item--active')).toBe(true);
+  });
+
+  it('writes the current filters to the URL (replacing, not pushing a new entry) when a filter changes', () => {
+    create();
+    httpMock.expectOne(`${baseUrl}?page=1&pageSize=10&sortOrder=desc`).flush({ items: [], total: 0, totalAmountSum: 0 });
+    fixture.detectChanges();
+
+    pickDropdown(fixture, 'productTypeId', 'prt1');
+    httpMock
+      .expectOne(`${baseUrl}?page=1&pageSize=10&sortOrder=desc&productTypeId=prt1`)
+      .flush({ items: [], total: 0, totalAmountSum: 0 });
+
+    expect(router.navigate).toHaveBeenLastCalledWith(
+      [],
+      expect.objectContaining({
+        replaceUrl: true,
+        queryParams: expect.objectContaining({ productTypeId: 'prt1', page: null }),
+      }),
+    );
+  });
+
+  it('omits default values (page 1, the default page size, the default sort) from the synced query params', () => {
+    create();
+    httpMock.expectOne(`${baseUrl}?page=1&pageSize=10&sortOrder=desc`).flush({ items: [], total: 0, totalAmountSum: 0 });
+    fixture.detectChanges();
+
+    pickDropdown(fixture, 'productTypeId', 'prt1');
+    httpMock
+      .expectOne(`${baseUrl}?page=1&pageSize=10&sortOrder=desc&productTypeId=prt1`)
+      .flush({ items: [], total: 0, totalAmountSum: 0 });
+
+    expect(router.navigate).toHaveBeenLastCalledWith(
+      [],
+      expect.objectContaining({
+        queryParams: expect.objectContaining({ page: null, pageSize: null, sort: null }),
+      }),
+    );
   });
 });

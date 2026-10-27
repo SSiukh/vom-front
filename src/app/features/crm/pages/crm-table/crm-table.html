@@ -8,6 +8,7 @@
 <div class="filters-row">
   <app-search-input
     placeholder="Пошук: № накладної, прізвище, ім'я, по батькові"
+    [initialValue]="search() ?? ''"
     (searchChange)="onSearchChange($event)"
   />
   <div class="date-field">
@@ -114,7 +115,9 @@
             <td>{{ paymentTypeLabel(row) }}</td>
             <td>{{ row.recipientFullName }}</td>
             <td>{{ row.recipientPhone }}</td>
-            <td class="items-summary">{{ productTypesLabel(row) }}</td>
+            <td class="items-summary" [appTooltip]="productTypesLabel(row)">
+              {{ productTypesLabel(row) }}
+            </td>
             <td class="col-num">{{ row.totalAmount }} ₴</td>
             <td>
               @if (shipmentStatusLabel(row); as label) {

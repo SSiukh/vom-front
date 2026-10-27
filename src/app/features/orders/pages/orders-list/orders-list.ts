@@ -2,7 +2,7 @@ import { DatePipe } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, DestroyRef, computed, inject, signal, viewChild } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import type { Subscription } from 'rxjs';
 import {
   LucideCircleAlert,
@@ -24,6 +24,8 @@ import {
 import { CopyableText } from '../../../../shared/ui/copyable-text/copyable-text';
 import { DEFAULT_PAGE_SIZE, Pagination } from '../../../../shared/ui/pagination/pagination';
 import { SearchInput } from '../../../../shared/ui/search-input/search-input';
+import { Tooltip } from '../../../../shared/directives/tooltip.directive';
+import { queryParamNumber, queryParamString } from '../../../../shared/utils/query-params.util';
 import { shipmentStatusBadgeClass } from '../../../../shared/utils/shipment-status-badge.util';
 import type { Sender } from '../../../senders/models/sender.model';
 import type { BulkSyncStatusResult, Order } from '../../models/order.model';
@@ -42,6 +44,7 @@ type SortOrder = 'newest' | 'oldest';
     Dropdown,
     CopyableText,
     SearchInput,
+    Tooltip,
     LucidePlus,
     LucidePackageOpen,
     LucidePackageCheck,
@@ -57,6 +60,7 @@ export class OrdersList {
   private readonly sendersApi = inject(SendersApiService);
   protected readonly dictionaries = inject(DictionariesService);
   private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
   private readonly destroyRef = inject(DestroyRef);
   private loadSubscription: Subscription | null = null;
   private readonly searchInput = viewChild(SearchInput);
@@ -118,6 +122,7 @@ export class OrdersList {
   });
 
   constructor() {
+    this.restoreFromQueryParams();
     this.loadSenders();
     this.load();
   }
@@ -125,30 +130,35 @@ export class OrdersList {
   onDateFromChange(value: string): void {
     this.dateFrom.set(value || null);
     this.page.set(1);
+    this.syncQueryParams();
     this.load();
   }
 
   onDateToChange(value: string): void {
     this.dateTo.set(value || null);
     this.page.set(1);
+    this.syncQueryParams();
     this.load();
   }
 
   onProductTypeChange(value: string): void {
     this.productTypeId.set(value || null);
     this.page.set(1);
+    this.syncQueryParams();
     this.load();
   }
 
   onSenderChange(value: string): void {
     this.senderId.set(value || null);
     this.page.set(1);
+    this.syncQueryParams();
     this.load();
   }
 
   onShipmentStatusChange(value: string): void {
     this.shipmentStatusId.set(value || null);
     this.page.set(1);
+    this.syncQueryParams();
     this.load();
   }
 
@@ -159,11 +169,13 @@ export class OrdersList {
     }
     this.search.set(next);
     this.page.set(1);
+    this.syncQueryParams();
     this.load();
   }
 
   setSortOrder(order: SortOrder): void {
     this.sortOrder.set(order);
+    this.syncQueryParams();
   }
 
   resetFilters(): void {
@@ -176,17 +188,20 @@ export class OrdersList {
     this.searchInput()?.clear();
     this.sortOrder.set('newest');
     this.page.set(1);
+    this.syncQueryParams();
     this.load();
   }
 
   onPageChange(page: number): void {
     this.page.set(page);
+    this.syncQueryParams();
     this.load();
   }
 
   onPageSizeChange(pageSize: number): void {
     this.pageSize.set(pageSize);
     this.page.set(1);
+    this.syncQueryParams();
     this.load();
   }
 
@@ -215,6 +230,10 @@ export class OrdersList {
 
   itemsSummary(order: Order): string {
     return order.items.map((item) => `${item.nameSnapshot} ×${item.quantity}`).join(', ');
+  }
+
+  itemsSummaryTooltip(order: Order): string {
+    return order.items.map((item) => `${item.nameSnapshot} ×${item.quantity}`).join('\n');
   }
 
   statusLabel(order: Order): string | null {
@@ -274,6 +293,40 @@ export class OrdersList {
     return 'Не вдалося синхронізувати статуси замовлень';
   }
 
+  private restoreFromQueryParams(): void {
+    const params = this.route.snapshot.queryParamMap;
+    this.page.set(queryParamNumber(params, 'page', 1));
+    this.pageSize.set(queryParamNumber(params, 'pageSize', DEFAULT_PAGE_SIZE));
+    this.dateFrom.set(queryParamString(params, 'dateFrom'));
+    this.dateTo.set(queryParamString(params, 'dateTo'));
+    this.productTypeId.set(queryParamString(params, 'productTypeId'));
+    this.senderId.set(queryParamString(params, 'senderId'));
+    this.shipmentStatusId.set(queryParamString(params, 'shipmentStatusId'));
+    this.search.set(queryParamString(params, 'search'));
+    const sort = queryParamString(params, 'sort');
+    if (sort === 'oldest' || sort === 'newest') {
+      this.sortOrder.set(sort);
+    }
+  }
+
+  private syncQueryParams(): void {
+    void this.router.navigate([], {
+      relativeTo: this.route,
+      replaceUrl: true,
+      queryParams: {
+        page: this.page() > 1 ? this.page() : null,
+        pageSize: this.pageSize() !== DEFAULT_PAGE_SIZE ? this.pageSize() : null,
+        dateFrom: this.dateFrom(),
+        dateTo: this.dateTo(),
+        productTypeId: this.productTypeId(),
+        senderId: this.senderId(),
+        shipmentStatusId: this.shipmentStatusId(),
+        search: this.search(),
+        sort: this.sortOrder() !== 'newest' ? this.sortOrder() : null,
+      },
+    });
+  }
+
   private loadSenders(): void {
     this.sendersApi
       .list(1, SENDERS_FETCH_PAGE_SIZE)
@@ -303,6 +356,7 @@ export class OrdersList {
           const totalPages = Math.max(1, Math.ceil(response.total / this.pageSize()));
           if (this.page() > totalPages) {
             this.page.set(totalPages);
+            this.syncQueryParams();
             this.load();
             return;
           }

@@ -1,7 +1,7 @@
 import { DatePipe } from '@angular/common';
 import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import type { Subscription } from 'rxjs';
 import { LucideListChecks } from '@lucide/angular';
 import { CrmApiService } from '../../../../core/api/crm-api.service';
@@ -11,6 +11,8 @@ import { FEATURE_ROUTES } from '../../../../core/routes.constants';
 import { CopyableText } from '../../../../shared/ui/copyable-text/copyable-text';
 import { DEFAULT_PAGE_SIZE, Pagination } from '../../../../shared/ui/pagination/pagination';
 import { SearchInput } from '../../../../shared/ui/search-input/search-input';
+import { Tooltip } from '../../../../shared/directives/tooltip.directive';
+import { queryParamNumber, queryParamString } from '../../../../shared/utils/query-params.util';
 import { shipmentStatusBadgeClass } from '../../../../shared/utils/shipment-status-badge.util';
 import type { CrmRow } from '../../models/crm-row.model';
 import { DatePicker } from '../../../../shared/ui/date-picker/date-picker';
@@ -19,7 +21,16 @@ type SortOrder = 'asc' | 'desc';
 
 @Component({
   selector: 'app-crm-table',
-  imports: [DatePipe, Pagination, DatePicker, Dropdown, CopyableText, SearchInput, LucideListChecks],
+  imports: [
+    DatePipe,
+    Pagination,
+    DatePicker,
+    Dropdown,
+    CopyableText,
+    SearchInput,
+    Tooltip,
+    LucideListChecks,
+  ],
   templateUrl: './crm-table.html',
   styleUrl: './crm-table.css',
 })
@@ -35,6 +46,7 @@ export class CrmTable {
     ...dictionaryOptions(this.dictionaries.shipmentStatuses()),
   ]);
   private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
   private readonly destroyRef = inject(DestroyRef);
   private loadSubscription: Subscription | null = null;
 
@@ -78,30 +90,35 @@ export class CrmTable {
   });
 
   constructor() {
+    this.restoreFromQueryParams();
     this.load();
   }
 
   onDateFromChange(value: string): void {
     this.dateFrom.set(value || null);
     this.page.set(1);
+    this.syncQueryParams();
     this.load();
   }
 
   onDateToChange(value: string): void {
     this.dateTo.set(value || null);
     this.page.set(1);
+    this.syncQueryParams();
     this.load();
   }
 
   onProductTypeChange(value: string): void {
     this.productTypeId.set(value || null);
     this.page.set(1);
+    this.syncQueryParams();
     this.load();
   }
 
   onShipmentStatusChange(value: string): void {
     this.shipmentStatusId.set(value || null);
     this.page.set(1);
+    this.syncQueryParams();
     this.load();
   }
 
@@ -112,6 +129,7 @@ export class CrmTable {
     }
     this.search.set(next);
     this.page.set(1);
+    this.syncQueryParams();
     this.load();
   }
 
@@ -121,17 +139,20 @@ export class CrmTable {
     }
     this.sortOrder.set(order);
     this.page.set(1);
+    this.syncQueryParams();
     this.load();
   }
 
   onPageChange(page: number): void {
     this.page.set(page);
+    this.syncQueryParams();
     this.load();
   }
 
   onPageSizeChange(pageSize: number): void {
     this.pageSize.set(pageSize);
     this.page.set(1);
+    this.syncQueryParams();
     this.load();
   }
 
@@ -177,6 +198,38 @@ export class CrmTable {
     return shipmentStatusBadgeClass(code);
   }
 
+  private restoreFromQueryParams(): void {
+    const params = this.route.snapshot.queryParamMap;
+    this.page.set(queryParamNumber(params, 'page', 1));
+    this.pageSize.set(queryParamNumber(params, 'pageSize', DEFAULT_PAGE_SIZE));
+    this.dateFrom.set(queryParamString(params, 'dateFrom'));
+    this.dateTo.set(queryParamString(params, 'dateTo'));
+    this.productTypeId.set(queryParamString(params, 'productTypeId'));
+    this.shipmentStatusId.set(queryParamString(params, 'shipmentStatusId'));
+    this.search.set(queryParamString(params, 'search'));
+    const sort = queryParamString(params, 'sort');
+    if (sort === 'asc' || sort === 'desc') {
+      this.sortOrder.set(sort);
+    }
+  }
+
+  private syncQueryParams(): void {
+    void this.router.navigate([], {
+      relativeTo: this.route,
+      replaceUrl: true,
+      queryParams: {
+        page: this.page() > 1 ? this.page() : null,
+        pageSize: this.pageSize() !== DEFAULT_PAGE_SIZE ? this.pageSize() : null,
+        dateFrom: this.dateFrom(),
+        dateTo: this.dateTo(),
+        productTypeId: this.productTypeId(),
+        shipmentStatusId: this.shipmentStatusId(),
+        search: this.search(),
+        sort: this.sortOrder() !== 'desc' ? this.sortOrder() : null,
+      },
+    });
+  }
+
   private load(): void {
     this.loading.set(true);
     this.error.set(null);
@@ -196,6 +249,7 @@ export class CrmTable {
           const totalPages = Math.max(1, Math.ceil(response.total / this.pageSize()));
           if (this.page() > totalPages) {
             this.page.set(totalPages);
+            this.syncQueryParams();
             this.load();
             return;
           }
